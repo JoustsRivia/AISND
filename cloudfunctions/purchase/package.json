@@ -1,0 +1,7 @@
+{
+  "name": "purchase",
+  "version": "1.0.0",
+  "description": "云函数（purchase）：helpers 隔离层",
+  "main": "index.js",
+  "dependencies": { "wx-server-sdk": "~2.6.3" }
+}
