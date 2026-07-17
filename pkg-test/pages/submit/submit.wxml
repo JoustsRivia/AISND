@@ -1,0 +1,22 @@
+<!-- pkg-test/pages/submit/submit.wxml —— M4.2 送检登记 -->
+<view class="submit" wx:if="{{tool}}">
+  <view class="card">
+    <text class="name">{{tool.name}}</text>
+    <text class="muted">编号：{{tool.code}} · {{tool.category}}</text>
+  </view>
+
+  <view class="card">
+    <view class="row"><text class="label">检测单位</text><input class="input" placeholder="从机构名单选择" value="{{testOrg}}" bindinput="onOrg" /></view>
+    <view class="row"><text class="label">试验结果</text></view>
+    <radio-group bindchange="onResult">
+      <label class="radio"><radio value="qualified" checked="{{result === 'qualified'}}" /> 合格</label>
+      <label class="radio"><radio value="unqualified" checked="{{result === 'unqualified'}}" /> 不合格</label>
+    </radio-group>
+    <view class="row up" bindtap="onUpload">
+      <text class="label">检测报告</text>
+      <text class="input">{{reportName || '点击上传'}}</text>
+    </view>
+  </view>
+
+  <button type="primary" loading="{{submitting}}" bindtap="onSubmit">提交并生成标识</button>
+</view>

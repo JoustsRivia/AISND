@@ -1,0 +1,6 @@
+/* pkg-train/pages/sign-in/sign-in.wxss */
+.signin { padding-bottom: 40rpx; }
+.center { text-align: center; padding: 40rpx 0; }
+.t-title { font-size: 30rpx; font-weight: 600; }
+.meta { display: flex; gap: 24rpx; margin-top: 12rpx; font-size: 26rpx; }
+.hint { margin-top: 12rpx; font-size: 24rpx; }

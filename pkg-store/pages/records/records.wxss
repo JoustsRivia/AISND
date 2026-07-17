@@ -1,0 +1,2 @@
+/* pkg-store/pages/records/records.wxss */
+.records { padding-bottom: 40rpx; }

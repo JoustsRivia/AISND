@@ -1,0 +1,29 @@
+<!-- pkg-system/pages/dict/dict.wxml —— M13.2 字典与检查表模板管理 -->
+<view class="dict">
+  <view class="card">
+    <text class="title">器具类别字典</text>
+    <view wx:for="{{dict}}" wx:key="_id" class="line">
+      <text class="name">{{item.label}}</text>
+      <text class="muted">{{item.value}} · {{item.type}}</text>
+    </view>
+    <view wx:if="{{dict.length === 0}}" class="muted">暂无字典项</view>
+  </view>
+
+  <view class="card">
+    <text class="title">检查表模板</text>
+    <view wx:for="{{tpl}}" wx:key="_id" class="line">
+      <text class="name">{{item.name}}</text>
+      <text class="muted">{{item.items ? item.items.length : 0}} 项</text>
+    </view>
+    <view wx:if="{{tpl.length === 0}}" class="muted">暂无模板</view>
+  </view>
+
+  <view class="card">
+    <text class="title">新增检查表模板</text>
+    <view class="row col">
+      <text class="label">模板名称</text>
+      <input class="input" placeholder="请输入模板名称" value="{{name}}" bindinput="bindName" />
+    </view>
+    <button type="primary" loading="{{submitting}}" bindtap="onAdd">新增检查表模板</button>
+  </view>
+</view>

@@ -1,0 +1,9 @@
+/* pkg-test/pages/due-list/due-list.wxss */
+.due { padding-bottom: 40rpx; }
+.hint { padding: 24rpx var(--sp-3); color: var(--c-text-weak); font-size: 24rpx; }
+.card { display: flex; flex-direction: column; }
+.card .name { font-size: 30rpx; font-weight: 600; }
+.card .muted { margin-top: 8rpx; font-size: 24rpx; }
+.tag { font-size: 22rpx; padding: 2rpx 14rpx; border-radius: 8rpx; }
+.tag-danger { background: var(--c-danger-bg); color: var(--c-danger); }
+.tag-warn { background: var(--c-warning-bg); color: var(--c-warning); }

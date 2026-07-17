@@ -1,0 +1,6 @@
+{
+  "usingComponents": {
+    "status-tag": "/components/status-tag/status-tag"
+  },
+  "navigationBarTitleText": "我的培训"
+}

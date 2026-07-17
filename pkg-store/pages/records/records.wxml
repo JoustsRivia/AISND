@@ -1,0 +1,7 @@
+<!-- pkg-store/pages/records/records.wxml —— M3 入库记录 -->
+<view class="records">
+  <view wx:if="{{loading}}" class="muted card">加载中…</view>
+  <block wx:else>
+    <record-timeline records="{{records}}" emptyText="暂无入库记录" />
+  </block>
+</view>

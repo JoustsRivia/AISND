@@ -1,0 +1,30 @@
+<!-- pkg-system/pages/org/org.wxml —— M13.1 组织架构与用户管理 -->
+<view class="org">
+  <view class="card">
+    <text class="title">组织架构</text>
+    <view wx:for="{{tree}}" wx:key="_id" class="node" style="padding-left: {{item.depth * 32 + 16}}rpx;">
+      <view class="row">
+        <text class="name">{{item.name}}</text>
+        <text class="badge">{{item.type}}</text>
+      </view>
+    </view>
+    <view wx:if="{{tree.length === 0}}" class="muted">暂无组织数据</view>
+  </view>
+
+  <view class="card">
+    <text class="title">新增用户</text>
+    <view class="row col">
+      <text class="label">姓名</text>
+      <input class="input" placeholder="请输入姓名" value="{{name}}" bindinput="bindName" />
+    </view>
+    <view class="row col">
+      <text class="label">角色</text>
+      <input class="input" placeholder="如 safety_officer" value="{{role}}" bindinput="bindRole" />
+    </view>
+    <view class="row col">
+      <text class="label">组织 _id</text>
+      <input class="input" placeholder="请输入所属组织 _id" value="{{orgId}}" bindinput="bindOrg" />
+    </view>
+    <button type="primary" loading="{{submitting}}" bindtap="onAdd">新增用户</button>
+  </view>
+</view>

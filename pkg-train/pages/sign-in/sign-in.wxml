@@ -1,0 +1,18 @@
+<!-- pkg-train/pages/sign-in/sign-in.wxml —— M9.2 我的培训 / 签到考核 -->
+<view class="signin">
+  <view wx:if="{{loading}}" class="muted center">加载中…</view>
+  <block wx:else>
+    <view wx:if="{{list.length === 0}}" class="muted center">暂无培训记录</view>
+    <view wx:for="{{list}}" wx:key="_id" class="card train" data-item="{{item}}" bindtap="onSignIn">
+      <view class="row" style="justify-content: space-between;">
+        <text class="t-title">{{item.courseTitle || '培训'}}</text>
+        <status-tag status="{{item.status}}" text="{{item._statusText}}" size="sm" />
+      </view>
+      <view class="meta" wx:if="{{item.score !== undefined && item.score !== null}}">
+        <text class="muted">成绩：{{item.score}}</text>
+        <text class="muted">{{item.certified ? '已发证' : '未发证'}}</text>
+      </view>
+      <view class="hint muted">点击签到考核</view>
+    </view>
+  </block>
+</view>

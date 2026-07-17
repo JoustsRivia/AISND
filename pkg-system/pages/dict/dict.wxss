@@ -1,0 +1,9 @@
+/* pkg-system/pages/dict/dict.wxss */
+.dict { padding-bottom: 40rpx; }
+.title { font-size: 32rpx; font-weight: 600; }
+.line { display: flex; align-items: center; justify-content: space-between; padding: 18rpx 0; border-bottom: 1rpx solid var(--c-divider); font-size: 28rpx; }
+.name { font-size: 28rpx; }
+.row.col { flex-direction: column; align-items: flex-start; }
+.label { width: 100%; font-size: 26rpx; color: var(--c-text-weak); margin-top: 20rpx; }
+.input { width: 100%; margin-top: 8rpx; font-size: 28rpx; border-bottom: 1rpx solid var(--c-divider); padding: 10rpx 0; }
+.dict button { margin-top: 30rpx; background: var(--c-primary); }

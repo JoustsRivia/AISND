@@ -1,0 +1,18 @@
+<!-- pkg-train/pages/courses/courses.wxml —— M9.1 培训课程 -->
+<view class="courses">
+  <view wx:if="{{loading}}" class="muted center">加载中…</view>
+  <block wx:else>
+    <view wx:if="{{list.length === 0}}" class="muted center">暂无培训课程</view>
+    <view wx:for="{{list}}" wx:key="_id" class="card course">
+      <view class="row" style="justify-content: space-between;">
+        <text class="c-title">{{item.title}}</text>
+        <button class="assign" size="mini" data-item="{{item}}" bindtap="onAssign">指派</button>
+      </view>
+      <view class="meta">
+        <text class="muted">类别：{{item.category}}</text>
+        <text class="muted">课时：{{item.hours}}h</text>
+      </view>
+      <view class="meta"><text class="muted">讲师：{{item.teacher}}</text></view>
+    </view>
+  </block>
+</view>

@@ -1,0 +1,11 @@
+/* pkg-test/pages/submit/submit.wxss */
+.submit { padding-bottom: 40rpx; }
+.card { display: flex; flex-direction: column; }
+.card .name { font-size: 32rpx; font-weight: 600; }
+.card .muted { margin-top: 8rpx; font-size: 24rpx; }
+.row { display: flex; align-items: center; padding: 22rpx 0; border-bottom: 1rpx solid var(--c-divider); }
+.label { width: 160rpx; font-size: 28rpx; }
+.input { flex: 1; text-align: right; font-size: 28rpx; }
+.radio { margin: 16rpx 32rpx 0 0; font-size: 28rpx; }
+.up { justify-content: space-between; }
+.submit button { margin-top: 40rpx; background: var(--c-primary); }

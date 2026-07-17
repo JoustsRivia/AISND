@@ -1,0 +1,19 @@
+<!-- pkg-store/pages/register/register.wxml —— M3.1 库房注册 -->
+<view class="register">
+  <view class="card">
+    <view class="row col"><text class="label">库房名称</text>
+      <input class="ipt" placeholder="请输入库房名称" value="{{name}}" bindinput="bindName" />
+    </view>
+    <view class="row col"><text class="label">所属组织</text>
+      <input class="ipt" placeholder="请输入组织/项目编号" value="{{orgId}}" bindinput="bindOrg" />
+    </view>
+    <view class="row col"><text class="label">分区</text>
+      <input class="ipt" placeholder="如：A区/绝缘区/电动区" value="{{zone}}" bindinput="bindZone" />
+    </view>
+    <view class="row col"><text class="label">管理员</text>
+      <input class="ipt" placeholder="请输入库房管理员姓名" value="{{keeper}}" bindinput="bindKeeper" />
+    </view>
+  </view>
+
+  <button type="primary" loading="{{submitting}}" bindtap="onSubmit">提交注册</button>
+</view>

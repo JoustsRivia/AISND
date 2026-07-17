@@ -1,0 +1,7 @@
+/* pkg-train/pages/courses/courses.wxss */
+.courses { padding-bottom: 40rpx; }
+.center { text-align: center; padding: 40rpx 0; }
+.course { position: relative; }
+.c-title { font-size: 30rpx; font-weight: 600; }
+.meta { display: flex; gap: 24rpx; margin-top: 12rpx; font-size: 26rpx; }
+.assign { background: var(--c-primary); color: #fff; font-size: 24rpx; margin: 0; }

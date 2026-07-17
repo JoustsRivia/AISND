@@ -1,0 +1,96 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/ledger/ledger",
+    "pages/tool-detail/tool-detail",
+    "pages/scan/scan",
+    "pages/message/message",
+    "pages/profile/profile",
+    "pages/login/login"
+  ],
+  "subpackages": [
+    {
+      "root": "pkg-ledger",
+      "pages": ["pages/tool-create/tool-create", "pages/lease/lease", "pages/import/import"]
+    },
+    {
+      "root": "pkg-test",
+      "pages": ["pages/due-list/due-list", "pages/submit/submit"]
+    },
+    {
+      "root": "pkg-borrow",
+      "pages": ["pages/records/records"]
+    },
+    {
+      "root": "pkg-scrap",
+      "pages": ["pages/apply/apply", "pages/approve/approve", "pages/disposal/disposal"]
+    },
+    {
+      "root": "pkg-barcode",
+      "pages": ["pages/gen/gen", "pages/query/query", "pages/print/print", "pages/batch/batch"]
+    },
+    {
+      "root": "pkg-purchase",
+      "pages": ["pages/apply/apply", "pages/approve/approve"]
+    },
+    {
+      "root": "pkg-store",
+      "pages": ["pages/register/register", "pages/records/records"]
+    },
+    {
+      "root": "pkg-site",
+      "pages": ["pages/spot-check/spot-check", "pages/daily-check/daily-check", "pages/guide/guide", "pages/briefing/briefing"]
+    },
+    {
+      "root": "pkg-maint",
+      "pages": ["pages/create/create", "pages/repair/repair"]
+    },
+    {
+      "root": "pkg-train",
+      "pages": ["pages/courses/courses", "pages/sign-in/sign-in"]
+    },
+    {
+      "root": "pkg-check",
+      "pages": ["pages/inspection/inspection", "pages/hazard/hazard", "pages/assessment/assessment"]
+    },
+    {
+      "root": "pkg-stats",
+      "pages": ["pages/dashboard/dashboard", "pages/six-standard/six-standard", "pages/project/project", "pages/report/report"]
+    },
+    {
+      "root": "pkg-system",
+      "pages": ["pages/org/org", "pages/dict/dict", "pages/log/log"]
+    }
+  ],
+  "preloadRule": {
+    "pages/index/index": {
+      "network": "all",
+      "packages": ["pkg-ledger", "pkg-test"]
+    }
+  },
+  "window": {
+    "navigationBarTitleText": "工器具安全管理",
+    "navigationBarBackgroundColor": "#1A56DB",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#F5F7FA"
+  },
+  "tabBar": {
+    "color": "#9AA0A6",
+    "selectedColor": "#1A56DB",
+    "backgroundColor": "#FFFFFF",
+    "list": [
+      { "pagePath": "pages/index/index", "text": "首页" },
+      { "pagePath": "pages/ledger/ledger", "text": "台账" },
+      { "pagePath": "pages/scan/scan", "text": "扫一扫" },
+      { "pagePath": "pages/message/message", "text": "消息" },
+      { "pagePath": "pages/profile/profile", "text": "我的" }
+    ]
+  },
+  "permission": {
+    "scope.userLocation": {
+      "desc": "用于隐患上报定位与就近库房查询"
+    }
+  },
+  "sitemapLocation": "sitemap.json",
+  "style": "v2"
+}

@@ -1,0 +1,11 @@
+/* pkg-system/pages/org/org.wxss */
+.org { padding-bottom: 40rpx; }
+.title { font-size: 32rpx; font-weight: 600; }
+.node { padding-top: 18rpx; padding-bottom: 18rpx; border-bottom: 1rpx solid var(--c-divider); }
+.row { display: flex; align-items: center; justify-content: space-between; }
+.name { font-size: 28rpx; }
+.badge { font-size: 24rpx; color: var(--c-text-weak); background: var(--c-divider); padding: 4rpx 12rpx; border-radius: 8rpx; }
+.row.col { flex-direction: column; align-items: flex-start; }
+.label { width: 100%; font-size: 26rpx; color: var(--c-text-weak); margin-top: 20rpx; }
+.input { width: 100%; margin-top: 8rpx; font-size: 28rpx; border-bottom: 1rpx solid var(--c-divider); padding: 10rpx 0; }
+.org button { margin-top: 30rpx; background: var(--c-primary); }

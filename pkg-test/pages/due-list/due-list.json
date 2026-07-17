@@ -1,0 +1,5 @@
+{
+  "usingComponents": {},
+  "navigationBarTitleText": "待检清单",
+  "enablePullDownRefresh": true
+}
