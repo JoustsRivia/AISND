@@ -2,7 +2,7 @@
 // 业务逻辑层：只引用 ./helpers，绝不直接调用 cloud.database() / cloud.getWXContext()。
 // 所有平台专属能力都被 helpers 封装，迁移时本文件无需改动。
 const { getOpenid } = require('./helpers/user');
-const { findUser, addUser, updateUser } = require('./helpers/db');
+const { findUser, addUser, updateUser, update, listUsers, remove } = require('./helpers/db');
 
 // F2 安全修复：服务端角色白名单，禁止客户端伪造 role 提权。
 // 仅「操作类」角色允许在首次登录自绑定；审批 / 决策 / 督查类角色权限极高，
@@ -61,6 +61,9 @@ async function register(payload) {
     return fail('角色不合法或需管理员分配：' + (role || '空'), 403);
   }
   if (!orgId) return fail('请选择所属机构 / 班组', 400);
+  // 用户名唯一性：排除当前身份自身，避免重复注册时误判
+  const dup = await listUsers({ username });
+  if (dup.data && dup.data.some((x) => x.openid !== openid)) return fail('用户名已存在', 409);
   await updateUser(openid, {
     role,
     unitId: unitId || '',
@@ -97,18 +100,30 @@ async function bindAccount(payload) {
   return ok(res.data[0]);
 }
 
-// 凭证登录（UI② 登录按钮）：本 openid 账号须已注册（bound+密码），核对账号与密码
-// 同一微信身份按 openid 唯一建档，注册即绑定；此处仅做身份确认闸门。
+// 凭证登录（UI② 登录按钮）：按账号名核对密码，并绑定当前微信身份。
+// 既兼容用户自注册账号（openid 已与账号一致），也支持管理员在后台预建的账号
+// （首次登录时把账号记录的 openid 绑定到当前微信身份，实现「账号名即身份」）。
 async function signin(payload) {
   const openid = getOpenid();
   const { username, password } = payload;
   if (!username || !password) return fail('请输入账号和密码', 400);
-  const res = await findUser(openid);
-  if (!res.data || !res.data.length) return fail('账号未注册，请先注册', 404);
-  const u = res.data[0];
+  const byName = await listUsers({ username });
+  if (!byName.data || !byName.data.length) return fail('账号不存在，请先注册', 404);
+  const u = byName.data[0];
   if (!u.bound) return fail('账号未完成注册，请先注册', 403);
-  if ((u.username || '') !== username) return fail('账号不正确', 401);
   if (u.password !== hashPwd(password)) return fail('密码不正确', 401);
+  // 当前微信身份与账号记录不一致（管理员预建账号首次登录 / 换设备）：绑定到当前 openid
+  if (u.openid !== openid) {
+    await update('users', u._id, { openid, updatedAt: new Date() });
+    u.openid = openid;
+    // 清理同 openid 下可能残留的自动建档空记录，避免 getCurrentUser 取到错误档案
+    const dups = await listUsers({ openid });
+    for (const d of (dups.data || [])) {
+      if (String(d._id) !== String(u._id) && (!d.username || !d.bound)) {
+        await remove('users', d._id);
+      }
+    }
+  }
   return ok(u);
 }
 

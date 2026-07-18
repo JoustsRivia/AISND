@@ -133,4 +133,23 @@ Page({
   },
 
   onForgot() { wx.showToast({ title: '请联系系统管理员重置', icon: 'none' }); },
+
+  // 初始化管理员账号（仅首次）：把当前微信身份设为安监部管理员 Jousts / qwer1234
+  async onSeedAdmin() {
+    const ok = await new Promise((resolve) => wx.showModal({
+      title: '初始化管理员账号',
+      content: '将把当前微信身份设为安监部管理员，账号 Jousts / 密码 qwer1234。仅首次可用，已存在管理员时将跳过。',
+      success: (r) => resolve(r.confirm),
+    }));
+    if (!ok) return;
+    this.setData({ loading: true });
+    try {
+      await api.seedAdmin();
+      wx.showToast({ title: '管理员已初始化：Jousts', icon: 'none' });
+    } catch (err) {
+      wx.showToast({ title: err.message || '初始化失败', icon: 'none' });
+    } finally {
+      this.setData({ loading: false });
+    }
+  },
 });

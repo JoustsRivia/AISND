@@ -6,6 +6,7 @@ const ROLE_TEXT = {
   lead: '专班负责人', project_lead: '项目部负责人', safety_officer: '专职安全员',
   group_lead: '班组长', supervisor: '安监管理', worker: '作业人员', lease_admin: '租赁管理员',
 };
+const ADMIN_ROLES = ['lead', 'supervisor'];
 
 Page({
   data: { profile: null, roleText: '', avatarText: '我', orgName: '', stats: [], groups: [] },
@@ -43,6 +44,12 @@ Page({
             { key: 'cert-expire', icon: '⏰', label: '证书即将到期', badge: certBadge ? String(certBadge) : '', arrow: true },
           ],
         },
+        ...(ADMIN_ROLES.includes(p && p.role) ? [{
+          title: '系统管理',
+          items: [
+            { key: 'system', icon: '⚙️', label: '组织架构与用户', value: '管理员', arrow: true },
+          ],
+        }] : []),
         {
           title: '通用',
           items: [
@@ -58,6 +65,7 @@ Page({
     const key = e.detail.key;
     if (key === 'logout') return this.onLogout();
     if (key === 'about') { wx.showModal({ title: '关于系统', content: '工器具安全管理小程序 V1.0\n助力电力工器具全生命周期安全管控。', showCancel: false }); return; }
+    if (key === 'system') { wx.navigateTo({ url: '/pkg-system/pages/org/org' }); return; }
     wx.showToast({ title: '该功能开发中', icon: 'none' });
   },
 

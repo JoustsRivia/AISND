@@ -1,11 +1,35 @@
 /* pkg-system/pages/org/org.wxss */
-.org { padding-bottom: 40rpx; }
-.title { font-size: 32rpx; font-weight: 600; }
+.org { padding-bottom: 60rpx; }
+
+.head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8rpx; }
+.title { font-size: 32rpx; font-weight: 600; display: block; margin-bottom: 16rpx; }
+.link { font-size: 26rpx; color: var(--c-primary); }
+
+/* 组织树 */
 .node { padding-top: 18rpx; padding-bottom: 18rpx; border-bottom: 1rpx solid var(--c-divider); }
-.row { display: flex; align-items: center; justify-content: space-between; }
+.node:last-child { border-bottom: none; }
 .name { font-size: 28rpx; }
-.badge { font-size: 24rpx; color: var(--c-text-weak); background: var(--c-divider); padding: 4rpx 12rpx; border-radius: 8rpx; }
-.row.col { flex-direction: column; align-items: flex-start; }
-.label { width: 100%; font-size: 26rpx; color: var(--c-text-weak); margin-top: 20rpx; }
+
+/* 用户列表 */
+.unode { padding: 18rpx 0; border-bottom: 1rpx solid var(--c-divider); }
+.unode:last-child { border-bottom: none; }
+.uinfo { display: flex; align-items: center; gap: 12rpx; }
+.uname { font-size: 28rpx; font-weight: 600; }
+.umeta { display: block; font-size: 24rpx; color: var(--c-text-weak); margin-top: 6rpx; }
+
+/* 操作按钮 */
+.ops { display: flex; gap: 24rpx; }
+.op { font-size: 26rpx; color: var(--c-primary); }
+.op.danger { color: var(--c-danger); }
+
+/* 表单 */
+.row.col { flex-direction: column; align-items: flex-start; margin-top: 20rpx; }
+.label { width: 100%; font-size: 26rpx; color: var(--c-text-weak); }
 .input { width: 100%; margin-top: 8rpx; font-size: 28rpx; border-bottom: 1rpx solid var(--c-divider); padding: 10rpx 0; }
+.picker {
+  width: 100%; margin-top: 8rpx; font-size: 28rpx; padding: 16rpx 0;
+  border-bottom: 1rpx solid var(--c-divider); color: var(--c-text);
+}
 .org button { margin-top: 30rpx; background: var(--c-primary); }
+
+.muted { color: var(--c-text-weak); font-size: 26rpx; padding: 16rpx 0; }

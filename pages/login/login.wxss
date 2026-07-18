@@ -27,6 +27,11 @@
 .note { margin-top: 24rpx; font-size: 22rpx; color: var(--c-text-weak); text-align: center; line-height: 1.5; }
 .forgot { text-align: center; margin-top: 32rpx; color: var(--c-text-weak); font-size: 26rpx; }
 .link { color: var(--c-primary); }
+.seed {
+  text-align: center; margin-top: 36rpx; padding: 18rpx 0;
+  color: var(--c-text-weak); font-size: 24rpx;
+  border: 1rpx dashed var(--c-divider); border-radius: var(--r-md);
+}
 
 /* 登录/注册分段切换 */
 .seg { display: flex; background: var(--c-bg); border-radius: var(--r-pill); padding: 6rpx; margin-bottom: var(--sp-3); }

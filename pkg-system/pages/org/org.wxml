@@ -1,30 +1,99 @@
-<!-- pkg-system/pages/org/org.wxml —— M13.1 组织架构与用户管理 -->
+<!-- pkg-system/pages/org/org.wxml —— M13 组织架构与用户管理 -->
 <view class="org">
+
+  <!-- ============ 组织架构 ============ -->
   <view class="card">
-    <text class="title">组织架构</text>
-    <view wx:for="{{tree}}" wx:key="_id" class="node" style="padding-left: {{item.depth * 32 + 16}}rpx;">
-      <view class="row">
+    <view class="head">
+      <text class="title">组织架构（所属单位 / 机构 / 班组）</text>
+      <text class="link" bindtap="onOrgSeed">恢复默认</text>
+    </view>
+    <view wx:for="{{tree}}" wx:key="_id" class="node" style="padding-left: {{item.depth * 32 + 8}}rpx;">
+      <view class="row between">
         <text class="name">{{item.name}}</text>
-        <text class="badge">{{item.type}}</text>
+        <view class="ops">
+          <text class="op" data-id="{{item._id}}" bindtap="onOrgEdit">编辑</text>
+          <text class="op danger" data-id="{{item._id}}" bindtap="onOrgDelete">删除</text>
+        </view>
       </view>
     </view>
-    <view wx:if="{{tree.length === 0}}" class="muted">暂无组织数据</view>
+    <view wx:if="{{tree.length === 0}}" class="muted">暂无组织数据，可点右上角「恢复默认」初始化</view>
   </view>
 
+  <!-- 新增 / 编辑组织 -->
   <view class="card">
-    <text class="title">新增用户</text>
+    <text class="title">{{orgForm.editingId ? '编辑组织' : '新增组织'}}</text>
     <view class="row col">
-      <text class="label">姓名</text>
-      <input class="input" placeholder="请输入姓名" value="{{name}}" bindinput="bindName" />
+      <text class="label">名称</text>
+      <input class="input" placeholder="如：第二项目部 / 一班" value="{{orgForm.name}}" bindinput="onOrgName" />
+    </view>
+    <view class="row col">
+      <text class="label">上级组织</text>
+      <picker mode="selector" range="{{parentOptions}}" range-key="name" value="{{orgForm.parentIndex}}" bindchange="onOrgParent">
+        <view class="picker">{{parentOptions[orgForm.parentIndex].name}} ▾</view>
+      </picker>
+    </view>
+    <view class="row col">
+      <text class="label">类型</text>
+      <picker mode="selector" range="{{kindOptions}}" range-key="name" value="{{orgForm.kindIndex}}" bindchange="onOrgKind">
+        <view class="picker">{{kindOptions[orgForm.kindIndex].name}} ▾</view>
+      </picker>
+    </view>
+    <button type="primary" loading="{{loading}}" bindtap="onOrgSubmit">{{orgForm.editingId ? '保存组织' : '新增组织'}}</button>
+  </view>
+
+  <!-- ============ 用户管理 ============ -->
+  <view class="card">
+    <text class="title">已注册人员（登录信息）</text>
+    <view wx:for="{{users}}" wx:key="_id" class="unode">
+      <view class="row between">
+        <view class="uinfo">
+          <text class="uname">{{item.username}}{{item.nickname && item.nickname !== item.username ? '（' + item.nickname + '）' : ''}}</text>
+          <text class="pill pill-info">{{item.roleText}}</text>
+        </view>
+        <view class="ops">
+          <text class="op" data-id="{{item._id}}" bindtap="onUserEdit">编辑</text>
+          <text class="op danger" data-id="{{item._id}}" bindtap="onUserDelete">删除</text>
+        </view>
+      </view>
+      <text class="umeta">单位/机构：{{item.orgId ? '已分配' : '未分配'}}　{{item.status === 'disabled' ? '已停用' : ''}}</text>
+    </view>
+    <view wx:if="{{users.length === 0}}" class="muted">暂无用户</view>
+  </view>
+
+  <!-- 新增 / 编辑用户 -->
+  <view class="card">
+    <text class="title">{{userForm.editingId ? '编辑用户登录信息' : '新增用户（预建账号）'}}</text>
+    <view class="row col">
+      <text class="label">用户名</text>
+      <input class="input" placeholder="登录用户名" value="{{userForm.username}}" data-f="username" bindinput="onUserInput" />
+    </view>
+    <view class="row col">
+      <text class="label">密码{{userForm.editingId ? '（留空则不修改）' : ''}}</text>
+      <input class="input" placeholder="{{userForm.editingId ? '留空保持不变' : '请输入密码'}}" password value="{{userForm.password}}" data-f="password" bindinput="onUserInput" />
+    </view>
+    <view class="row col">
+      <text class="label">昵称</text>
+      <input class="input" placeholder="选填，默认同用户名" value="{{userForm.nickname}}" data-f="nickname" bindinput="onUserInput" />
     </view>
     <view class="row col">
       <text class="label">角色</text>
-      <input class="input" placeholder="如 safety_officer" value="{{role}}" bindinput="bindRole" />
+      <picker mode="selector" range="{{roleOptions}}" range-key="name" value="{{userForm.roleIndex}}" bindchange="onUserRole">
+        <view class="picker">{{roleOptions[userForm.roleIndex].name}} ▾</view>
+      </picker>
     </view>
     <view class="row col">
-      <text class="label">组织 _id</text>
-      <input class="input" placeholder="请输入所属组织 _id" value="{{orgId}}" bindinput="bindOrg" />
+      <text class="label">所属单位</text>
+      <picker mode="selector" range="{{units}}" range-key="name" value="{{userForm.unitIndex}}" bindchange="onUserUnit">
+        <view class="picker">{{units.length ? units[userForm.unitIndex].name : '请先恢复默认组织架构'}} ▾</view>
+      </picker>
     </view>
-    <button type="primary" loading="{{submitting}}" bindtap="onAdd">新增用户</button>
+    <view class="row col">
+      <text class="label">机构 / 班组</text>
+      <picker mode="selector" range="{{orgOptions}}" range-key="label" value="{{userForm.orgIndex}}" bindchange="onUserOrg">
+        <view class="picker">{{orgOptions.length ? orgOptions[userForm.orgIndex].label : '请先选择所属单位'}} ▾</view>
+      </picker>
+    </view>
+    <button type="primary" loading="{{loading}}" bindtap="onUserSubmit">{{userForm.editingId ? '保存用户' : '新增用户'}}</button>
   </view>
+
 </view>

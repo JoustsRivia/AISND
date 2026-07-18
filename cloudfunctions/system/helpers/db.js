@@ -16,4 +16,7 @@ const getCurrentUser = async (openid) => {
 };
 const listOrgs = (size = 200) => coll('orgs').limit(size).get();
 const addOrg = (data) => coll('orgs').add({ data });
-module.exports = { _, add, getById, update, listBy, coll, collection: coll, getCurrentUser, listOrgs, addOrg };
+const remove = (name, id) => coll(name).doc(id).remove();
+const removeOrg = (id) => coll('orgs').doc(id).remove();
+const countBy = (name, filter = {}) => coll(name).where(filter).count();
+module.exports = { _, add, getById, update, listBy, coll, collection: coll, getCurrentUser, listOrgs, addOrg, remove, removeOrg, countBy };

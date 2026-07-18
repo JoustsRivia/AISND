@@ -55,6 +55,8 @@
 
       <view class="note">🔒 专班负责人、项目部负责人、安监部管理人员由系统管理员分配</view>
       <view wx:if="{{mode==='login'}}" class="forgot" bindtap="onForgot">忘记密码？<text class="link">立即找回</text></view>
+
+      <view class="seed" bindtap="onSeedAdmin">⚙ 初始化管理员账号（仅首次）</view>
     </view>
   </view>
 </view>

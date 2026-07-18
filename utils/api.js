@@ -140,7 +140,10 @@ const exportReport = (params) => invoke(FN.stats, 'exportReport', params);
 
 // ── 系统管理 M13 ──────────────────────────────────────────────────────
 const getOrgTree = () => invoke(FN.system, 'orgTree');
+const manageOrg = (data) => invoke(FN.system, 'org', data);
 const manageUser = (data) => invoke(FN.system, 'user', data);
+const listUsers = () => invoke(FN.system, 'user', { op: 'list' });
+const seedAdmin = (data = {}) => invoke(FN.system, 'seedAdmin', data);
 const getDict = (type) => invoke(FN.system, 'dict', { type });
 const manageCheckTemplate = (data) => invoke(FN.system, 'checkTemplate', data);
 
@@ -198,7 +201,7 @@ module.exports = {
   // 统计
   getDashboard, getProjectDashboard, getSixStandard, getMyStats, exportReport,
   // 系统
-  getOrgTree, manageUser, getDict, manageCheckTemplate,
+  getOrgTree, manageOrg, manageUser, listUsers, seedAdmin, getDict, manageCheckTemplate,
   // 条码
   generateBarcode, getBarcodeFile, batchInbound, batchSpotCheck, batchGenBarcode,
   // 文件/日志
