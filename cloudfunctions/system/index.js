@@ -191,10 +191,18 @@ async function userManage(payload) {
 //   缺省回退到内置默认值，保证未配置环境时行为不变。前端不再硬编码任何口令。
 const SEED_USERNAME = process.env.SEED_ADMIN_USERNAME || 'Jousts';
 const SEED_PASSWORD = process.env.SEED_ADMIN_PASSWORD || 'qwer1234';
+// 是否落回内置默认凭证：仅当两项环境变量均未配置时为真（用于安全告警，不触发任何行为变更）
+const USING_DEFAULT_CREDS = !process.env.SEED_ADMIN_USERNAME && !process.env.SEED_ADMIN_PASSWORD;
 async function seedAdmin(payload = {}) {
   const openid = getOpenid();
   const username = (payload.username || SEED_USERNAME).trim();
   const password = payload.password || SEED_PASSWORD;
+  // 安全可观测性：使用内置默认凭证时输出告警，提示运维在部署环境配置强口令，
+  // 但保留回退值以避免「未配置环境变量即无法播种/空口令锁死」的可用性事故。
+  if (USING_DEFAULT_CREDS && !payload.password) {
+    console.warn('[system.seedAdmin] 正在使用内置默认管理员凭证（SEED_ADMIN_USERNAME / SEED_ADMIN_PASSWORD 均未配置）。'
+      + '生产部署前请于云函数环境变量设置强口令，避免默认口令留存源码。');
+  }
   await db.ensureCollection('users');
   // 已存在任一管理员(admin)则拒绝
   const admins = await db.listBy('users', {}, 200);

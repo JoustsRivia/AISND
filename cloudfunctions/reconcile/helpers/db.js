@@ -1,4 +1,4 @@
-// cloudfunctions/check/helpers/db.js （隔离层：仅此处可调用 cloud.database()）
+// cloudfunctions/reconcile/helpers/db.js （隔离层：仅此处可调用 cloud.database()）
 const cloud = require('wx-server-sdk');
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 const db = cloud.database();
