@@ -4,7 +4,8 @@
   "private": true,
   "description": "SND 工器具安全管理小程序（微信云开发）—— 云函数单测与 helper 注释规范校验",
   "scripts": {
-    "test": "node --test cloudfunctions/_tests/cloud-functions.test.js",
-    "lint:helpers": "node scripts/helper-comments.js"
+    "test": "node --test cloudfunctions/_tests/cloud-functions.test.js cloudfunctions/_tests/cloud-functions-2.test.js",
+    "lint:helpers": "node scripts/helper-comments.js",
+    "scan:secrets": "node scripts/secret-scan.js"
   }
 }

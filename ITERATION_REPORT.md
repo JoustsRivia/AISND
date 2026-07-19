@@ -1,7 +1,7 @@
-# SND 小程序 · 迭代报告（ITERATION 2026-07-19 · 落地上次迭代 backlog 六项目标）
+# SND 小程序 · 迭代报告（ITERATION 2026-07-19 · 质量+安全门禁固化）
 
 > 生成依据：微信小程序云开发 AI 开发守则（可迁移 + 精准加载 + 全自主自迭代）
-> 本迭代模式：初始化 → 读取上次报告（同日 22:32 `c478b28`）→ 自主规划 → 编码 → 验证 → 修复 → 报告 → 推送
+> 本迭代模式：初始化 → 读取上次报告（同日 22:56 `db685aa`）→ 自主规划 → 编码 → 验证 → 修复 → 报告 → 推送
 > 时间门禁：北京时间未到 2026-07-22 00:00，继续执行。
 
 ## 0. 初始化校验
@@ -9,38 +9,25 @@
 | 项 | 结果 |
 |---|---|
 | 时间门禁（终止点 2026-07-22 00:00，北京时间） | ✅ 当前 2026-07-19 22:xx，未触发 |
-| 历史迭代报告 `ITERATION_REPORT.md` | 存在并已优先读取：上一轮为「独立架构审计 + 注释修正」，其 `§4` 列出 6 项 backlog 即本次目标 |
-| 源仓库 `JoustsRivia/AISND` | ✅ 已克隆、与远端同步，remote 已配授权 token |
+| 历史迭代报告 `ITERATION_REPORT.md` | 存在并已优先读取：上一轮落地 backlog 六项目标，其 `§4` 给出 7 项建议，本次承接其中质量与安全相关三项 |
+| 源仓库 `JoustsRivia/AISND` | ✅ 工作树干净（0 未提交改动），`main` 分支 HEAD=`db685aa`，remote 已配授权 token |
 
 ## 1. 本次迭代完成的功能与修复的问题
 
-> 背景：承接上次迭代 `§4` 六项目标（①②③④⑤⑥），全部落地。其中 ① 为云平台部署动作（沙箱无法配置环境变量），改为提供部署手册 + 代码已原生支持。
+> 背景：承接上次报告 `§4` 建议，本次聚焦**可验证、零运行时风险**的「质量+安全门禁」三项目标（Item 1 扩展单测 / Item 2+5 CI 固化 / Item 3 凭据扫描）。严格遵循「分步按需加载」：仅读取目标云函数 `index.js` + `helpers/*.js` 与既有测试基座，未触碰任何页面 UI 或云函数业务逻辑。
 
-**【Item 6 · helper 注释规范】全量更正误注首行 + CI 校验脚本。**
-- 上次迭代仅修了 `reconcile/performance` 两处；本次全面排查发现 **19 个** helper 首行仍误注为 `cloudfunctions/tpl/helpers/...`（auth/cert/check/file/performance/purchase/reconcile/site/stats/store/system/test/tool/training/warning）。
-- 新增 `scripts/helper-comments.js`：支持「仅检查（CI 退出码 1）」与 `--fix`（就地把首行重写为真实路径）两种模式。已运行 `--fix`，**38/38** helper 首行均为真实路径，校验通过。
+**【G1 · Item 1 扩展单测覆盖】新增 `cloudfunctions/_tests/cloud-functions-2.test.js`（19 用例）。**
+- 复用既有 `mock-cloud` 拦截层（`require('wx-server-sdk')` 拦截 + 内存库），业务云函数 `index.js`/`helpers` **零改动**，再次反向证明「换掉 wx-server-sdk 即可复用」。
+- 覆盖 `borrow`（领用资格/特种证件越权守卫/归还损坏转报修）、`maintenance`（报修流转/非授权角色 403/批准/复检合格回写 qualified）、`store`（缺名称 400/orgId 服务端归属防越权挂靠/入库/批量入库）、`reconcile`（非管理角色 403/快照生成/同月重复 409/逐项确认/完成差异统计）。
+- 更新 `package.json` `test` 脚本同时跑两份测试文件。**单测由 13 → 32 例全绿。**
 
-**【Item 2 · 云函数单测】建立可运行的单测体系（零依赖）。**
-- 新增 `cloudfunctions/_tests/mock-cloud.js`：拦截任意云函数内部的 `require('wx-server-sdk')`，提供内存态数据库 + 可注入 `WXContext`（`__setOpenid` / `__reset` / `__store`），使业务云函数在 Node 下脱离微信环境直接运行——反向证明「换掉 wx-server-sdk 即可复用」。
-- 新增 `cloudfunctions/_tests/cloud-functions.test.js`：覆盖上次点名的三处高风险逻辑，**13 用例全绿**：
-  - `auth`：register 拒绝越权角色 `admin`（403）、合法角色建档且口令哈希（非明文）、用户名重复（409）、缺机构（400）、signin 密码错误（401）/ 正确返回档案。
-  - `purchase`：`approve pass=false → rejected`、`pass=true → approved`、非授权角色（403）、create 缺名称（400）—— 守住「驳回不再恒变通过」回归。
-  - `scrap`：`autoCheck` 返回 pending + forbidden 候选、`judge` 超期自动判定、非授权角色审批（403）。
+**【G2 · Items 2+5 CI 强制门禁】新增 `.github/workflows/ci.yml`。**
+- 在 `push`/`pull_request` 至 `main` 时强制跑三道门禁：`npm test`（云函数单测）+ `npm run lint:helpers`（helper 注释规范）+ `npm run scan:secrets`（凭据扫描）。
+- 把上次建议 Item 5 的「helper 注释规范前置」以 **PR 级卡点**形式固化（等价于 pre-commit hook，且不依赖本地 git 钩子环境），防止复制粘贴误注回归。
 
-**【Item 3 · 操作日志闭环】关键业务动作补写审计日志。**
-- `utils/api.js` 在 7 处语义函数成功后 fire-and-forget 调 `logOperation`（对接 `system/log`，写入 `operation_logs`，失败不影响主流程）：领用 `borrowTool`、归还 `returnTool`、验收入库 `createAcceptance`、报废申请 `submitScrap`、报废审批 `approveScrap`、采购审批 `approvePurchase`、入库 `inbound`，以及用户权限变更 `manageUser`（仅 add/update/delete）。满足安监场景留痕要求。
-
-**【Item 5 · tpl 显式化】脚手架模板防误部署。**
-- 新增 `cloudfunctions/tpl/README.md`，明确其为不可部署的复制模板、缺 `index.js`、首行归属 tpl。
-- 加固 `uploadCloudFunction.sh`：`FUNC_NAME=tpl` 时直接拒绝部署（语法检查 + 拒绝逻辑均已验证）。
-
-**【Item 1 · 种子强口令】提供部署手册。**
-- 新增 `DEPLOY.md`：说明在云函数环境变量配置 `SEED_ADMIN_USERNAME` / `SEED_ADMIN_PASSWORD` 强口令（代码 `system/seedAdmin` 已原生支持，配置后不再触发默认凭证告警）。沙箱无法配置云环境，故以手册交付，待部署时落实。
-
-**【Item 4 · 独立注册页】新增 `pages/register`（可选·产品项，本次一并实现）。**
-- 新增 `pages/register/`（js/json/wxml/wxss），镜像登录页注册分支、**复用 `api.register()`**（后端零改动，符合迁移契约）。
-- `app.json` 注册该页面；`pages/login` 增加「没有账号？去注册」入口（`goRegister`）。
-- 新增根 `package.json` 封装 `npm test` 与 `npm run lint:helpers`，并在 `DEPLOY.md` 引用。
+**【G3 · Item 3 安全 硬编码凭据扫描】新增 `scripts/secret-scan.js`（零依赖）。**
+- 静态扫描 `utils/pages/components/cloudfunctions/*/index.js+helpers/app.js` 共 80 个源文件，对 `password/secret/token/apikey/...` 等关键名且直接赋值为字符串字面量（排除 `process.env`/函数调用/占位符）的写法告警并退出码 1。
+- 已对全仓实测：**80 文件零误报**；并用正反例验证正则能正确命中 `pwd='admin123'`、`password='Abc@1234'`、`apikey='sk_live_abc'`，且放行 `process.env`/函数调用。可作为「早期登录页硬编码管理员口令」类回归的防线。
 
 ## 2. 架构遵守情况（解耦规则核查）
 
@@ -48,39 +35,37 @@
 
 | 铁律 | 本次改动核查 | 结果 |
 |---|---|---|
-| ① 前端统一入口：页面禁止直连 `wx.cloud.*` | 新增 `pages/register` 与改动 `pages/login` 均只调用 `utils/api.js` / `utils/auth.js`；全仓 grep 确认除 `utils/api.js`、`app.js` 外零 `wx.cloud.*` 直连 | ✅ 合规 |
-| ② 云函数分层隔离：主逻辑禁止直连 `cloud.database()/getWXContext()` | 仅修正 helper **注释**（属允许改动点）；`index.js` 业务逻辑零新增原生调用；`_tests/` 为测试目录不部署 | ✅ 合规 |
-| ③ 迁移契约：唯一允许改动点为 `api.js` 与 `helpers/*.js` | 改动落点：`utils/api.js`（允许）、`helpers/*.js`（仅注释，允许）、`app.json`/`login.*`（UI，契约不约束）；新增页面复用既有 `api.register()`，云函数 index.js 业务零改动 | ✅ 合规 |
+| ① 前端统一入口：页面禁止直连 `wx.cloud.*` | 本次未改动任何页面/组件；新增文件（测试/CI/脚本）零 `wx.cloud.*` 直连；全仓 grep 确认 `wx.cloud.*` 仅存于 `utils/api.js`（合规唯一入口）与 `app.js`（init） | ✅ 合规 |
+| ② 云函数分层隔离：主逻辑禁止直连 `cloud.database()/getWXContext()` | 仅**新增**云函数单测（位于 `_tests/`，不部署）；`index.js` 业务逻辑零改动；测试通过 require 拦截 `wx-server-sdk` 验证分层 | ✅ 合规 |
+| ③ 迁移契约：唯一允许改动点为 `api.js` 与 `helpers/*.js` | 改动落点：`package.json`/`cloudfunctions/_tests/*`（测试，契约不约束）、`scripts/*`（质量工具）、`.github/*`（CI）；云函数 `index.js` 与 `helpers/*.js` 业务零改动 | ✅ 合规 |
 
-**架构合规率：100%。** 全仓 grep + `node --check`（全部云函数脚本）+ `_tests` 单测（13/13）三重验证通过。
+**架构合规率：100%。** 全仓 grep（wx.cloud 仅 api.js/app.js）+ 单测 32/32 + helper 注释 38/38 + 凭据扫描 80 文件零命中，四重验证通过。
 
 ## 3. 验证通过情况
 
 | 验证项 | 方法 | 结果 |
 |---|---|---|
-| 前端零直连 | `grep wx.cloud.` 排除 `utils/api.js`、`app.js` | ✅ 零命中 |
-| 云函数分层 | `grep cloud.database()/getWXContext()` 排除 `helpers/` 与注释 | ✅ 零越界 |
-| helper 注释规范 | `node scripts/helper-comments.js` | ✅ 38/38 真实路径 |
-| 云函数单测 | `node --test cloudfunctions/_tests/cloud-functions.test.js` | ✅ 13/13 通过 |
-| 全仓云函数语法 | `node --check` 于全部 index.js + helpers | ✅ 全过 |
-| api.js 语法 | `node --check utils/api.js` | ✅ 通过 |
-| 日志接入点 | `grep logOperation({ type:` | ✅ 7 处 |
-| 部署脚本 | `bash -n` + `tpl` 拒绝逻辑实测 | ✅ 语法通过 / 退出码 1 |
-| 新页面配置 | `node --check` register.js/login.js + JSON.parse app.json/register.json/login.json | ✅ 全过 |
+| 云函数单测 | `npm test`（两份测试文件） | ✅ 32/32 通过（原 13 + 新增 19） |
+| helper 注释规范 | `npm run lint:helpers` | ✅ 38/38 真实路径 |
+| 硬编码凭据扫描 | `npm run scan:secrets`（80 文件） | ✅ 零命中 |
+| 新增文件语法 | `node --check` 于 2 个新增 .js | ✅ 全过 |
+| CI 工作流格式 | `python yaml.safe_load` | ✅ 合法 |
+| 前端零直连 | `grep wx.cloud.` 排除 `utils/api.js`/`app.js` | ✅ 零命中 |
+| 云函数分层 | 单测经 `mock-cloud` 拦截 `wx-server-sdk` 运行 | ✅ 零越界（业务零改动） |
 
 ## 4. 下一次迭代计划建议（≥5 项，按优先级）
 
-1. **【质量】扩展单测覆盖率**：把 `_tests` 体系扩展到 `borrow`（领用/归还外观损坏触发报修）、`maintenance`（报修审批流转）、`reconcile`（差异核对）、`store`（入库）等核心动作，目标覆盖全部 19 个云函数的关键分支与异常路径。
-2. **【质量】CI 强制卡点**：在仓库引入 GitHub Actions / 云函数构建流水线，提交即跑 `npm test` + `npm run lint:helpers`，把本次两个质量门禁固化为合并前强制检查，防止回归。
-3. **【安全】落实种子强口令 + 日志合规**：按 `DEPLOY.md` 在云函数环境变量配置 `SEED_ADMIN_*`；评估为 `operation_logs` 增加字段级权限与定期归档，满足安监留痕的合规时长要求。
-4. **【可观测】补全审计日志字段与查询面板**：当前 `logOperation` 仅记 `type/action/target`；建议补充 `operator` 昵称、`before/after` 快照、客户端时间，并在 `pkg-system/pages/log` 增加按类型/时间筛选与导出。
-5. **【健壮性】helper 注释规范前置**：已具备 `scripts/helper-comments.js`，建议加 pre-commit hook 或 PR 检查，杜绝再次出现跨函数复制粘贴注释（本次一次性修正了 19 处）。
-6. **【体验】注册页增强**：增加密码强度提示、单位→机构级联搜索/默认选中、注册成功角色说明弹窗；并考虑将 `login` 与 `register` 的表单区块抽取为共享组件，减少重复。
-7. **【架构】统一 DB 适配基类**：目前 19 份 `helpers/db.js` 重复实现 `collection`/`db.command`，可抽象共享 `baseDb`，进一步降低迁移替换成本、减少复制粘贴风险。
+1. **【质量】单测覆盖补齐剩余云函数**：把 `_tests` 体系扩展到 `tool`/`cert`/`check`/`file`/`site`/`stats`/`system`/`test`/`training`/`warning`/`performance` 等关键分支，目标覆盖全部 19 个云函数，使核心状态流转均有回归保护。
+2. **【质量】CI 加覆盖率卡点**：引入 `nyc` 统计 `node:test` 覆盖率并设阈值（如行覆盖 ≥ 70%），低于阈值阻断合并，防止「加了代码没加测试」的回归。
+3. **【安全】落实种子强口令 + 日志合规**：按 `DEPLOY.md` 在云函数环境变量配置 `SEED_ADMIN_*`；为 `operation_logs` 增加字段级权限与定期归档，满足安监留痕合规时长。
+4. **【可观测】补全审计日志字段与查询面板**：当前 `logOperation` 仅记 `type/action/target`；补充 `operator` 昵称、`before/after` 快照、客户端时间，并在 `pkg-system/pages/log` 增加按类型/时间筛选与导出。
+5. **【体验】注册页增强**：密码强度提示、单位→机构级联搜索/默认选中、注册成功角色说明弹窗；将 `login` 与 `register` 的表单区块抽取为共享组件，减少重复。
+6. **【架构】统一 DB 适配基类**：将 19 份近乎重复的 `helpers/db.js` 抽象为共享 `baseDb`，进一步降低迁移替换成本与复制粘贴风险（改动面大，需在本迭代单测护航下分批进行）。
+7. **【健壮性】secret-scan 白名单显式化 + 定时扫描**：把放行规则抽为可配置白名单（便于在 CI 中维护忽略项），并为 CI 增加 scheduled 定时扫描，兜住历史提交中可能遗漏的硬编码凭据。
 
 ## 5. 推送说明
 
 - 目标仓库：`JoustsRivia/AISND`（经用户确认使用授权 token）。
-- 本次内容：helper 注释全量修正（19 文件）+ CI 校验脚本 + 云函数单测（mock + 13 用例）+ 操作日志闭环（api.js 7 处）+ tpl 显式化（README + 部署脚本加固）+ 种子强口令部署手册（DEPLOY.md）+ 独立注册页（pages/register）+ 根 package.json + 本报告。
-- 架构验证：全仓 100% 符合可迁移契约，业务代码零破坏，helpers 隔离层仅改注释。
-- 改动文件：19 个 helper（各 1 行注释）、`utils/api.js`、`app.json`、`pages/login/{js,wxml}`、`uploadCloudFunction.sh`（+ 报告与新增目录）。
+- 本次内容：扩展单测 `cloud-functions-2.test.js`（+19 用例）、CI 工作流 `.github/workflows/ci.yml`（三道强制门禁）、零依赖凭据扫描 `scripts/secret-scan.js`、`package.json` 脚本更新、本报告。
+- 架构验证：全仓 100% 符合可迁移契约，云函数业务代码零改动，helpers 隔离层零改动。
+- 改动文件：`cloudfunctions/_tests/cloud-functions-2.test.js`（新）、`scripts/secret-scan.js`（新）、`.github/workflows/ci.yml`（新）、`package.json`（改）、`ITERATION_REPORT.md`（覆盖）。
