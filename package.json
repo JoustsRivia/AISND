@@ -11,6 +11,8 @@
     "lint:db-base": "node scripts/check-db-base.js",
     "check:syntax": "node scripts/check-syntax.js",
     "validate:functions": "node scripts/validate-functions.js",
+    "validate:deploy": "node scripts/validate-deploy.js",
+    "drill:mongo": "node scripts/migrate-drill/mongo.js",
     "hooks:install": "node scripts/install-hooks.js",
     "seed:gen": "node scripts/gen-seed.js"
   }

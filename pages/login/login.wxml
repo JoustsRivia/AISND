@@ -13,28 +13,9 @@
         <view class="seg-item {{mode==='register'?'seg-on':''}}" data-mode="register" bindtap="onMode">注册</view>
       </view>
 
-      <!-- 注册专属：角色 + 单位 + 机构/班组 -->
+      <!-- 注册专属：角色 + 单位 + 机构/班组（共享 role-org-picker 组件） -->
       <block wx:if="{{mode==='register'}}">
-        <view class="form-row">
-          <text class="label">角色</text>
-          <picker mode="selector" range="{{roles}}" range-key="name" value="{{roleIndex}}" bindchange="onRoleChange">
-            <view class="picker">{{roles[roleIndex].name}} ▾</view>
-          </picker>
-        </view>
-        <view class="role-desc">ⓘ {{roles[roleIndex].desc}}</view>
-
-        <view class="form-row">
-          <text class="label">所属单位</text>
-          <picker mode="selector" range="{{units}}" range-key="name" value="{{unitIndex}}" bindchange="onUnitChange">
-            <view class="picker">{{units[unitIndex].name}} ▾</view>
-          </picker>
-        </view>
-        <view class="form-row">
-          <text class="label">机构/班组</text>
-          <picker mode="selector" range="{{orgOptions}}" range-key="label" value="{{orgIndex}}" bindchange="onOrgChange">
-            <view class="picker">{{orgOptions[orgIndex].label}} ▾</view>
-          </picker>
-        </view>
+        <role-org-picker showRole="{{true}}" roles="{{roles}}" units="{{units}}" bind:change="onOrgPick" />
       </block>
 
       <form-field label="用户名" value="{{username}}" placeholder="请输入用户名" bind:input="onUserInput" />

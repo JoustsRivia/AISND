@@ -4,7 +4,7 @@
 // 安全：role 仍受服务端 SELF_BINDABLE_ROLES 白名单约束，admin 不可自助注册。
 const auth = require('../../utils/auth');
 const api = require('../../utils/api');
-const { ROLES_BINDABLE, buildUnits } = require('../../utils/register-shared');
+const { ROLES_BINDABLE, ROLE_INFO, buildUnits } = require('../../utils/register-shared');
 
 // 密码强度评分（0~4）：长度 / 大小写混用 / 含数字 / 含符号
 function scorePwd(p) {
@@ -23,12 +23,9 @@ const PWD_COLORS = ['#e54d42', '#f37d37', '#f0a020', '#39b54a', '#1aad19'];
 Page({
   data: {
     roles: ROLES_BINDABLE,
-    roleIndex: 0,
     orgTree: [],
     units: [],
-    unitIndex: 0,
-    orgOptions: [],
-    orgIndex: 0,
+    sel: null,                 // 级联选择器当前选择（role/unit/org），由 role-org-picker 派发
     username: '',
     nickname: '',
     password: '',
@@ -37,9 +34,11 @@ Page({
     pwdStrength: 0,
     pwdLabel: '',
     pwdColor: '#e54d42',
-    // 注册成功角色说明弹窗
+    // 注册成功角色说明弹窗（迭代 Item 6：三段式结构化）
     showSuccess: false,
     successRole: '',
+    successRoleValue: '',
+    successInfo: null,         // ROLE_INFO[role]：数据范围 / 可用功能 / 审批链路
     _profile: null,
   },
 
@@ -52,18 +51,12 @@ Page({
   async loadOrgTree() {
     const tree = await api.getOrgTree().catch(() => []);
     const units = buildUnits(tree);
-    this.setData({ orgTree: tree, units }, () => this.refreshOrgOptions());
+    this.setData({ orgTree: tree, units });
   },
 
-  refreshOrgOptions() {
-    const { units, unitIndex } = this.data;
-    const unit = units[unitIndex];
-    this.setData({ orgOptions: unit ? unit.options : [], orgIndex: 0 });
-  },
+  // 级联选择器变化：缓存完整选择，注册时直接拼装载荷
+  onOrgPick(e) { this.setData({ sel: e.detail }); },
 
-  onRoleChange(e) { this.setData({ roleIndex: +e.detail.value }); },
-  onUnitChange(e) { this.setData({ unitIndex: +e.detail.value }, () => this.refreshOrgOptions()); },
-  onOrgChange(e) { this.setData({ orgIndex: +e.detail.value }); },
   onUserInput(e) { this.setData({ username: e.detail.value }); },
   onNickInput(e) { this.setData({ nickname: e.detail.value }); },
   onPwdInput(e) {
@@ -103,24 +96,31 @@ Page({
       wx.showToast({ title: '密码强度不足，请加强', icon: 'none' });
       return;
     }
-    const org = this.data.orgOptions[this.data.orgIndex];
-    if (!org) {
+    const sel = this.data.sel;
+    if (!sel || !sel.orgId) {
       wx.showToast({ title: '请选择所属机构/班组', icon: 'none' });
       return;
     }
-    const role = this.data.roles[this.data.roleIndex].value;
-    const roleName = this.data.roles[this.data.roleIndex].name;
+    const role = sel.roleValue;
+    const roleName = sel.roleName;
     this.setData({ loading: true });
     try {
       const profile = await api.register({
         role,
-        unitId: org.unitId,
-        orgId: org._id,
+        unitId: sel.unitId,
+        orgId: sel.orgId,
         username: this.data.username,
         nickname: this.data.nickname || this.data.username,
         password: this.data.password,
       });
-      this.setData({ loading: false, _profile: profile, successRole: roleName, showSuccess: true });
+      this.setData({
+        loading: false,
+        _profile: profile,
+        successRole: roleName,
+        successRoleValue: role,
+        successInfo: ROLE_INFO[role] || null,
+        showSuccess: true,
+      });
     } catch (err) {
       wx.showToast({ title: err.message || '注册失败', icon: 'none' });
       this.setData({ loading: false });
@@ -128,6 +128,12 @@ Page({
   },
 
   goLogin() { wx.navigateTo({ url: '/pages/login/login' }); },
+
+  // 查看完整权限说明（跳转常驻权限页）
+  goPermission() {
+    const role = this.data.successRoleValue;
+    wx.navigateTo({ url: '/pages/permission/permission?role=' + encodeURIComponent(role || '') });
+  },
 
   // 弹窗遮罩占位（阻止穿透到下层）
   noop() {},

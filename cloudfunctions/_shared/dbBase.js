@@ -33,4 +33,53 @@ const getCurrentUser = async (openid) => {
   return res.data && res.data[0];
 };
 
-module.exports = { cloud, db, _, collection, regExp, getById, add, update, listBy, getCurrentUser };
+// ── RBAC 数据范围原语（纯函数，可被所有业务函数复用，迁移零改动）──
+// 全局角色：看全部；单位级角色：看整个单位子树；机构/班组级：仅看本机构子树。
+const GLOBAL_ROLES = ['admin', 'lead', 'supervisor'];
+const UNIT_ROLES = ['project_lead', 'safety_officer', 'lease_admin'];
+
+// 组织子树推导：返回 rootId 及其全部后代 ID（含自身）
+function subtreeIds(orgs, rootId) {
+  if (!rootId || !Array.isArray(orgs) || !orgs.some((o) => o._id === rootId)) return [];
+  const ids = [rootId];
+  const queue = [rootId];
+  while (queue.length) {
+    const cur = queue.shift();
+    for (const o of orgs) {
+      if (o.parentId === cur && !ids.includes(o._id)) { ids.push(o._id); queue.push(o._id); }
+    }
+  }
+  return ids;
+}
+
+// 角色 → 数据范围档位：'global'（全量）| 'unit'（整单位子树）| 'org'（本机构子树）
+function roleScope(role) {
+  if (GLOBAL_ROLES.includes(role)) return 'global';
+  if (UNIT_ROLES.includes(role)) return 'unit';
+  return 'org';
+}
+
+// 给定用户与全量组织，返回允许访问的 orgId 集合（含子树）。
+// opts: { orgId, unitId } 可选下钻；若不在允许范围内则忽略（防越权）。
+// 返回 null 表示「全量（不过滤）」；返回 ['__unbound__'] 表示「无可见数据」。
+function allowedOrgIds(user, orgs, opts = {}) {
+  if (!user) return ['__unbound__'];
+  const scope = roleScope(user.role);
+  if (scope === 'global') {
+    if (opts.orgId || opts.unitId) {
+      const ids = subtreeIds(orgs, opts.orgId || opts.unitId);
+      return ids.length ? ids : ['__unbound__'];
+    }
+    return null; // 全量
+  }
+  const base = user.orgId ? subtreeIds(orgs, user.orgId) : [];
+  if (!base.length) return ['__unbound__'];
+  if (opts.orgId && base.includes(opts.orgId)) return subtreeIds(orgs, opts.orgId);
+  return base;
+}
+
+module.exports = {
+  cloud, db, _, collection, regExp, getById, add, update, listBy, getCurrentUser,
+  // RBAC 数据范围原语（纯函数，业务函数按需复用，迁移零改动）
+  GLOBAL_ROLES, UNIT_ROLES, subtreeIds, roleScope, allowedOrgIds,
+};

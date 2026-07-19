@@ -1,6 +1,7 @@
 {
   "usingComponents": {
-    "form-field": "/components/form-field/form-field"
+    "form-field": "/components/form-field/form-field",
+    "role-org-picker": "/components/role-org-picker/role-org-picker"
   },
   "navigationBarTitleText": "注册"
 }

@@ -33,3 +33,10 @@
 .f-btn.ghost { background: var(--c-bg); color: var(--c-text-sub); border: 1rpx solid var(--c-divider); }
 .f-btn.export { background: var(--c-success, #1aad19); }
 
+/* 服务端分页（迭代 Item 4） */
+.pager { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; padding: 20rpx 8rpx 8rpx; }
+.pager-info { font-size: 22rpx; color: var(--c-text-weak); }
+.pager-btns { display: flex; gap: 16rpx; }
+.p-btn { margin: 0; font-size: 24rpx; background: var(--c-bg); color: var(--c-text-sub); border: 1rpx solid var(--c-divider); }
+.p-btn[disabled] { opacity: .5; }
+

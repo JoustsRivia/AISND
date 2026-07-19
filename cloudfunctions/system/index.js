@@ -1,6 +1,7 @@
 // cloudfunctions/system/index.js —— M13 系统管理（组织/权限/字典/日志，纯业务，只引用 helpers）
 const { getOpenid } = require('./helpers/user');
 const db = require('./helpers/db');
+const _ = db._; // 查询命令（_shared/dbBase 透出的 command，cleanupLogs 用 _.lt）
 const ok = (data) => ({ code: 0, data });
 const fail = (message, code = 1) => ({ code, message });
 const now = () => new Date();
@@ -307,24 +308,35 @@ async function log(payload) {
   return ok({ _id: a._id });
 }
 
-// M13.3 操作日志查询（按时间倒序，支持组合筛选）
+// M13.3 操作日志查询（按时间倒序，支持组合筛选 + 服务端分页 + 字段级权限）
 // 入参 payload：
-//   limit        返回条数（默认 50）
+//   limit        返回条数（默认 50，最大 200）
+//   skip         偏移（分页用，默认 0）
 //   type         类型精确匹配（borrow/scrap/purchase/store/user…）
 //   operatorName 操作人署名精确匹配（由 api.logOperation 富化写入）
 //   keyword      关键词模糊匹配（命中 action / target / operatorName / operator / type 任一）
 //   startTime    时间区间起点（ts 毫秒），含
 //   endTime      时间区间终点（ts 毫秒），含
+//   scope        'all' | 'mine'：仅管理员可切换；非管理员强制 'mine'（仅见自身 → 字段级权限）
+// 返回：{ list, total, hasMore }
 async function listLog(payload = {}) {
-  const g = await requireAdmin();
-  if (g.err) return g.err;
-  const { limit = 50, type = '', operatorName = '', keyword = '', startTime = 0, endTime = 0 } = payload;
+  // 字段级权限（item 3）：任何已登录用户均可查看日志，但非管理员强制收窄为「仅自身」；
+  // 管理员可切换 scope 查看「全部」或「仅我的」。
+  const openid = getOpenid();
+  const me = await db.getCurrentUser(openid);
+  if (!me || me.status === 'disabled') return fail('账号不可用', 403);
+  const {
+    limit = 50, skip = 0, type = '', operatorName = '', keyword = '',
+    startTime = 0, endTime = 0, scope = 'all',
+  } = payload;
   await db.ensureCollection('operation_logs');
+  const wantMine = scope === 'mine' || me.role !== 'admin';
   const where = {};
+  if (wantMine) where.operator = openid;
   if (type) where.type = type;
   if (operatorName) where.operatorName = operatorName;
-  let rows = (await db.collection('operation_logs').where(where).orderBy('ts', 'desc').limit(limit).get()).data || [];
-  // 时间区间（前端以毫秒传入，兼容微信云开发与自有服务器）
+  // 在「服务端 where 结果」上做时间区间 + 关键词内存过滤（兼容「换掉 wx-server-sdk 即迁移」的任意后端）
+  let rows = (await db.collection('operation_logs').where(where).orderBy('ts', 'desc').get()).data || [];
   if (startTime || endTime) {
     rows = rows.filter((r) => {
       const t = r.ts ? new Date(r.ts).getTime() : 0;
@@ -333,7 +345,6 @@ async function listLog(payload = {}) {
       return true;
     });
   }
-  // 关键词模糊匹配（在内存结果上过滤，兼容「换掉 wx-server-sdk 即迁移」的任意后端）
   if (keyword) {
     const k = String(keyword).toLowerCase();
     rows = rows.filter((r) =>
@@ -341,11 +352,33 @@ async function listLog(payload = {}) {
         .some((f) => f != null && String(f).toLowerCase().includes(k))
     );
   }
-  return ok(rows);
+  const total = rows.length;
+  const max = Math.min(Number(limit) || 50, 200);
+  const off = Number(skip) || 0;
+  const list = rows.slice(off, off + max);
+  return ok({ list, total, hasMore: off + max < total });
+}
+
+// M13.3 日志合规留存清理（item 3）：删除 retainedUntil 已到期的操作日志。
+// 定时触发器（config.json logCleanup）每日凌晨调用，isTimer=true 时免管理员校验；
+// 管理员亦可手动触发（api.cleanupLogs），此时走 requireAdmin 鉴权。
+// 可选 before（ts 毫秒）：仅清理该时刻之前的到期记录，便于灰度 / 回溯。
+async function cleanupLogs(payload = {}, isTimer = false) {
+  if (!isTimer) {
+    const g = await requireAdmin();
+    if (g.err) return g.err;
+  }
+  const before = payload && payload.before ? new Date(Number(payload.before)) : new Date();
+  const res = await db.collection('operation_logs').where({ retainedUntil: _.lt(before) }).remove();
+  const removed = (res && res.stats && res.stats.removed) || 0;
+  return ok({ removed, before: before.toISOString() });
 }
 
 exports.main = async (event) => {
-  const { action, payload = {} } = event;
+  const ev = event || {};
+  // 定时器触发时无 action，由 triggerName 路由（config.json 的 logCleanup → cleanupLogs）
+  const action = ev.action || (ev.triggerName === 'logCleanup' ? 'cleanupLogs' : '');
+  const { payload = {} } = ev;
   try {
     switch (action) {
       case 'orgTree': return orgTree(payload);
@@ -356,6 +389,7 @@ exports.main = async (event) => {
       case 'checkTemplate': return checkTemplate(payload);
       case 'log': return log(payload);
       case 'listLog': return listLog(payload);
+      case 'cleanupLogs': return cleanupLogs(payload, !!ev.triggerName);
       default: return fail('未知 action: ' + action);
     }
   } catch (e) {

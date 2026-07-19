@@ -45,3 +45,10 @@
 .modal-role-tag { display: inline-block; font-size: 26rpx; font-weight: 600; color: var(--c-primary); }
 .modal-role-tip { display: block; margin-top: 12rpx; font-size: 22rpx; color: var(--c-text-sub); line-height: 1.6; }
 .modal button { margin-top: 8rpx; background: var(--c-primary-grad); }
+
+/* 角色权限三段式说明（迭代 Item 6） */
+.info-sec { margin-top: 18rpx; }
+.info-h { display: block; font-size: 22rpx; color: var(--c-primary); font-weight: 600; margin-bottom: 6rpx; }
+.info-b { display: block; font-size: 24rpx; color: var(--c-text-sub); line-height: 1.6; }
+.info-li { display: block; }
+.modal-link { margin-top: 20rpx; text-align: center; font-size: 24rpx; color: var(--c-primary); }

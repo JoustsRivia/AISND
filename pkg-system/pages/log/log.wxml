@@ -9,6 +9,12 @@
     >{{item.label}}</view>
   </view>
 
+  <!-- 数据范围切换（仅管理员可切；迭代 Item 3/4：非管理员恒为「仅我的」） -->
+  <view class="filters" wx:if="{{isAdmin}}">
+    <view class="chip {{scope === 'all' ? 'chip-on' : ''}}" data-scope="all" bindtap="onScope">全部</view>
+    <view class="chip {{scope === 'mine' ? 'chip-on' : ''}}" data-scope="mine" bindtap="onScope">仅我的</view>
+  </view>
+
   <!-- 组合筛选：操作人 / 关键词 / 时间区间 -->
   <view class="filter-card">
     <view class="f-row">
@@ -49,5 +55,14 @@
   </view>
 
   <view wx:if="{{loading}}" class="loading">加载中…</view>
+
+  <!-- 服务端分页（迭代 Item 4） -->
+  <view class="pager" wx:if="{{total > 0}}">
+    <text class="pager-info">共 {{total}} 条 · 已加载 {{logs.length}} 条</text>
+    <view class="pager-btns">
+      <button class="p-btn" size="mini" disabled="{{page <= 1}}" bindtap="onPrev">上一页</button>
+      <button class="p-btn" size="mini" disabled="{{!hasMore}}" loading="{{loadingMore}}" bindtap="onLoadMore">加载更多</button>
+    </view>
+  </view>
   <view class="safe-bottom"></view>
 </view>

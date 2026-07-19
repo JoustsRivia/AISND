@@ -22,5 +22,8 @@ jobs:
         run: npm run lint:db-base
       - name: 云函数构建产物门禁（可部署性干跑）
         run: npm run validate:functions
+      - name: 真实 CLI 部署干跑（迭代 Item 1，未配置则跳过）
+        continue-on-error: true
+        run: npm run validate:deploy
       - name: 全量 JS 语法检查
         run: npm run check:syntax

@@ -3,6 +3,7 @@
 const { getOpenid } = require('./helpers/user');
 const {
   findUser, addTool, updateTool, findTool, listTools, countTools, listOrgs, regExp, _, getCurrentUser,
+  allowedOrgIds,
 } = require('./helpers/db');
 
 const ok = (data) => ({ code: 0, data });
@@ -47,57 +48,19 @@ function genCode(category, seq) {
   return `${p}-${new Date().getFullYear()}-${String(seq).padStart(4, '0')}`;
 }
 
-// 组织子树推导：返回 rootId 及其全部后代 ID（含自身），用于按角色收窄数据范围
-async function subtreeIds(rootId) {
-  if (!rootId) return [];
-  const res = await listOrgs(500);
-  const all = res.data || [];
-  const ids = [rootId];
-  const queue = [rootId];
-  while (queue.length) {
-    const cur = queue.shift();
-    all.forEach((o) => {
-      if (o.parentId === cur && !ids.includes(o._id)) {
-        ids.push(o._id);
-        queue.push(o._id);
-      }
-    });
-  }
-  return ids;
-}
-
 // 数据范围过滤（S2 / 问题4 RBAC）：
-//   管理员（lead/supervisor）看全部；可显式 orgId 下钻，或 unitId 下钻整单位子树。
-//   普通角色按自身 orgId 推导子树——绑到「班组」只看本班，绑到「项目部」看整个项目部；
-//   并允许在自身子树内用 picker 进一步收窄（越权 orgId 一律忽略，保证不越界）。
+//   复用 _shared/dbBase.js 单一源的 allowedOrgIds 统一推导（全局/单位/机构三档），
+//   业务函数无需各自实现子树逻辑——「统一注入」数据范围，迁移零改动。
+//   全局角色看全部；单位级看整单位子树；机构/班组级仅看本机构子树；
+//   并允许在自身子树内用 picker 进一步下钻收窄（越权 orgId 一律忽略，保证不越界）。
 async function scopeWhere(where, payload = {}) {
   const me = await findUser(getOpenid());
   const u = me.data && me.data[0];
-  const isAdmin = u && (u.role === 'lead' || u.role === 'supervisor' || u.role === 'admin');
-  if (isAdmin) {
-    if (payload.orgId) {
-      const ids = await subtreeIds(payload.orgId); // 支持单位/项目部/班组任意节点下钻
-      if (ids.length) where.orgId = _.in(ids);
-      return where;
-    }
-    if (payload.unitId) {
-      const ids = await subtreeIds(payload.unitId);
-      if (ids.length) where.orgId = _.in(ids);
-      return where;
-    }
-    return where; // 全量
-  }
-  const base = (u && u.orgId) ? await subtreeIds(u.orgId) : [];
-  if (!base.length) {
-    where.orgId = '__unbound__'; // 无机构 → 查不到任何数据
-    return where;
-  }
-  // 子树内下钻收窄；若传入 orgId 不在允许范围内则忽略（防越权）
-  let scope = base;
-  if (payload.orgId && base.includes(payload.orgId)) {
-    scope = await subtreeIds(payload.orgId);
-  }
-  where.orgId = _.in(scope);
+  const orgs = (await listOrgs(500)).data || [];
+  const ids = allowedOrgIds(u, orgs, { orgId: payload.orgId, unitId: payload.unitId });
+  if (ids === null) return where;                       // 全局：不过滤（全量）
+  if (ids.includes('__unbound__')) { where.orgId = '__unbound__'; return where; } // 无可见数据
+  where.orgId = _.in(ids);
   return where;
 }
 

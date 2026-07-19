@@ -7,26 +7,7 @@
 
   <view class="form-wrap">
     <view class="form card">
-      <view class="form-row">
-        <text class="label">角色</text>
-        <picker mode="selector" range="{{roles}}" range-key="name" value="{{roleIndex}}" bindchange="onRoleChange">
-          <view class="picker">{{roles[roleIndex].name}} ▾</view>
-        </picker>
-      </view>
-      <view class="role-desc">ⓘ {{roles[roleIndex].desc}}</view>
-
-      <view class="form-row">
-        <text class="label">所属单位</text>
-        <picker mode="selector" range="{{units}}" range-key="name" value="{{unitIndex}}" bindchange="onUnitChange">
-          <view class="picker">{{units[unitIndex].name}} ▾</view>
-        </picker>
-      </view>
-      <view class="form-row">
-        <text class="label">机构/班组</text>
-        <picker mode="selector" range="{{orgOptions}}" range-key="label" value="{{orgIndex}}" bindchange="onOrgChange">
-          <view class="picker">{{orgOptions[orgIndex].label}} ▾</view>
-        </picker>
-      </view>
+      <role-org-picker roles="{{roles}}" units="{{units}}" bind:change="onOrgPick" />
 
       <form-field label="用户名" value="{{username}}" placeholder="请输入用户名" bind:input="onUserInput" />
       <form-field label="密码" password="{{true}}" value="{{password}}" placeholder="请输入密码（≥8位，含大小写/数字/符号更佳）" bind:input="onPwdInput" />
@@ -45,16 +26,30 @@
     </view>
   </view>
 
-  <!-- 注册成功：角色权限说明弹窗 -->
+  <!-- 注册成功：角色权限说明弹窗（迭代 Item 6：数据范围 + 可用功能 + 审批链路 三段式） -->
   <view class="modal-mask" wx:if="{{showSuccess}}" catchtap="noop">
     <view class="modal">
       <view class="modal-ico">✅</view>
       <view class="modal-title">注册成功</view>
       <view class="modal-sub">已为您创建账号并登录</view>
-      <view class="modal-role">
+      <view class="modal-role" wx:if="{{successInfo}}">
         <text class="modal-role-tag">{{successRole}}</text>
-        <text class="modal-role-tip">该角色的数据范围与操作权限已按上述说明生效；如需更高权限，请联系小程序管理员分配。</text>
+        <view class="info-sec">
+          <text class="info-h">数据范围</text>
+          <text class="info-b">{{successInfo.scope}}</text>
+        </view>
+        <view class="info-sec">
+          <text class="info-h">可用功能</text>
+          <view class="info-b">
+            <text class="info-li" wx:for="{{successInfo.functions}}" wx:key="*this">· {{item}}</text>
+          </view>
+        </view>
+        <view class="info-sec">
+          <text class="info-h">审批链路</text>
+          <text class="info-b">{{successInfo.approval}}</text>
+        </view>
       </view>
+      <view class="modal-link" bindtap="goPermission">查看完整权限说明 ›</view>
       <button type="primary" bindtap="onEnter">进入工作台</button>
     </view>
   </view>

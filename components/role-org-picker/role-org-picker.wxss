@@ -1,0 +1,7 @@
+/* components/role-org-picker/role-org-picker.wxss —— 级联选择器（自包含样式，组件样式隔离） */
+.rop { display: flex; flex-direction: column; }
+.form-row { display: flex; align-items: center; padding: 24rpx 0; border-bottom: 1rpx solid var(--c-divider); }
+.form-row:last-of-type { border-bottom: none; }
+.label { width: 160rpx; color: var(--c-text-sub); font-size: 28rpx; }
+.picker { flex: 1; color: var(--c-text); }
+.role-desc { font-size: 22rpx; color: var(--c-info); background: var(--c-info-bg); padding: 14rpx 20rpx; border-radius: var(--r-md); margin: 4rpx 0 8rpx; }

@@ -8,13 +8,10 @@ Page({
   data: {
     mode: 'register',          // 'login' | 'register'
     roles: ROLES_BINDABLE,
-    roleIndex: 0,
     // 组织树（扁平）
     orgTree: [],
     units: [],                 // 单位（level 0）：总包企业 / 分包企业
-    unitIndex: 0,
-    orgOptions: [],            // 所选单位下的机构/班组（含路径）供二级 picker
-    orgIndex: 0,
+    sel: null,                 // 级联选择器当前选择（role/unit/org），由 role-org-picker 派发
     username: '',
     nickname: '',
     password: '',
@@ -32,19 +29,13 @@ Page({
   async loadOrgTree() {
     const tree = await api.getOrgTree().catch(() => []);
     const units = buildUnits(tree);
-    this.setData({ orgTree: tree, units }, () => this.refreshOrgOptions());
+    this.setData({ orgTree: tree, units });
   },
 
-  refreshOrgOptions() {
-    const { units, unitIndex } = this.data;
-    const unit = units[unitIndex];
-    this.setData({ orgOptions: unit ? unit.options : [], orgIndex: 0 });
-  },
+  // 级联选择器变化：缓存完整选择，注册时直接拼装载荷
+  onOrgPick(e) { this.setData({ sel: e.detail }); },
 
   onMode(e) { this.setData({ mode: e.currentTarget.dataset.mode, password: '' }); },
-  onRoleChange(e) { this.setData({ roleIndex: +e.detail.value }); },
-  onUnitChange(e) { this.setData({ unitIndex: +e.detail.value }, () => this.refreshOrgOptions()); },
-  onOrgChange(e) { this.setData({ orgIndex: +e.detail.value }); },
   onUserInput(e) { this.setData({ username: e.detail.value }); },
   onNickInput(e) { this.setData({ nickname: e.detail.value }); },
   onPwdInput(e) { this.setData({ password: e.detail.value }); },
@@ -82,18 +73,18 @@ Page({
       wx.showToast({ title: '请输入账号和密码', icon: 'none' });
       return;
     }
-    const org = this.data.orgOptions[this.data.orgIndex];
-    if (!org) {
+    const sel = this.data.sel;
+    if (!sel || !sel.orgId) {
       wx.showToast({ title: '请选择所属机构/班组', icon: 'none' });
       return;
     }
-    const role = this.data.roles[this.data.roleIndex].value;
+    const role = sel.roleValue;
     this.setData({ loading: true });
     try {
       const profile = await api.register({
         role,
-        unitId: org.unitId,
-        orgId: org._id,
+        unitId: sel.unitId,
+        orgId: sel.orgId,
         username: this.data.username,
         nickname: this.data.nickname || this.data.username,
         password: this.data.password,

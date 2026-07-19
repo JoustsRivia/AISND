@@ -228,6 +228,8 @@ const logOperation = (data = {}) => {
   return invoke(FN.system, 'log', data).catch(() => {});
 };
 const getOperationLogs = (params) => invoke(FN.system, 'listLog', params);
+// 日志合规留存清理（item 3）：管理员手动触发超期日志清理；定时器每日凌晨亦会自动调用。
+const cleanupLogs = (data = {}) => invoke(FN.system, 'cleanupLogs', data);
 
 module.exports = {
   // 账户
@@ -269,5 +271,5 @@ module.exports = {
   // 人员考核
   scorePerformance, getPerformanceList, getPerformanceRank, getPerformanceSummary, addReward, getRewardList,
   // 文件/日志
-  uploadFile, logOperation, getOperationLogs,
+  uploadFile, logOperation, getOperationLogs, cleanupLogs,
 };

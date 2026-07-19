@@ -1,5 +1,9 @@
 {
-  "permissions": { "openapi": [] },
-  "timeout": 10,
-  "runtime": "Nodejs18.15"
+  "triggers": [
+    {
+      "name": "logCleanup",
+      "type": "timer",
+      "config": "0 0 3 * * * *"
+    }
+  ]
 }

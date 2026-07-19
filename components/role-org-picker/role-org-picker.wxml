@@ -1,0 +1,24 @@
+<!-- components/role-org-picker/role-org-picker.wxml —— 角色 + 单位 + 机构/班组 级联选择器 -->
+<view class="rop">
+  <block wx:if="{{showRole}}">
+    <view class="form-row">
+      <text class="label">角色</text>
+      <picker mode="selector" range="{{roles}}" range-key="name" value="{{roleIndex}}" bindchange="onRoleChange">
+        <view class="picker">{{roles[roleIndex].name}} ▾</view>
+      </picker>
+    </view>
+    <view class="role-desc" wx:if="{{roles[roleIndex]}}">ⓘ {{roles[roleIndex].desc}}</view>
+  </block>
+  <view class="form-row">
+    <text class="label">所属单位</text>
+    <picker mode="selector" range="{{units}}" range-key="name" value="{{unitIndex}}" bindchange="onUnitChange">
+      <view class="picker">{{units[unitIndex].name}} ▾</view>
+    </picker>
+  </view>
+  <view class="form-row">
+    <text class="label">机构/班组</text>
+    <picker mode="selector" range="{{orgOptions}}" range-key="label" value="{{orgIndex}}" bindchange="onOrgChange">
+      <view class="picker">{{orgOptions[orgIndex].label}} ▾</view>
+    </picker>
+  </view>
+</view>
