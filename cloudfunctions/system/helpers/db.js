@@ -1,9 +1,7 @@
 // cloudfunctions/system/helpers/db.js （隔离层：仅此处可调用 cloud.database()）
-const cloud = require('wx-server-sdk');
-cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
-const db = cloud.database();
-const _ = db.command;
-const coll = (name) => db.collection(name);
+const base = require('./dbBase');
+const { cloud, db, _, collection } = base;
+const coll = collection;
 
 // 确保集合存在（管理端 API，云函数内可用）。已存在时 createCollection 会报错，捕获即可。
 // 解决「初始化管理员 / 恢复默认组织」因集合未建而 -502005 database collection not exists 的问题。

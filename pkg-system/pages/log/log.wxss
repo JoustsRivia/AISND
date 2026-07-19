@@ -1,5 +1,13 @@
 /* pkg-system/pages/log/log.wxss —— M13.3 操作日志 */
 .log { padding: var(--sp-3); }
+/* 类型筛选 */
+.filters { display: flex; flex-wrap: wrap; gap: 16rpx; margin-bottom: var(--sp-2); }
+.chip {
+  padding: 12rpx 28rpx; border-radius: 999rpx; font-size: 24rpx;
+  color: var(--c-text-sub); background: var(--c-card);
+  border: 1rpx solid var(--c-divider);
+}
+.chip-on { color: #fff; background: var(--c-primary); border-color: var(--c-primary); }
 .card { background: var(--c-card); border-radius: var(--r-md); padding: var(--sp-3); margin-bottom: var(--sp-2); box-shadow: var(--sh-card); }
 .item { display: flex; align-items: flex-start; }
 .dot { width: 16rpx; height: 16rpx; border-radius: 50%; background: var(--c-primary); margin: 10rpx 20rpx 0 0; flex-shrink: 0; box-shadow: 0 0 0 6rpx var(--c-primary-soft); }

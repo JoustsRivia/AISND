@@ -1,9 +1,7 @@
 // cloudfunctions/stats/helpers/db.js （隔离层：仅此处可调用 cloud.database()）
-const cloud = require('wx-server-sdk');
-cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
-const db = cloud.database();
-const _ = db.command;
-const coll = (name) => db.collection(name);
+const base = require('./dbBase');
+const { cloud, db, _, collection } = base;
+const coll = collection;
 
 const pad = (n) => String(n).padStart(2, '0');
 const ymd = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;

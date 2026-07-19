@@ -34,7 +34,13 @@
       </view>
       <view class="form-row">
         <text class="label">密码</text>
-        <input class="input" password placeholder="请输入密码" value="{{password}}" bindinput="onPwdInput" />
+        <input class="input" password placeholder="请输入密码（≥8位，含大小写/数字/符号更佳）" value="{{password}}" bindinput="onPwdInput" />
+      </view>
+      <view class="pwd-strength" wx:if="{{password}}">
+        <view class="pwd-bar">
+          <view class="pwd-fill" style="width:{{pwdStrength * 25}}%;background:{{pwdColor}}"></view>
+        </view>
+        <text class="pwd-label" style="color:{{pwdColor}}">强度：{{pwdLabel}}</text>
       </view>
       <view class="form-row">
         <text class="label">昵称</text>
@@ -45,6 +51,20 @@
 
       <view class="note">🔒 小程序管理员由系统初始化分配；其余角色（含专班负责人 / 项目部负责人 / 安监部管理人员）均可自助注册</view>
       <view class="forgot" bindtap="goLogin">已有账号？<text class="link">去登录</text></view>
+    </view>
+  </view>
+
+  <!-- 注册成功：角色权限说明弹窗 -->
+  <view class="modal-mask" wx:if="{{showSuccess}}" catchtap="noop">
+    <view class="modal">
+      <view class="modal-ico">✅</view>
+      <view class="modal-title">注册成功</view>
+      <view class="modal-sub">已为您创建账号并登录</view>
+      <view class="modal-role">
+        <text class="modal-role-tag">{{successRole}}</text>
+        <text class="modal-role-tip">该角色的数据范围与操作权限已按上述说明生效；如需更高权限，请联系小程序管理员分配。</text>
+      </view>
+      <button type="primary" bindtap="onEnter">进入工作台</button>
     </view>
   </view>
 </view>

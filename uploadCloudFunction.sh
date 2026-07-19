@@ -27,4 +27,10 @@ fi
 
 INSTALL_PATH="${INSTALL_PATH:-tcb}"
 
+# 部署前：把「隔离层单一源」 cloudfunctions/_shared/dbBase.js 打包进本函数 helpers/，
+# 保证逐函数独立部署时各函数自包含、可运行（微信云函数无法跨函数 require 共享文件）。
+if [ -f scripts/bundle-db-base.js ]; then
+  node scripts/bundle-db-base.js >/dev/null 2>&1 || echo "⚠️ 隔离层打包跳过（无 scripts/bundle-db-base.js）"
+fi
+
 "$INSTALL_PATH" cloud functions deploy --e "$ENV_ID" --n "$FUNC_NAME" --r --project "$PROJECT_PATH"

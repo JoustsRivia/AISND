@@ -1,12 +1,8 @@
 // cloudfunctions/borrow/helpers/db.js （隔离层：仅此文件可调用 cloud.database() 等 wx-server-sdk 数据能力）
 // ★ 隔离层：仅此文件可调用 cloud.database() 等 wx-server-sdk 数据能力。
 // 迁移到自有服务器时，只重写本文件（改为 MySQL/MongoDB 客户端），业务 index.js 零改动。
-const cloud = require('wx-server-sdk');
-cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
-const db = cloud.database();
-const _ = db.command;
-
-const collection = (name) => db.collection(name);
+const base = require('./dbBase');
+const { cloud, db, _, collection } = base;
 
 // ── users ──
 const findUser = (openid) => collection('users').where({ openid }).get();

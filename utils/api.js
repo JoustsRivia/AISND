@@ -212,7 +212,21 @@ function uploadFile(filePath, type = 'image') {
 }
 
 // ── 操作日志 ──────────────────────────────────────────────────────
-const logOperation = (data) => invoke(FN.system, 'log', data).catch(() => {});
+// 统一在 fire-and-forget 前自动补充审计字段（向后兼容：不改变调用方与云函数契约）。
+//   - operatorName：本地档案昵称/用户名（服务端已记 openid，此处补充可读署名）
+//   - clientTime：客户端动作发生时刻（与服务端 ts 形成双时间戳，便于合规对账）
+// 任何异常都不影响主流程（catch 静默）。
+const logOperation = (data = {}) => {
+  try {
+    const app = (typeof getApp === 'function') && getApp();
+    const u = app && app.globalData && app.globalData.userInfo;
+    if (u && (u.nickname || u.username)) {
+      data.operatorName = u.nickname || u.username;
+    }
+  } catch (e) { /* 取不到署名不影响留痕 */ }
+  data.clientTime = Date.now();
+  return invoke(FN.system, 'log', data).catch(() => {});
+};
 const getOperationLogs = (params) => invoke(FN.system, 'listLog', params);
 
 module.exports = {

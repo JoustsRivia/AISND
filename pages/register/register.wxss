@@ -28,3 +28,20 @@
 
 /* 角色权限说明（RBAC 提示，与登录页一致） */
 .role-desc { font-size: 22rpx; color: var(--c-info); background: var(--c-info-bg); padding: 14rpx 20rpx; border-radius: var(--r-md); margin: 4rpx 0 8rpx; }
+
+/* 密码强度可视化 */
+.pwd-strength { padding: 8rpx 0 4rpx; }
+.pwd-bar { height: 12rpx; border-radius: 8rpx; background: var(--c-divider); overflow: hidden; }
+.pwd-fill { height: 100%; border-radius: 8rpx; transition: width .2s ease, background .2s ease; }
+.pwd-label { display: block; margin-top: 8rpx; font-size: 22rpx; }
+
+/* 注册成功角色说明弹窗 */
+.modal-mask { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: flex; align-items: center; justify-content: center; z-index: 100; }
+.modal { width: 560rpx; background: var(--c-card); border-radius: var(--r-lg); padding: 48rpx 40rpx; box-shadow: var(--sh-card); }
+.modal-ico { font-size: 72rpx; text-align: center; }
+.modal-title { text-align: center; font-size: 36rpx; font-weight: 700; color: var(--c-text); margin-top: 12rpx; }
+.modal-sub { text-align: center; font-size: 24rpx; color: var(--c-text-weak); margin-top: 8rpx; }
+.modal-role { margin: 32rpx 0; padding: 24rpx; background: var(--c-info-bg); border-radius: var(--r-md); }
+.modal-role-tag { display: inline-block; font-size: 26rpx; font-weight: 600; color: var(--c-primary); }
+.modal-role-tip { display: block; margin-top: 12rpx; font-size: 22rpx; color: var(--c-text-sub); line-height: 1.6; }
+.modal button { margin-top: 8rpx; background: var(--c-primary-grad); }

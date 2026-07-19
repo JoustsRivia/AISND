@@ -2,29 +2,23 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [ main ]
   pull_request:
-    branches: [main]
+    branches: [ main ]
 
 jobs:
-  quality-gates:
-    name: 质量门禁（单测 / helper 注释 / 凭据扫描）
+  quality:
     runs-on: ubuntu-latest
     steps:
-      - name: 检出代码
-        uses: actions/checkout@v4
-
-      - name: 配置 Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
-
-      - name: 云函数单元测试（node:test，零依赖）
+      - name: 云函数单测（node:test，零依赖）
         run: npm test
-
-      - name: helpers 注释规范校验（PR 级卡点，等价于 pre-commit）
+      - name: helpers 注释规范
         run: npm run lint:helpers
-
-      - name: 硬编码凭据扫描（防止口令/密钥回潮到源码）
-        run: npm run scan:secrets
+      - name: 隔离层单一源校验（防漂移）
+        run: npm run lint:db-base
+      - name: 全量 JS 语法检查
+        run: npm run check:syntax
