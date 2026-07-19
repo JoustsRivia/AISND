@@ -52,7 +52,7 @@
 项目当前处于「功能完整 + 架构合规」的成熟期，建议后续聚焦**质量加固与体验收尾**，按优先级：
 
 1. **【安全】移除客户端硬编码管理员口令**：`pages/login/login.js` 的 `onSeedAdmin` 在弹窗文案中明文暴露 `Jousts / qwer1234`。建议改为仅首次提示"已初始化"，口令不出现在前端源码（口令应由后端 seed 逻辑或环境变量持有）。
-2. **【设计系统 P2 收尾】替换 emoji 图标**：`DESIGN_SYSTEM.md` 已声明"拒绝 emoji 图标"，当前因 iconfont URL 为空而暂保留（`utils/fonts.js` 已留接入路径）。建议在 iconfont.cn 导出 `.ttf` 并填 `ICONFONT_URL` 后，将 `login.wxml` 等处的 ⓘ/🔒/⚙ 替换为线性图标字体。
+2. ~~**【设计系统 P2 收尾】替换 emoji 图标**~~ **（已划去）**：因服务器资源不足以支持图标字体加载，维持当前 emoji 图标不变。
 3. **【质量】云函数单测**：当前无自动化测试。建议为 `auth`（register/signin 越权守卫）、`purchase`（驳回态 `rejected`）、`scrap`（autoCheck）等核心动作补 Node 单测，防止回归。
 4. **【可选】独立注册页**：当前注册合并在 `login` 双模式内。若产品需要独立 `pages/register` 入口，可新建页面复用 `api.register()`（页面零改动，仅新增 UI），进一步贴合守则示例。
 5. **【可观测】操作日志闭环**：`utils/api.js` 已导出 `logOperation`/`getOperationLogs`，可推动各业务动作补写审计日志，满足安监场景留痕要求。
