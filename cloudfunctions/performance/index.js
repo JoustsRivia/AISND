@@ -18,7 +18,7 @@ function thisMonth() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
 
-// 月度人员评分（M10.3.1）
+// 月度人员评分（M10.3.1）：写库补服务端 orgId（item 1 写库带 orgId）
 async function score(payload) {
   const g = await requireMgmt();
   if (g.err) return g.err;
@@ -26,30 +26,30 @@ async function score(payload) {
   if (!personId) return fail('请填写被考核人');
   const score = Number(s);
   if (isNaN(score) || score < 0 || score > 100) return fail('分数需为 0~100');
+  const me = await db.getCurrentUser(getOpenid());
   const doc = {
     personId, personName: personName || '', dimension,
     score, note, month: (payload.month || thisMonth()).slice(0, 7),
-    assessor: getOpenid(), createdAt: now(),
+    assessor: getOpenid(), orgId: (me && me.orgId) || '', createdAt: now(),
   };
   const added = await db.add('performance_scores', doc);
   return ok({ _id: added._id, ...doc });
 }
 
-// 评分记录
+// 评分记录：RBAC 数据范围统一收窄（item 1）
 async function list(payload = {}) {
   const { month, personId } = payload;
-  const where = {};
-  if (month) where.month = month;
-  if (personId) where.personId = personId;
-  const res = await db.listBy('performance_scores', where, 100);
+  const filter = {};
+  if (month) filter.month = month;
+  if (personId) filter.personId = personId;
+  const res = await db.scopedList('performance_scores', filter, { orgId: payload.orgId, size: 100 });
   return ok(res.data || []);
 }
 
-// 排行榜：按人聚合月度平均分，降序
+// 排行榜：按人聚合月度平均分，降序（数据范围按组织子树收窄）
 async function rank(payload = {}) {
   const { month } = payload;
-  const where = month ? { month } : {};
-  const res = await db.listBy('performance_scores', where, 500);
+  const res = await db.scopedList('performance_scores', month ? { month } : {}, { size: 500 });
   const map = {};
   (res.data || []).forEach((r) => {
     const p = map[r.personId] || { personId: r.personId, personName: r.personName, sum: 0, cnt: 0 };
@@ -66,10 +66,10 @@ async function rank(payload = {}) {
   return ok(rows);
 }
 
-// 月度汇总
+// 月度汇总（数据范围按组织子树收窄）
 async function summary(payload = {}) {
   const month = (payload.month || thisMonth()).slice(0, 7);
-  const res = await db.listBy('performance_scores', { month }, 500);
+  const res = await db.scopedList('performance_scores', { month }, { size: 500 });
   const data = res.data || [];
   const map = {};
   data.forEach((r) => {
@@ -84,17 +84,18 @@ async function summary(payload = {}) {
   return ok({ month, personCount: persons.length, scoreCount: data.length, avg, top: ranked[0] || null });
 }
 
-// 奖惩记录（M10.3.2）
+// 奖惩记录（M10.3.2）：写库补服务端 orgId（item 1 写库带 orgId）
 async function rewardAdd(payload) {
   const g = await requireMgmt();
   if (g.err) return g.err;
   const { personId, personName, type, reason = '', amount = 0 } = payload;
   if (!personId || !['reward', 'penalty'].includes(type)) return fail('参数不合法');
+  const me = await db.getCurrentUser(getOpenid());
   const doc = {
     personId, personName: personName || '', type,
     reason, amount: Number(amount) || 0,
     month: (payload.month || thisMonth()).slice(0, 7),
-    creator: getOpenid(), createdAt: now(),
+    creator: getOpenid(), orgId: (me && me.orgId) || '', createdAt: now(),
   };
   const added = await db.add('performance_rewards', doc);
   return ok({ _id: added._id, ...doc });

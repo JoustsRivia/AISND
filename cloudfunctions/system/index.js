@@ -25,16 +25,30 @@ async function getRetentionPolicy({ useCache = true } = {}) {
 // ── 日志写入限流（item 3：按 action 分级）────────────────────────────────
 // 同一 operator + 同 action 在窗口内超阈值则拒绝（429）。
 // 默认档 60s/30 防刷；管理端批量操作（白名单）使用更高阈值，避免正常批量管理（导入/批量入库）被误伤。
-const ACTION_RATE = {
-  default: { window: 60 * 1000, max: 30 },
-  import: { window: 60 * 1000, max: 200 }, // 批量导入/建档
-  batch: { window: 60 * 1000, max: 300 },  // 批量入库/生成
+// 默认限流档（item 4：可被 dicts type=rate_limit/key=policy 后台覆盖）
+const DEFAULT_RATE = {
+  default: { window: 60 * 1000, max: 30 },   // 普通动作防刷
+  import: { window: 60 * 1000, max: 200 },   // 批量导入/建档
+  batch: { window: 60 * 1000, max: 300 },    // 批量入库/生成
 };
 const BATCH_ACTIONS = ['importTools', 'batchInbound', 'batchGen', 'batchImport'];
-function rateLimitFor(action) {
-  if (BATCH_ACTIONS.includes(action)) return ACTION_RATE.batch;
-  if (action && ACTION_RATE[action]) return ACTION_RATE[action];
-  return ACTION_RATE.default;
+// 60s 内存缓存，避免每条日志都回查配置（配置变更时主动失效）
+let __rateCache = null;
+function clearRateCache() { __rateCache = null; }
+async function getRatePolicy({ useCache = true } = {}) {
+  if (useCache && __rateCache && Date.now() - __rateCache.ts < 60000) return __rateCache.value;
+  const r = await db.listBy('dicts', { type: 'rate_limit', key: 'policy' }, 1);
+  const item = r.data && r.data[0];
+  const value = (item && item.data) || DEFAULT_RATE;
+  __rateCache = { value, ts: Date.now() };
+  return value;
+}
+// 限流策略配置驱动（item 4）：优先后台配置，回退默认；批量白名单走更高阈值
+async function rateLimitFor(action) {
+  const policy = await getRatePolicy();
+  if (BATCH_ACTIONS.includes(action)) return policy.batch || DEFAULT_RATE.batch;
+  if (action && policy[action]) return policy[action];
+  return policy.default || DEFAULT_RATE.default;
 }
 
 // 与 cloudfunctions/auth/index.js 同源的密码哈希（sha1 + 'tms_' 盐），保证账号在两处校验一致。
@@ -328,10 +342,17 @@ async function log(payload) {
   // 写入限流（item 3 防刷，按 action 分级）：同一 operator + 同 action 在窗口内超阈值则拒绝（429）。
   // 批量操作（白名单）更高阈值，避免正常批量管理被误伤。
   const action = payload.action || 'unknown';
-  const rate = rateLimitFor(action);
+  const rate = await rateLimitFor(action);
   const rec = Date.now() - rate.window;
   const recent = (await db.collection('operation_logs').where({ operator: openid, action, ts: _.gt(rec) }).get()).data || [];
-  if (recent.length >= rate.max) return fail('操作过于频繁，请稍后再试', 429);
+  if (recent.length >= rate.max) {
+    // 限流命中：记录一次拦截（审计/看板用；自身不计入限流窗口，避免递归）
+    await db.add('operation_logs', {
+      operator: openid, action: 'rate_limited', type: payload.type || 'unknown',
+      target: payload.target || '', ts: now(), serverTime: now(), source: 'system',
+    }).catch(() => {});
+    return fail('操作过于频繁，请稍后再试', 429);
+  }
   const t = now();
   // 合规留痕：
   //   - serverTime：服务端落点时刻；与客户端动作时刻 clientTime（api 富化）形成双时间戳，便于合规对账。
@@ -415,6 +436,15 @@ async function cleanupLogs(payload = {}, isTimer = false) {
   const before = payload && payload.before ? new Date(Number(payload.before)) : new Date();
   const res = await db.collection('operation_logs').where({ retainedUntil: _.lt(before) }).remove();
   const removed = (res && res.stats && res.stats.removed) || 0;
+  // 审计：手动清理操作留痕（定时器触发不重复记，避免噪声）
+  if (!isTimer) {
+    await db.ensureCollection('operation_logs').catch(() => {});
+    await db.add('operation_logs', {
+      operator: getOpenid(), action: 'cleanup_logs', target: 'operation_logs',
+      type: 'system', ts: now(), serverTime: now(), source: 'admin',
+      detail: JSON.stringify({ removed, before: before.toISOString() }),
+    }).catch(() => {});
+  }
   return ok({ removed, before: before.toISOString() });
 }
 
@@ -437,7 +467,56 @@ async function retention(payload = {}) {
   const merged = { ...DEFAULT_RETENTION, ...policy };
   await db.saveDict('retention', 'policy', merged);
   clearRetentionCache();
+  // 审计：留存策略变更记入操作日志（配置—执行—留痕闭环，item 3）
+  await db.ensureCollection('operation_logs').catch(() => {});
+  await db.add('operation_logs', {
+    operator: getOpenid(), action: 'retention_set', target: 'retention:policy',
+    type: 'system', ts: now(), serverTime: now(), source: 'admin',
+    detail: JSON.stringify(merged),
+  }).catch(() => {});
   return ok({ policy: merged });
+}
+
+// M13.3 日志写入限流策略（item 4：后台可配置）
+//   op=get ：返回当前生效策略（合并默认），供管理后台展示
+//   op=set ：仅管理员；更新策略并持久化到 dicts（type=rate_limit, key=policy），立即失效缓存，并记入审计日志
+async function rateLimit(payload = {}) {
+  const { op = 'get', policy } = payload;
+  if (op === 'get') {
+    const p = await getRatePolicy({ useCache: false });
+    return ok({ policy: p, defaults: DEFAULT_RATE });
+  }
+  const g = await requireAdmin();
+  if (g.err) return g.err;
+  if (!policy || typeof policy !== 'object' || Array.isArray(policy)) return fail('请提供限流策略对象', 400);
+  for (const k of Object.keys(policy)) {
+    const v = policy[k];
+    if (!v || typeof v !== 'object' || !Number.isInteger(v.window) || !Number.isInteger(v.max) || v.window <= 0 || v.max <= 0) {
+      return fail('限流策略每项需为 { window, max } 且为正整数', 400);
+    }
+  }
+  const merged = { ...DEFAULT_RATE, ...policy };
+  await db.saveDict('rate_limit', 'policy', merged);
+  clearRateCache();
+  // 审计：限流策略变更记入操作日志（配置—执行—留痕闭环）
+  await db.add('operation_logs', {
+    operator: getOpenid(), action: 'rate_limit_set', target: 'rate_limit:policy',
+    type: 'system', ts: now(), serverTime: now(), source: 'admin',
+    detail: JSON.stringify(merged),
+  }).catch(() => {});
+  return ok({ policy: merged });
+}
+
+// 限流看板统计（item 4）：当前策略 + 拦截次数 + 策略变更次数（仅管理员）
+async function rateStats() {
+  const g = await requireAdmin();
+  if (g.err) return g.err;
+  const [policy, denied, sets] = await Promise.all([
+    getRatePolicy({ useCache: false }),
+    db.collection('operation_logs').where({ action: 'rate_limited' }).count(),
+    db.collection('operation_logs').where({ action: 'rate_limit_set' }).count(),
+  ]);
+  return ok({ policy, denied: (denied && denied.total) || 0, configChanges: (sets && sets.total) || 0 });
 }
 
 exports.main = async (event) => {
@@ -456,6 +535,8 @@ exports.main = async (event) => {
       case 'log': return log(payload);
       case 'listLog': return listLog(payload);
       case 'retention': return retention(payload);
+      case 'rateLimit': return rateLimit(payload);
+      case 'rateStats': return rateStats();
       case 'cleanupLogs': return cleanupLogs(payload, !!ev.triggerName);
       default: return fail('未知 action: ' + action);
     }

@@ -19,20 +19,14 @@ async function requireAdmin() {
   return { u };
 }
 
-// 列表：管理员(admin)看全部，普通用户只看自己
+// 列表：RBAC 数据范围统一收窄（item 1）—— 全局角色看全量、单位看整单位子树、
+// 机构/班组看本机构子树，越权下钻被忽略；写库已带服务端 orgId 防止挂靠。
 async function list(payload = {}) {
-  const { openid, type, status, orgId } = payload;
-  const me = await db.getCurrentUser(getOpenid());
-  const where = {};
-  const isAdmin = me && me.role === 'admin';
-  if (!isAdmin) where.openid = getOpenid();
-  else {
-    if (openid) where.openid = openid;
-    if (orgId) where.orgId = orgId;
-  }
-  if (type) where.type = type;
-  if (status) where.status = status;
-  const res = await db.listBy('certificates', where, 100);
+  const { type, status, orgId } = payload;
+  const filter = {};
+  if (type) filter.type = type;
+  if (status) filter.status = status;
+  const res = await db.scopedList('certificates', filter, { orgId, size: 100 });
   return ok(res.data || []);
 }
 

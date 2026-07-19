@@ -26,7 +26,12 @@ Page({
     this.load();
     // 广播档案变更（Item 4）：角色/组织更新后通知订阅方（如 permission 页）实时刷新
     auth.emitProfileChanged();
+    // 订阅「档案变更」事件（Item 5）：被管理员调整角色/切换组织后，本页同步重载
+    if (!this._off) this._off = auth.onProfileChanged(() => this.load());
   },
+
+  onHide() { if (this._off) { this._off(); this._off = null; } },
+  onUnload() { if (this._off) { this._off(); this._off = null; } },
 
   onThemeToggle(e) {
     const dark = !!e.detail.value;

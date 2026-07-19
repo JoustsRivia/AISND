@@ -92,7 +92,7 @@ function makeQuery(collection) {
       let rows = await collection.find(state.where);
       if (state.docId != null) {
         rows = rows.filter((r) => String(r._id) === String(state.docId));
-        return rows[0]; // 与 wx-server-sdk 一致：.doc(id).get() 返回单文档
+        return { data: rows[0] }; // 与 wx-server-sdk 一致：.doc(id).get() 返回 { data: 单文档 }
       }
       if (state.orderBy) {
         const { f, d } = state.orderBy;

@@ -20,6 +20,8 @@ jobs:
         run: npm run lint:helpers
       - name: 隔离层单一源校验（防漂移）
         run: npm run lint:db-base
+      - name: 前端零直连门禁·自检（§4 #7，先验证规则引擎本身未漂移）
+        run: npm run check:frontend:self
       - name: 前端零直连门禁（§4 #7，架构铁律①不可绕过）
         run: npm run check:frontend
       - name: 云函数构建产物门禁（可部署性干跑）

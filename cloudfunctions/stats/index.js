@@ -39,20 +39,20 @@ function csvCell(v) {
 }
 const csvRow = (arr) => arr.map(csvCell).join(',');
 
-// 总览驾驶舱 / 项目部看板（同一口径按 orgId 过滤）
+// 总览驾驶舱 / 项目部看板（同一口径按组织子树过滤，item 1 RBAC 数据范围）
 async function dashboard(payload = {}) {
   ensureLogin();
-  const { orgId } = payload;
-  const b = baseFilter(orgId);
+  // 项目部看板按组织子树收窄：全局角色看全量、单位看整单位子树、机构/班组看本机构子树，越权下钻被忽略
+  const scope = await db.scopeWhere({ orgId: payload.orgId });
   const [total, qualified, pending, scrapped, maintaining, missing, expiring, warns] = await Promise.all([
-    db.countBy('tools', b),
-    db.countBy('tools', { ...b, status: 'qualified' }),
-    db.countBy('tools', { ...b, status: 'pending_test' }),
-    db.countBy('tools', { ...b, status: 'scrapped' }),
-    db.countBy('tools', { ...b, status: 'maintaining' }),
-    db.countBy('tools', { ...b, status: 'missing' }),
-    db.countBy('tools', { ...b, status: 'qualified', ...db.expiringSoon(15) }),
-    db.countBy('warnings', orgId ? { orgId, read: false } : { read: false }),
+    db.countBy('tools', scope),
+    db.countBy('tools', { ...scope, status: 'qualified' }),
+    db.countBy('tools', { ...scope, status: 'pending_test' }),
+    db.countBy('tools', { ...scope, status: 'scrapped' }),
+    db.countBy('tools', { ...scope, status: 'maintaining' }),
+    db.countBy('tools', { ...scope, status: 'missing' }),
+    db.countBy('tools', { ...scope, status: 'qualified', ...db.expiringSoon(15) }),
+    db.countBy('warnings', { read: false, ...scope }),
   ]);
   const growth = {
     total: total.total,
@@ -118,17 +118,16 @@ async function sixStandard() {
   });
 }
 
-// 报表导出聚合（M12 报表导出）
+// 报表导出聚合（M12 报表导出）：按组织子树收窄（item 1 RBAC 数据范围）
 async function exportReport(payload = {}) {
   await ensureRole(SENSITIVE_ROLES);
-  const { orgId } = payload;
-  const b = baseFilter(orgId);
+  const scope = await db.scopeWhere({ orgId: payload.orgId });
   const statuses = ['qualified', 'pending_test', 'in_use', 'maintaining', 'scrapped', 'missing'];
   const cats = ['insulation', 'motor', 'manual', 'lifting', 'height', 'measure', 'temp_power', 'lease'];
-  const total = await db.countBy('tools', b);
+  const total = await db.countBy('tools', scope);
   const byStatus = {}; const byCategory = {};
-  await Promise.all(statuses.map(async (s) => { const r = await db.countBy('tools', { ...b, status: s }); byStatus[s] = r.total; }));
-  await Promise.all(cats.map(async (c) => { const r = await db.countBy('tools', { ...b, category: c }); byCategory[c] = r.total; }));
+  await Promise.all(statuses.map(async (s) => { const r = await db.countBy('tools', { ...scope, status: s }); byStatus[s] = r.total; }));
+  await Promise.all(cats.map(async (c) => { const r = await db.countBy('tools', { ...scope, category: c }); byCategory[c] = r.total; }));
 
   // 生成 CSV（含组织维度，orgId 属用户输入需转义，防止公式注入）
   const lines = [];

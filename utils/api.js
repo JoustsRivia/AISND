@@ -166,6 +166,19 @@ const createDict = (data) => invoke(FN.system, 'dict', { op: 'create', data });
 const updateDict = (data) => invoke(FN.system, 'dict', { op: 'update', data });
 const removeDict = (id) => invoke(FN.system, 'dict', { op: 'remove', data: { _id: id } });
 const manageCheckTemplate = (data) => invoke(FN.system, 'checkTemplate', data);
+// 日志写入限流策略（item 4：后台可配置）—— get 查看、set 变更（仅管理员，留痕）
+const getRateLimit = () => invoke(FN.system, 'rateLimit', { op: 'get' });
+const setRateLimit = (policy) => invoke(FN.system, 'rateLimit', { op: 'set', policy }).then((r) => {
+  logOperation({ type: 'system', action: 'rate_limit_set', target: 'rate_limit:policy' });
+  return r;
+});
+const getRateStats = () => invoke(FN.system, 'rateStats');
+// 日志留存策略（item 3：后台可配置）—— get 查看、set 变更（仅管理员，留痕）
+const getRetention = () => invoke(FN.system, 'retention', { op: 'get' });
+const setRetention = (policy) => invoke(FN.system, 'retention', { op: 'set', policy }).then((r) => {
+  logOperation({ type: 'system', action: 'retention_set', target: 'retention:policy' });
+  return r;
+});
 
 // ── 条码文件 M14 ──────────────────────────────────────────────────────
 const generateBarcode = (id) => invoke(FN.tool, 'genBarcode', { id });
@@ -262,6 +275,7 @@ module.exports = {
   getDashboard, getProjectDashboard, getSixStandard, getMyStats, getTrend, exportReport, getHomeStatus,
   // 系统
   getOrgTree, manageOrg, manageUser, listUsers, seedAdmin, getDict, createDict, updateDict, removeDict, manageCheckTemplate,
+  getRateLimit, setRateLimit, getRateStats, getRetention, setRetention,
   // 条码
   generateBarcode, getBarcodeFile, batchInbound, batchSpotCheck, batchGenBarcode, genLabel,
   // 持证

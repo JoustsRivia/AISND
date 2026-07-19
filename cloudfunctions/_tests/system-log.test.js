@@ -167,8 +167,10 @@ test('system.cleanupLogs: 删除 retainedUntil 到期记录，保留未到期', 
   const r = await system.main({ action: 'cleanupLogs', payload: {} });
   assert.strictEqual(r.code, 0);
   assert.strictEqual(r.data.removed, 2);
-  assert.strictEqual(mock.__store.operation_logs.length, 1);
-  assert.strictEqual(mock.__store.operation_logs[0]._id, 'new1');
+  // 未到期记录保留；且本次清理动作本身记入审计日志（无 retainedUntil，不被清理）
+  const remaining = mock.__store.operation_logs;
+  assert.strictEqual(remaining.filter((x) => x._id === 'new1').length, 1, '未到期记录应保留');
+  assert.strictEqual(remaining.filter((x) => x.action === 'cleanup_logs').length, 1, '清理动作应记入审计日志（cleanup_logs）');
 });
 
 test('system.cleanupLogs: 定时器触发(triggerName)免管理员校验', async () => {
@@ -252,4 +254,57 @@ test('system.retention: 非管理员 set 被拒（403）', async () => {
   mock.__store.users = [{ _id: 'u2', openid: 'test_openid', role: 'worker', status: 'active', bound: true }];
   const r = await system.main({ action: 'retention', payload: { op: 'set', policy: { user: 999 } } });
   assert.strictEqual(r.code, 403);
+});
+
+// ───────────────── 限流策略配置化（Item 4）─────────────────
+test('system.rateLimit: get 返回默认策略（default.max=30）', async () => {
+  seedAdmin();
+  const r = await system.main({ action: 'rateLimit', payload: { op: 'get' } });
+  assert.strictEqual(r.code, 0);
+  assert.strictEqual(r.data.policy.default.max, 30);
+  assert.strictEqual(r.data.policy.batch.max, 300);
+});
+
+test('system.rateLimit: set 非法形状被拒（400）', async () => {
+  seedAdmin();
+  const r = await system.main({ action: 'rateLimit', payload: { op: 'set', policy: { default: { window: -1, max: 0 } } } });
+  assert.strictEqual(r.code, 400);
+});
+
+test('system.rateLimit: 非管理员 set 被拒（403）', async () => {
+  mock.__store.users = [{ _id: 'u2', openid: 'test_openid', role: 'worker', status: 'active', bound: true }];
+  const r = await system.main({ action: 'rateLimit', payload: { op: 'set', policy: { default: { window: 60000, max: 5 } } } });
+  assert.strictEqual(r.code, 403);
+});
+
+test('system.rateLimit: 管理员 set 自定义阈值后，log 按新阈值限流', async () => {
+  seedAdmin();
+  const setR = await system.main({ action: 'rateLimit', payload: { op: 'set', policy: { default: { window: 60000, max: 3 } } } });
+  assert.strictEqual(setR.code, 0);
+  assert.strictEqual(setR.data.policy.default.max, 3);
+  // 连续 3 次正常，第 4 次命中新阈值（429）
+  const now = Date.now();
+  for (let i = 0; i < 3; i++) mock.__store.operation_logs.push({ _id: 'r' + i, type: 'borrow', action: 'borrow', operator: 'test_openid', ts: now - i * 100 });
+  const r4 = await system.main({ action: 'log', payload: { type: 'borrow', action: 'borrow', target: 'T1', operatorName: 'x' } });
+  assert.strictEqual(r4.code, 429);
+});
+
+test('system.rateLimit: set 记入审计日志（rate_limit_set）', async () => {
+  seedAdmin();
+  await system.main({ action: 'rateLimit', payload: { op: 'set', policy: { default: { window: 60000, max: 50 } } } });
+  const audit = (mock.__store.operation_logs || []).filter((l) => l.action === 'rate_limit_set');
+  assert.strictEqual(audit.length, 1);
+  assert.strictEqual(audit[0].operator, 'test_openid');
+});
+
+test('system.rateStats: 拦截次数随限流命中增长（仅管理员）', async () => {
+  seedAdmin();
+  const now = Date.now();
+  mock.__store.operation_logs = [];
+  for (let i = 0; i < 30; i++) mock.__store.operation_logs.push({ _id: 'r' + i, type: 'borrow', action: 'borrow', operator: 'test_openid', ts: now - i * 100 });
+  const denied = await system.main({ action: 'log', payload: { type: 'borrow', action: 'borrow', target: 'T1', operatorName: 'x' } });
+  assert.strictEqual(denied.code, 429);
+  const stats = await system.main({ action: 'rateStats', payload: {} });
+  assert.strictEqual(stats.code, 0);
+  assert.strictEqual(stats.data.denied, 1); // 命中一次拦截被记录
 });

@@ -58,6 +58,34 @@ test('迁移契约②：RBAC 数据范围原语在两层行为一致', () => {
   }
 });
 
+// 迁移契约④（Item 6）：update / remove / count 原语在 wx 与 mongo 适配层行为一致（含写后读）
+// 两层各自独立内存库，断言「同样的 CRUD 序列」返回结构与值一致，把迁移保障覆盖完整 CRUD。
+test('迁移契约④：wx 与 mongo 适配层 update/remove/count 原语行为一致（写后读）', async () => {
+  const COLL = 'mb_crud';
+  for (const [name, base] of [['wx', wxBase], ['mongo', mongoBase]]) {
+    await base.collection(COLL).where({}).remove(); // 清场
+    const added = await base.add(COLL, { k: 'v', n: 1 });
+    assert.ok(added && added._id, `${name}: add 未返回 _id`);
+    const id = added._id;
+    // 写后读一致（两层均返回 { data: 单文档 }，与 wx-server-sdk 约定一致）
+    const got0 = await base.collection(COLL).doc(id).get();
+    assert.ok(got0 && got0.data && got0.data._id === id && got0.data.n === 1, `${name}: 写后读应返回刚写入文档`);
+    // update 一致
+    const upd = await base.collection(COLL).doc(id).update({ data: { n: 2, k: 'v2' } });
+    assert.strictEqual(upd.stats.updated, 1, `${name}: update 应改 1 条`);
+    const got1 = await base.collection(COLL).doc(id).get();
+    assert.strictEqual(got1.data.n, 2, `${name}: 写后读应反映 update 结果`);
+    // count 一致
+    assert.strictEqual((await base.collection(COLL).where({}).count()).total, 1, `${name}: 全量 count 应为 1`);
+    assert.strictEqual((await base.collection(COLL).where({ n: 2 }).count()).total, 1, `${name}: 条件 count 应为 1`);
+    assert.strictEqual((await base.collection(COLL).where({ n: 99 }).count()).total, 0, `${name}: 不匹配 count 应为 0`);
+    // remove 一致
+    const rm = await base.collection(COLL).doc(id).remove();
+    assert.strictEqual(rm.stats.removed, 1, `${name}: remove 应删 1 条`);
+    assert.strictEqual((await base.collection(COLL).where({}).count()).total, 0, `${name}: 删除后 count 应为 0`);
+  }
+});
+
 // 可选：真实 MongoDB 行为回归（与 scripts/migrate-drill/mongo.js 同源，覆盖全业务域）
 test('迁移契约③：真实 MongoDB 行为回归（需 MONGODB_URI）', async () => {
   const uri = process.env.MONGODB_URI;
@@ -96,11 +124,25 @@ test('迁移契约③：真实 MongoDB 行为回归（需 MONGODB_URI）', async
       try { await dbLayer.collection(d.coll).where({}).remove(); } catch (_) { /* 清场 */ }
       const added = await dbLayer.add(d.coll, d.sample);
       assert.ok(added && added._id, `[${d.dir}] add 未返回 _id`);
+      // 写后读一致
+      const got = await dbLayer.collection(d.coll).doc(added._id).get();
+      assert.ok(got && got.data && String(got.data._id) === String(added._id), `[${d.dir}] 写后读未命中刚写入记录`);
       const list = await dbLayer.listBy(d.coll, {});
       const rows = (list && list.data) || [];
       assert.ok(rows.some((r) => String(r._id) === String(added._id)), `[${d.dir}] listBy 未包含刚写入记录`);
+      // update 一致（写后读反映更新）
+      await dbLayer.collection(d.coll).doc(added._id).update({ data: { _synced: true } });
+      const afterUpd = await dbLayer.collection(d.coll).doc(added._id).get();
+      assert.strictEqual(afterUpd._synced, true, `[${d.dir}] update 后写后读未反映更新`);
+      // count 一致
+      const c1 = await dbLayer.collection(d.coll).where({}).count();
+      assert.strictEqual(c1.total, 1, `[${d.dir}] count 应为 1`);
+      // remove 一致
+      await dbLayer.collection(d.coll).doc(added._id).remove();
+      const c0 = await dbLayer.collection(d.coll).where({}).count();
+      assert.strictEqual(c0.total, 0, `[${d.dir}] 删除后 count 应为 0`);
     }
-    console.log('✅ 真实 MongoDB 驱动全业务域回归通过（含 maintenance / purchase）');
+    console.log('✅ 真实 MongoDB 驱动全业务域 CRUD 回归通过（含 maintenance / purchase）');
   } finally {
     Module.prototype.require = orig;
     await client.close().catch(() => {});

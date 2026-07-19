@@ -1,6 +1,9 @@
 // cloudfunctions/stats/helpers/db.js （隔离层：仅此处可调用 cloud.database()）
 const base = require('./dbBase');
 const { cloud, db, _, collection } = base;
+// RBAC 数据范围原语（来自 _shared/dbBase.js 单一源，迁移零改动）
+const { subtreeIds, roleScope, allowedOrgIds, scopeFilter } = base;
+const { getOpenid } = require('./user');
 const coll = collection;
 
 const pad = (n) => String(n).padStart(2, '0');
@@ -42,4 +45,32 @@ const getUser = async (openid) => {
   return (r && r.data && r.data[0]) || null;
 };
 
-module.exports = { _, countBy, listBy, add, update, expiringSoon, coll, getUser };
+// 读取当前用户档案（role/orgId/status），供服务端鉴权与数据范围推导
+const getCurrentUser = base.getCurrentUser;
+const listOrgs = (size = 200) => coll('orgs').limit(size).get();
+
+// ── RBAC 通用数据范围模板（Item 1：统计看板按组织子树收窄）──
+// scopeWhere：仅返回范围片段（orgId in 子树 / {} / 空集），供多 countBy 合并场景复用，
+//   全局角色返回 {}（看全量），其余返回按组织子树的 in 条件（越权下钻被忽略）。
+async function scopeWhere(opts = {}) {
+  const me = await getCurrentUser(getOpenid());
+  const orgs = (await listOrgs(500)).data || [];
+  return scopeFilter(me, orgs, { orgId: opts.orgId, unitId: opts.unitId });
+}
+// scopedList：按组织子树收窄的列表（合并业务过滤条件）
+async function scopedList(collName, filter = {}, opts = {}) {
+  const where = { ...filter, ...(await scopeWhere(opts)) };
+  return listBy(collName, where, opts.size || 100);
+}
+// scopedCount：按组织子树收窄的计数（合并业务过滤条件）
+async function scopedCount(collName, filter = {}, opts = {}) {
+  const where = { ...filter, ...(await scopeWhere(opts)) };
+  return countBy(collName, where);
+}
+
+module.exports = {
+  _, countBy, listBy, add, update, expiringSoon, coll, getUser,
+  getCurrentUser, listOrgs,
+  // RBAC 数据范围原语 + 通用模板（透出，供 index.js 复用，迁移零改动）
+  subtreeIds, roleScope, allowedOrgIds, scopeFilter, scopeWhere, scopedList, scopedCount,
+};

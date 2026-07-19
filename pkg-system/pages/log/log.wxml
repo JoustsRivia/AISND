@@ -1,4 +1,4 @@
-<!-- pkg-system/pages/log/log.wxml —— M13.3 操作日志（增强：组合筛选 + CSV 导出） -->
+<!-- pkg-system/pages/log/log.wxml —— M13.3 操作日志（增强：组合筛选 + CSV 导出 + 留存/限流后台 + 限流看板 + 手动清理） -->
 <view class="log">
   <!-- 按类型筛选（后端 listLog 已支持 type） -->
   <view class="filters">
@@ -36,10 +36,80 @@
     </view>
   </view>
 
+  <!-- ════════════ 管理员：日志策略与限流管理（item 3/4） ════════════ -->
+  <block wx:if="{{isAdmin}}">
+
+    <!-- 日志留存策略 -->
+    <view class="card">
+      <view class="title-row">
+        <text class="title">日志留存策略</text>
+        <text class="muted">按类型设置留存天数</text>
+      </view>
+      <view wx:if="{{retention}}" class="kv">
+        <view class="kv-row" wx:for="{{retentionFields}}" wx:key="k">
+          <text class="kv-label">{{item.label}}</text>
+          <input class="kv-input" type="number" value="{{retention[item.k]}}" data-k="{{item.k}}" bindinput="onRetentionInput" />
+          <text class="kv-unit">天</text>
+        </view>
+      </view>
+      <view wx:else class="muted">加载中…</view>
+      <button class="save-btn" type="primary" size="mini" loading="{{savingRetention}}" bindtap="onSaveRetention">保存留存策略</button>
+      <text class="hint">超期日志由定时器每日凌晨自动清理；配置变更将记入操作日志（retention_set）。</text>
+    </view>
+
+    <!-- 日志写入限流策略 -->
+    <view class="card">
+      <view class="title-row">
+        <text class="title">日志写入限流</text>
+        <text class="muted">窗口(秒) / 上限(次)</text>
+      </view>
+      <view wx:if="{{rate}}" class="kv">
+        <view class="kv-row" wx:for="{{rateGroups}}" wx:key="g">
+          <text class="kv-label">{{item.label}}</text>
+          <input class="kv-input half" type="number" value="{{rate[item.g].window}}" data-g="{{item.g}}" data-f="window" bindinput="onRateInput" />
+          <text class="kv-sep">/</text>
+          <input class="kv-input half" type="number" value="{{rate[item.g].max}}" data-g="{{item.g}}" data-f="max" bindinput="onRateInput" />
+        </view>
+      </view>
+      <view wx:else class="muted">加载中…</view>
+      <button class="save-btn" type="primary" size="mini" loading="{{savingRate}}" bindtap="onSaveRate">保存限流策略</button>
+      <text class="hint">配置变更将记入操作日志（rate_limit_set）。</text>
+    </view>
+
+    <!-- 限流看板 -->
+    <view class="card">
+      <view class="title-row">
+        <text class="title">限流看板</text>
+        <button class="mini-btn" size="mini" loading="{{loadingStats}}" bindtap="onRefreshStats">刷新</button>
+      </view>
+      <view wx:if="{{rateStats}}" class="stats">
+        <view class="stat">
+          <text class="stat-num">{{rateStats.denied}}</text>
+          <text class="stat-label">累计拦截次数</text>
+        </view>
+        <view class="stat">
+          <text class="stat-num">{{rateStats.configChanges}}</text>
+          <text class="stat-label">策略变更次数</text>
+        </view>
+      </view>
+      <view wx:if="{{rateSummary}}" class="hint">{{rateSummary}}</view>
+    </view>
+
+    <!-- 手动清理到期日志 -->
+    <view class="card">
+      <view class="title-row">
+        <text class="title">手动清理到期日志</text>
+      </view>
+      <button class="save-btn ghost" size="mini" loading="{{cleaning}}" bindtap="onCleanup">立即清理</button>
+      <text class="hint" wx:if="{{lastClean}}">上次清理 {{lastClean.removed}} 条（截止 {{lastClean.before}}）</text>
+      <text class="hint" wx:else>仅删除已超过留存期（retainedUntil）的日志；操作本身记入 cleanup_logs。</text>
+    </view>
+  </block>
+
   <view wx:if="{{!loading && !logs.length}}" class="empty">
     <view class="empty-icon">📜</view>
     <view class="empty-title">暂无操作日志</view>
-    <view class="empty-desc">关键操作（入库/领用/报废/审批）将自动留痕</view>
+    <view class="empty-desc">关键操作（入库/领用/报废/审批/策略变更）将自动留痕</view>
   </view>
 
   <view class="card item" wx:for="{{logs}}" wx:key="_id">

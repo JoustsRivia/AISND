@@ -57,9 +57,14 @@ Page({
     if (!auth.isLoggedIn()) { wx.reLaunch({ url: '/pages/login/login' }); return; }
     auth.ensureLogin().catch(() => {});
     this.setData({ themeClass: theme.classOf(app.globalData.theme) });
-    const p = auth.getProfile();
-    this.applyProfile(p);
+    // 轻量同步：重新拉取模块徽标聚合 + 应用最新档案（角色/组织变更后回看即更新）
+    this.refreshBadges();
+    // 订阅「档案变更」事件（Item 5）：角色/组织变更后实时刷新首页徽标与档案，无需重复进入
+    if (!this._offProfile) this._offProfile = auth.onProfileChanged(() => this.refresh());
   },
+
+  onHide() { if (this._offProfile) { this._offProfile(); this._offProfile = null; } },
+  onUnload() { if (this._offProfile) { this._offProfile(); this._offProfile = null; } },
 
   async onLoad() {
     if (!(await auth.requireServerLogin())) return;
@@ -67,6 +72,13 @@ Page({
   },
 
   onPullDownRefresh() { this.refresh().then(() => wx.stopPullDownRefresh()); },
+
+  // 仅刷新模块徽标聚合（九宫格状态徽标），避免每次 onShow 都拉全量看板
+  async refreshBadges() {
+    const hs = await api.getHomeStatus().catch(() => null);
+    if (hs) this._hs = hs;
+    this.applyProfile(auth.getProfile());
+  },
 
   applyProfile(p) {
     if (!p) {

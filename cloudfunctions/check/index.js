@@ -41,20 +41,21 @@ async function submit(payload) {
   return ok({ id, status: 'submitted' });
 }
 
-// 隐患列表（M10 跟踪/闭环）
+// 隐患列表（M10 跟踪/闭环）：RBAC 数据范围统一收窄（item 1）
 async function listHazard(payload = {}) {
   const { status, reporter } = payload;
-  const where = {};
-  if (status) where.status = status;
-  if (reporter) where.reporter = reporter;
-  const res = await db.listBy('hazards', where, 50);
+  const filter = {};
+  if (status) filter.status = status;
+  if (reporter) filter.reporter = reporter;
+  const res = await db.scopedList('hazards', filter, { orgId: payload.orgId, size: 50 });
   return ok(res.data || []);
 }
 
-// 隐患上报（M10.3）
+// 隐患上报（M10.3）：写库补服务端 orgId，防止越权挂靠他组织（item 1 写库带 orgId）
 async function reportHazard(payload) {
   const openid = getOpenid();
-  const doc = { ...payload, reporter: openid, status: 'open', createdAt: now() };
+  const me = await db.getCurrentUser(openid);
+  const doc = { ...payload, reporter: openid, orgId: (me && me.orgId) || '', status: 'open', createdAt: now() };
   const added = await db.add('hazards', doc);
   return ok({ _id: added._id, ...doc });
 }
@@ -98,26 +99,29 @@ async function closeHazard(payload) {
   return ok({ id, status: 'closed' });
 }
 
-// 考核评比列表（M10 考核）
+// 考核评比列表（M10 考核）：RBAC 数据范围统一收窄（item 1）
 async function assessList(payload = {}) {
-  const { orgId } = payload;
-  const where = orgId ? { orgId } : {};
-  const res = await db.listBy('assessments', where, 50);
+  const { status } = payload;
+  const filter = {};
+  if (status) filter.status = status;
+  const res = await db.scopedList('assessments', filter, { orgId: payload.orgId, size: 50 });
   return ok(res.data || []);
 }
 
-// 提交考核评分（M10 考核）：仅管理角色可评分
+// 提交考核评分（M10 考核）：仅管理角色可评分；写库补服务端 orgId（item 1 写库带 orgId）
 async function assess(payload) {
   const g = await requireApprover();
   if (g.err) return g.err;
   const openid = getOpenid();
+  const me = await db.getCurrentUser(openid);
   const { targetId, targetName, score, dimension, note = '' } = payload;
   if (!targetId || score == null) return fail('缺少考核对象或分数');
   const s = Number(score);
   if (isNaN(s) || s < 0 || s > 100) return fail('分数需为 0~100');
   const doc = {
     targetId, targetName: targetName || '', score: s,
-    dimension: dimension || '综合', note, assessor: openid, createdAt: now(),
+    dimension: dimension || '综合', note, assessor: openid,
+    orgId: (me && me.orgId) || '', createdAt: now(),
   };
   const added = await db.add('assessments', doc);
   return ok({ _id: added._id, ...doc });

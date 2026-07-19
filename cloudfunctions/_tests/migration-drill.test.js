@@ -52,9 +52,9 @@ test('迁移演练：borrow 业务在 MongoDB 适配层下 addBorrow + listBorro
     const byOpenid = await borrowDb.listBorrow({ openid: 'o1' });
     assert.strictEqual(byOpenid.data.length, 2);
 
-    // 通用原语：getById 单文档
+    // 通用原语：getById 单文档（契约：.doc(id).get() 返回 { data: 单文档 }，与 wx-server-sdk 一致）
     const one = await borrowDb.getById('borrow_records', a._id);
-    assert.ok(one && one._id === a._id, 'getById 应返回单文档');
+    assert.ok(one && one.data && one.data._id === a._id, 'getById 应返回单文档');
   } finally {
     DRILL_ACTIVE = false;
   }
