@@ -1,4 +1,6 @@
 {
-  "usingComponents": {},
+  "usingComponents": {
+    "form-field": "/components/form-field/form-field"
+  },
   "navigationBarTitleText": "登录"
 }

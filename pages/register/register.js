@@ -4,18 +4,7 @@
 // 安全：role 仍受服务端 SELF_BINDABLE_ROLES 白名单约束，admin 不可自助注册。
 const auth = require('../../utils/auth');
 const api = require('../../utils/api');
-const { ROLES } = require('../../utils/constants');
-
-// 与 cloudfunctions/auth register 服务端白名单一致的可自绑定角色
-const ROLES_BINDABLE = [
-  { value: ROLES.WORKER, name: '普通作业人员', desc: '仅可查看本班组工器具' },
-  { value: ROLES.GROUP_LEAD, name: '班组长/班组安全员', desc: '仅可查看本班组工器具' },
-  { value: ROLES.SAFETY_OFFICER, name: '项目部专职安全员', desc: '可管辖整个项目部台账' },
-  { value: ROLES.LEASE_ADMIN, name: '租赁机具管理员', desc: '管理租赁机具台账' },
-  { value: ROLES.LEAD, name: '专班负责人', desc: '全局台账与全部管理权限' },
-  { value: ROLES.PROJECT_LEAD, name: '项目部负责人', desc: '可管辖整个项目部台账' },
-  { value: ROLES.SUPERVISOR, name: '安监部管理人员', desc: '安监督查与系统管理' },
-];
+const { ROLES_BINDABLE, buildUnits } = require('../../utils/register-shared');
 
 // 密码强度评分（0~4）：长度 / 大小写混用 / 含数字 / 含符号
 function scorePwd(p) {
@@ -62,22 +51,7 @@ Page({
 
   async loadOrgTree() {
     const tree = await api.getOrgTree().catch(() => []);
-    const byId = {};
-    tree.forEach((o) => { byId[o._id] = o; });
-    const units = tree.filter((o) => o.level === 0).map((u) => {
-      const options = [];
-      tree.forEach((o) => {
-        if (o._id === u._id) return;
-        let p = o.parentId, ok = false;
-        while (p) { if (p === u._id) { ok = true; break; } p = byId[p] ? byId[p].parentId : null; }
-        if (!ok) return;
-        const path = [];
-        let cur = o;
-        while (cur) { path.unshift(cur.name); cur = byId[cur.parentId]; }
-        options.push({ _id: o._id, label: path.join(' / '), unitId: u._id });
-      });
-      return { ...u, options };
-    });
+    const units = buildUnits(tree);
     this.setData({ orgTree: tree, units }, () => this.refreshOrgOptions());
   },
 

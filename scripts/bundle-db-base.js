@@ -1,7 +1,11 @@
 #!/usr/bin/env node
 // scripts/bundle-db-base.js
-// 把「隔离层单一源」 cloudfunctions/_shared/dbBase.js 拷贝进每个云函数的
-// helpers/ 目录，使各函数自包含、可独立部署（微信逐函数部署约束）。
+// 把「隔离层单一源」拷贝进每个云函数的 helpers/ 目录，使各函数自包含、可独立部署
+// （微信逐函数部署约束，跨函数 require 共享文件会在运行时失败）。
+//
+// 当前打包两份单一源：
+//   - cloudfunctions/_shared/dbBase.js      → <fn>/helpers/dbBase.js    （数据能力隔离层）
+//   - cloudfunctions/_shared/userBase.js    → <fn>/helpers/userBase.js  （鉴权助手隔离层）
 //
 // 用法：node scripts/bundle-db-base.js
 // 约定：本文件由 npm pretest 与 uploadCloudFunction.sh 自动调用，无需手动执行。
@@ -12,21 +16,31 @@ const fs = require('fs');
 const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..');
-const SRC = path.join(ROOT, 'cloudfunctions', '_shared', 'dbBase.js');
+const SHARED = path.join(ROOT, 'cloudfunctions', '_shared');
 const CLOUD = path.join(ROOT, 'cloudfunctions');
 
-if (!fs.existsSync(SRC)) {
-  console.error('❌ 未找到单一源文件：', SRC);
-  process.exit(1);
+// [单一源文件, 目标文件名]
+const SOURCES = [
+  ['dbBase.js', 'dbBase.js'],
+  ['userBase.js', 'userBase.js'],
+];
+
+for (const [srcName, destName] of SOURCES) {
+  const SRC = path.join(SHARED, srcName);
+  if (!fs.existsSync(SRC)) {
+    console.error('❌ 未找到单一源文件：', SRC);
+    process.exit(1);
+  }
 }
-const src = fs.readFileSync(SRC, 'utf8');
 
 let n = 0;
 for (const fn of fs.readdirSync(CLOUD).sort()) {
   const helpersDir = path.join(CLOUD, fn, 'helpers');
   if (!fs.existsSync(helpersDir) || !fs.statSync(helpersDir).isDirectory()) continue;
-  const dest = path.join(helpersDir, 'dbBase.js');
-  fs.writeFileSync(dest, src);
-  n++;
+  for (const [srcName, destName] of SOURCES) {
+    const src = fs.readFileSync(path.join(SHARED, srcName), 'utf8');
+    fs.writeFileSync(path.join(helpersDir, destName), src);
+    n++;
+  }
 }
-console.log(`✅ 已把 _shared/dbBase.js 打包进 ${n} 个云函数的 helpers/（单一源 → 自包含部署）`);
+console.log(`✅ 已把隔离层单一源（dbBase.js + userBase.js）打包进各云函数 helpers/，共 ${n} 份副本（单一源 → 自包含部署）`);

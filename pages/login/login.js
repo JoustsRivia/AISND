@@ -2,21 +2,7 @@
 // 流程：静默取 openid（auth.ensureLogin 已建档 bound:false）→ 注册绑定角色/单位/机构，或凭证登录
 const auth = require('../../utils/auth');
 const api = require('../../utils/api');
-const { ROLES } = require('../../utils/constants');
-
-// 仅暴露「可自绑定」角色（与 cloudfunctions/auth register 服务端白名单一致）。
-// 普通业务角色 + 专班负责人/项目部负责人/安监部管理人员 均支持自助注册；
-// 「小程序管理员(admin)」权限最高，不在此列表，须由系统初始化/控制台分配。
-// desc 说明数据范围（问题4 RBAC 的前端呈现）：绑到「班组」只看本班，绑到「项目部」看整个项目部。
-const ROLES_BINDABLE = [
-  { value: ROLES.WORKER, name: '普通作业人员', desc: '仅可查看本班组工器具' },
-  { value: ROLES.GROUP_LEAD, name: '班组长/班组安全员', desc: '仅可查看本班组工器具' },
-  { value: ROLES.SAFETY_OFFICER, name: '项目部专职安全员', desc: '可管辖整个项目部台账' },
-  { value: ROLES.LEASE_ADMIN, name: '租赁机具管理员', desc: '管理租赁机具台账' },
-  { value: ROLES.LEAD, name: '专班负责人', desc: '全局台账与全部管理权限' },
-  { value: ROLES.PROJECT_LEAD, name: '项目部负责人', desc: '可管辖整个项目部台账' },
-  { value: ROLES.SUPERVISOR, name: '安监部管理人员', desc: '安监督查与系统管理' },
-];
+const { ROLES_BINDABLE, buildUnits } = require('../../utils/register-shared');
 
 Page({
   data: {
@@ -45,24 +31,7 @@ Page({
 
   async loadOrgTree() {
     const tree = await api.getOrgTree().catch(() => []);
-    const byId = {};
-    tree.forEach((o) => { byId[o._id] = o; });
-    // 单位（level 0）
-    const units = tree.filter((o) => o.level === 0).map((u) => {
-      // 该单位下全部后代机构/班组，标签带路径
-      const options = [];
-      tree.forEach((o) => {
-        if (o._id === u._id) return;
-        let p = o.parentId, ok = false;
-        while (p) { if (p === u._id) { ok = true; break; } p = byId[p] ? byId[p].parentId : null; }
-        if (!ok) return;
-        const path = [];
-        let cur = o;
-        while (cur) { path.unshift(cur.name); cur = byId[cur.parentId]; }
-        options.push({ _id: o._id, label: path.join(' / '), unitId: u._id });
-      });
-      return { ...u, options };
-    });
+    const units = buildUnits(tree);
     this.setData({ orgTree: tree, units }, () => this.refreshOrgOptions());
   },
 

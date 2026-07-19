@@ -20,5 +20,7 @@ jobs:
         run: npm run lint:helpers
       - name: 隔离层单一源校验（防漂移）
         run: npm run lint:db-base
+      - name: 云函数构建产物门禁（可部署性干跑）
+        run: npm run validate:functions
       - name: 全量 JS 语法检查
         run: npm run check:syntax

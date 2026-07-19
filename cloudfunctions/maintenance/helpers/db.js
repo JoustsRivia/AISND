@@ -11,9 +11,6 @@ const updateTool = (id, data) => c('tools').doc(id).update({ data });
 
 // 读取当前用户档案（role/orgId/status），供服务端鉴权与数据范围推导
 const findUser = (openid) => collection('users').where({ openid }).get();
-const getCurrentUser = async (openid) => {
-  const res = await findUser(openid);
-  return res.data && res.data[0];
-};
+const getCurrentUser = base.getCurrentUser;
 
 module.exports = { collection, _, add, getById, update, listBy, updateTool, findUser, getCurrentUser };

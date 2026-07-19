@@ -28,24 +28,15 @@
         </picker>
       </view>
 
-      <view class="form-row">
-        <text class="label">用户名</text>
-        <input class="input" placeholder="请输入用户名" value="{{username}}" bindinput="onUserInput" />
-      </view>
-      <view class="form-row">
-        <text class="label">密码</text>
-        <input class="input" password placeholder="请输入密码（≥8位，含大小写/数字/符号更佳）" value="{{password}}" bindinput="onPwdInput" />
-      </view>
+      <form-field label="用户名" value="{{username}}" placeholder="请输入用户名" bind:input="onUserInput" />
+      <form-field label="密码" password="{{true}}" value="{{password}}" placeholder="请输入密码（≥8位，含大小写/数字/符号更佳）" bind:input="onPwdInput" />
       <view class="pwd-strength" wx:if="{{password}}">
         <view class="pwd-bar">
           <view class="pwd-fill" style="width:{{pwdStrength * 25}}%;background:{{pwdColor}}"></view>
         </view>
         <text class="pwd-label" style="color:{{pwdColor}}">强度：{{pwdLabel}}</text>
       </view>
-      <view class="form-row">
-        <text class="label">昵称</text>
-        <input class="input" placeholder="选填，默认同用户名" value="{{nickname}}" bindinput="onNickInput" />
-      </view>
+      <form-field label="昵称" value="{{nickname}}" placeholder="选填，默认同用户名" bind:input="onNickInput" />
 
       <button type="primary" loading="{{loading}}" bindtap="onRegister">注册并登录</button>
 

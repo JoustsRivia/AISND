@@ -61,6 +61,14 @@ node --test cloudfunctions/_tests/cloud-functions.test.js
 
 > 根目录 `package.json` 已封装脚本：`npm run lint:helpers` 与 `npm test`。
 
+### 3.1 质量门禁默认开启（pre-commit 钩子）
+
+仓库已内置 `scripts/install-hooks.js`，在提交前自动运行「helpers 注释规范 + 隔离层单一源校验」两道卡点，拦截回归。
+
+- **默认开启**：执行 `npm install` 时，`package.json` 的 `prepare` 脚本会自动安装该钩子，开发期无需手工操作。
+- **手动安装**：`npm run hooks:install`（仅在 git 仓库根目录有效；非 git 环境会优雅跳过，不报错）。
+- **跳过本次提交**：`git commit --no-verify`（仅应急使用）。
+
 ---
 
 ## 4. 推荐部署顺序（首run）

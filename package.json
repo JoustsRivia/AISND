@@ -4,11 +4,13 @@
   "private": true,
   "description": "SND 工器具安全管理小程序（微信云开发）—— 云函数单测、helper 注释规范、隔离层单一源校验",
   "scripts": {
+    "prepare": "node scripts/install-hooks.js || true",
     "pretest": "node scripts/bundle-db-base.js",
-    "test": "node --test cloudfunctions/_tests/cloud-functions.test.js cloudfunctions/_tests/cloud-functions-2.test.js",
+    "test": "node --test cloudfunctions/_tests/*.test.js",
     "lint:helpers": "node scripts/helper-comments.js",
     "lint:db-base": "node scripts/check-db-base.js",
     "check:syntax": "node scripts/check-syntax.js",
+    "validate:functions": "node scripts/validate-functions.js",
     "hooks:install": "node scripts/install-hooks.js",
     "seed:gen": "node scripts/gen-seed.js"
   }

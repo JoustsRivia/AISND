@@ -18,3 +18,18 @@
 .desc { display: block; margin-top: 6rpx; font-size: 24rpx; color: var(--c-text-sub); }
 .op { display: block; margin-top: 6rpx; font-size: 22rpx; color: var(--c-text-weak); }
 .loading { text-align: center; }
+
+/* 组合筛选卡片 */
+.filter-card { background: var(--c-card); border-radius: var(--r-md); padding: var(--sp-2); margin-bottom: var(--sp-2); box-shadow: var(--sh-card); }
+.f-row { display: flex; gap: 16rpx; margin-bottom: 16rpx; }
+.f-row:last-of-type { margin-bottom: 0; }
+.f-input, .f-picker {
+  flex: 1; min-width: 0; height: 72rpx; line-height: 72rpx; padding: 0 24rpx;
+  font-size: 26rpx; color: var(--c-text); background: var(--c-bg);
+  border: 1rpx solid var(--c-divider); border-radius: var(--r-sm);
+}
+.f-actions { display: flex; gap: 16rpx; margin-top: 16rpx; }
+.f-btn { flex: 1; margin: 0; font-size: 26rpx; background: var(--c-primary); color: #fff; }
+.f-btn.ghost { background: var(--c-bg); color: var(--c-text-sub); border: 1rpx solid var(--c-divider); }
+.f-btn.export { background: var(--c-success, #1aad19); }
+

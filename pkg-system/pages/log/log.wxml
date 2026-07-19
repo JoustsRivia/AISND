@@ -1,4 +1,4 @@
-<!-- pkg-system/pages/log/log.wxml —— M13.3 操作日志 -->
+<!-- pkg-system/pages/log/log.wxml —— M13.3 操作日志（增强：组合筛选 + CSV 导出） -->
 <view class="log">
   <!-- 按类型筛选（后端 listLog 已支持 type） -->
   <view class="filters">
@@ -7,6 +7,27 @@
       class="chip {{activeType === item.value ? 'chip-on' : ''}}"
       data-type="{{item.value}}" bindtap="onFilter"
     >{{item.label}}</view>
+  </view>
+
+  <!-- 组合筛选：操作人 / 关键词 / 时间区间 -->
+  <view class="filter-card">
+    <view class="f-row">
+      <input class="f-input" placeholder="操作人" value="{{operatorName}}" bindinput="onOpInput" />
+      <input class="f-input" placeholder="关键词" value="{{keyword}}" bindinput="onKeywordInput" />
+    </view>
+    <view class="f-row">
+      <picker mode="date" value="{{startTime}}" bindchange="onStartChange">
+        <view class="f-picker">{{startTime || '起始日期'}}</view>
+      </picker>
+      <picker mode="date" value="{{endTime}}" bindchange="onEndChange">
+        <view class="f-picker">{{endTime || '结束日期'}}</view>
+      </picker>
+    </view>
+    <view class="f-actions">
+      <button class="f-btn" size="mini" bindtap="onSearch">查询</button>
+      <button class="f-btn ghost" size="mini" bindtap="onReset">重置</button>
+      <button class="f-btn export" size="mini" bindtap="onExport">导出CSV</button>
+    </view>
   </view>
 
   <view wx:if="{{!loading && !logs.length}}" class="empty">
@@ -23,7 +44,7 @@
         <text class="time">{{item.time}}</text>
       </view>
       <text class="desc" wx:if="{{item.detail}}">{{item.detail}}</text>
-      <text class="op">操作人：{{item.operator}}</text>
+      <text class="op">操作人：{{item.name}}</text>
     </view>
   </view>
 

@@ -1,6 +1,7 @@
-# 自动生成的隔离层副本（单一源：cloudfunctions/_shared/dbBase.js）
+# 自动生成的隔离层副本（单一源：cloudfunctions/_shared/dbBase.js / userBase.js）
 # 由 scripts/bundle-db-base.js 在 npm pretest / 部署前生成，勿手工修改。
 cloudfunctions/*/helpers/dbBase.js
+cloudfunctions/*/helpers/userBase.js
 
 # 依赖与构建产物
 node_modules/

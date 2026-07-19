@@ -12,9 +12,11 @@ const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..');
 const hooksDir = path.join(ROOT, '.git', 'hooks');
+// 优雅跳过：非 git 仓库（如 CI 缓存 / 解压包 / 某些 npm install 上下文）不强制失败，
+// 保证 `npm install` 的 prepare 钩子不会因无 .git 而中断安装。
 if (!fs.existsSync(hooksDir)) {
-  console.error('❌ 未找到 .git/hooks，请确认在 git 仓库根目录运行。');
-  process.exit(1);
+  console.warn('⚠️ 未找到 .git/hooks，跳过 pre-commit 钩子安装（非 git 仓库或 CI 环境）。');
+  process.exit(0);
 }
 const hookPath = path.join(hooksDir, 'pre-commit');
 const content = `#!/bin/sh

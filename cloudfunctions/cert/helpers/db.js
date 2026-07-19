@@ -34,10 +34,7 @@ const update = (name, id, data) => collection(name).doc(id).update({ data });
 const listBy = (name, filter = {}, size = 50) => collection(name).where(filter).limit(size).get();
 
 // 读取当前用户档案（role/orgId/status），供服务端鉴权与数据范围推导
-const getCurrentUser = async (openid) => {
-  const res = await findUser(openid);
-  return res.data && res.data[0];
-};
+const getCurrentUser = base.getCurrentUser;
 const listOrgs = (size = 200) => collection('orgs').limit(size).get();
 module.exports = {
   collection, _, regExp, listOrgs,

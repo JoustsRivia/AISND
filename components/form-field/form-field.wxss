@@ -1,0 +1,6 @@
+/* components/form-field/form-field.wxss —— 与注册/登录页 .form-row 视觉对齐 */
+.ff { display: flex; align-items: center; padding: 24rpx 0; border-bottom: 1rpx solid var(--c-divider); }
+.ff:last-of-type { border-bottom: none; }
+.ff-label { width: 160rpx; color: var(--c-text-sub); font-size: 28rpx; flex-shrink: 0; }
+.ff-input { flex: 1; text-align: right; color: var(--c-text); font-size: 28rpx; }
+.ff-error { width: 100%; font-size: 22rpx; color: var(--c-danger); margin-top: 8rpx; }

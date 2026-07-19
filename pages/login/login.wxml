@@ -37,18 +37,9 @@
         </view>
       </block>
 
-      <view class="form-row">
-        <text class="label">用户名</text>
-        <input class="input" placeholder="请输入用户名" value="{{username}}" bindinput="onUserInput" />
-      </view>
-      <view class="form-row">
-        <text class="label">密码</text>
-        <input class="input" password placeholder="请输入密码" value="{{password}}" bindinput="onPwdInput" />
-      </view>
-      <view wx:if="{{mode==='register'}}" class="form-row">
-        <text class="label">昵称</text>
-        <input class="input" placeholder="选填，默认同用户名" value="{{nickname}}" bindinput="onNickInput" />
-      </view>
+      <form-field label="用户名" value="{{username}}" placeholder="请输入用户名" bind:input="onUserInput" />
+      <form-field label="密码" password="{{true}}" value="{{password}}" placeholder="请输入密码" bind:input="onPwdInput" />
+      <form-field wx:if="{{mode==='register'}}" label="昵称" value="{{nickname}}" placeholder="选填，默认同用户名" bind:input="onNickInput" />
 
       <button wx:if="{{mode==='login'}}" type="primary" loading="{{loading}}" bindtap="onLogin">登 录</button>
       <button wx:else type="primary" loading="{{loading}}" bindtap="onRegister">注册并登录</button>

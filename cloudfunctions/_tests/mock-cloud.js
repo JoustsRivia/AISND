@@ -123,6 +123,8 @@ const mockCloud = {
         nin: (v) => ({ __op: 'nin', value: v }),
       },
       RegExp: () => ({}),
+      // 集合自愈（system 的 ensureCollection 调用），测试内存库无需真实建表
+      createCollection: async () => ({ errMsg: 'ok' }),
     };
   },
   getWXContext() {

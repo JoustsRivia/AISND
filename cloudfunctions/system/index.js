@@ -291,20 +291,57 @@ async function checkTemplate(payload) {
 async function log(payload) {
   const openid = getOpenid();
   await db.ensureCollection('operation_logs');
-  const a = await db.add('operation_logs', { operator: openid, ...payload, ts: now() });
+  const t = now();
+  // 合规留痕（item 3）：
+  //   - serverTime：服务端落点时刻；与客户端动作时刻 clientTime（api 富化）形成双时间戳，便于合规对账。
+  //   - retainedUntil：合规留存到期日（默认 180 天），便于安监留痕周期清理 / 归档。
+  //   - source：来源标记。其余字段（operator/operatorName/action/target/clientTime…）由调用方透传。
+  const a = await db.add('operation_logs', {
+    operator: openid,
+    ...payload,
+    ts: t,
+    serverTime: t,
+    source: 'client',
+    retainedUntil: new Date(t.getTime() + 180 * 24 * 3600 * 1000),
+  });
   return ok({ _id: a._id });
 }
 
-// M13.3 操作日志查询（按时间倒序）
+// M13.3 操作日志查询（按时间倒序，支持组合筛选）
+// 入参 payload：
+//   limit        返回条数（默认 50）
+//   type         类型精确匹配（borrow/scrap/purchase/store/user…）
+//   operatorName 操作人署名精确匹配（由 api.logOperation 富化写入）
+//   keyword      关键词模糊匹配（命中 action / target / operatorName / operator / type 任一）
+//   startTime    时间区间起点（ts 毫秒），含
+//   endTime      时间区间终点（ts 毫秒），含
 async function listLog(payload = {}) {
   const g = await requireAdmin();
   if (g.err) return g.err;
-  const { limit = 50, type = '' } = payload;
+  const { limit = 50, type = '', operatorName = '', keyword = '', startTime = 0, endTime = 0 } = payload;
   await db.ensureCollection('operation_logs');
   const where = {};
   if (type) where.type = type;
-  const res = await db.collection('operation_logs').where(where).orderBy('ts', 'desc').limit(limit).get();
-  return ok(res.data || []);
+  if (operatorName) where.operatorName = operatorName;
+  let rows = (await db.collection('operation_logs').where(where).orderBy('ts', 'desc').limit(limit).get()).data || [];
+  // 时间区间（前端以毫秒传入，兼容微信云开发与自有服务器）
+  if (startTime || endTime) {
+    rows = rows.filter((r) => {
+      const t = r.ts ? new Date(r.ts).getTime() : 0;
+      if (startTime && t < startTime) return false;
+      if (endTime && t > endTime) return false;
+      return true;
+    });
+  }
+  // 关键词模糊匹配（在内存结果上过滤，兼容「换掉 wx-server-sdk 即迁移」的任意后端）
+  if (keyword) {
+    const k = String(keyword).toLowerCase();
+    rows = rows.filter((r) =>
+      [r.action, r.target, r.operatorName, r.operator, r.type]
+        .some((f) => f != null && String(f).toLowerCase().includes(k))
+    );
+  }
+  return ok(rows);
 }
 
 exports.main = async (event) => {

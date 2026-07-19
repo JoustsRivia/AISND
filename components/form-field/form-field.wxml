@@ -1,0 +1,13 @@
+<!-- components/form-field/form-field.wxml -->
+<view class="ff">
+  <text class="ff-label" wx:if="{{label}}">{{label}}</text>
+  <input
+    class="ff-input"
+    value="{{value}}"
+    placeholder="{{placeholder}}"
+    password="{{password}}"
+    type="{{type}}"
+    bindinput="onInput"
+  />
+  <text class="ff-error" wx:if="{{error}}">{{error}}</text>
+</view>
