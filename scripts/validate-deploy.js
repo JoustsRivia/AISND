@@ -23,9 +23,9 @@ if (!cli) {
   process.exit(0);
 }
 
-const hasCred = !!(process.env.TCB_ENV_ID || process.env.SECRET_ID || process.env.TCB_SECRET_ID);
+const hasCred = !!(process.env.TCB_ENV_ID || process.env.SECRET_ID || process.env.SECRET_KEY || process.env.TCB_SECRET_ID || process.env.TCB_SECRET_KEY);
 if (!hasCred) {
-  console.log(`⏭️  已检测到 ${cli} CLI，但未配置云环境凭证（TCB_ENV_ID / SECRET_ID），跳过干跑。`);
+  console.log(`⏭️  已检测到 ${cli} CLI，但未配置云环境凭证（TCB_ENV_ID / SECRET_ID / SECRET_KEY），跳过干跑。`);
   process.exit(0);
 }
 

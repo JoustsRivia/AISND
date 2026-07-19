@@ -291,6 +291,9 @@ async function checkTemplate(payload) {
 // ── 操作日志上报 ──────────────────────────────────────────────────────
 async function log(payload) {
   const openid = getOpenid();
+  // 确保集合已存在（生产首写自愈；mock 下幂等无副作用），必须在限流查询前完成，
+  // 否则真实环境首次写日志时集合尚未建立会使限流查询抛错。
+  await db.ensureCollection('operation_logs');
   // 留存期可配置化（item 7）：按日志类型取不同合规留存天数，默认 180 天
   const DEFAULT_RETENTION_DAYS = 180;
   const RETENTION_DAYS = { user: 365, scrap: 365, purchase: 365, store: 365, cert: 730 };
@@ -298,21 +301,20 @@ async function log(payload) {
   const rec = Date.now() - 60 * 1000;
   const recent = (await db.collection('operation_logs').where({ operator: openid, ts: _.gt(rec) }).get()).data || [];
   if (recent.length >= 30) return fail('操作过于频繁，请稍后再试', 429);
-  await db.ensureCollection('operation_logs');
   const t = now();
   // 合规留痕（item 3）：
   //   - serverTime：服务端落点时刻；与客户端动作时刻 clientTime（api 富化）形成双时间戳，便于合规对账。
-    //   - retainedUntil：合规留存到期日（按类型可配置，默认 180 天），便于安监留痕周期清理 / 归档。
-    //   - source：来源标记。其余字段（operator/operatorName/action/target/clientTime…）由调用方透传。
-    const retentionDays = RETENTION_DAYS[payload.type] || DEFAULT_RETENTION_DAYS;
-    const a = await db.add('operation_logs', {
-      operator: openid,
-      ...payload,
-      ts: t,
-      serverTime: t,
-      source: 'client',
-      retainedUntil: new Date(t.getTime() + retentionDays * 24 * 3600 * 1000),
-    });
+  //   - retainedUntil：合规留存到期日（按类型可配置，默认 180 天），便于安监留痕周期清理 / 归档。
+  //   - source：来源标记。其余字段（operator/operatorName/action/target/clientTime…）由调用方透传。
+  const retentionDays = RETENTION_DAYS[payload.type] || DEFAULT_RETENTION_DAYS;
+  const a = await db.add('operation_logs', {
+    operator: openid,
+    ...payload,
+    ts: t,
+    serverTime: t,
+    source: 'client',
+    retainedUntil: new Date(t.getTime() + retentionDays * 24 * 3600 * 1000),
+  });
   return ok({ _id: a._id });
 }
 
