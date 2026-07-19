@@ -72,9 +72,9 @@ const submitTest = (data) => invoke(FN.test, 'submit', data);
 const verifyTestTag = (code) => invoke(FN.test, 'verifyTag', { code });
 
 // ── 领用归还 M5 ──────────────────────────────────────────────────────
-const borrowTool = (id) => invoke(FN.borrow, 'borrow', { id });
+const borrowTool = (id) => invoke(FN.borrow, 'borrow', { id }).then((r) => { logOperation({ type: 'borrow', action: 'borrow', target: id }); return r; });
 // 归还需回传外观状态（normal/damaged），外观损坏触发报修（M5.2.1~M5.2.3）
-const returnTool = (id, data = {}) => invoke(FN.borrow, 'return', { id, ...data });
+const returnTool = (id, data = {}) => invoke(FN.borrow, 'return', { id, ...data }).then((r) => { logOperation({ type: 'borrow', action: 'return', target: id }); return r; });
 const getBorrowRecords = (params) => invoke(FN.borrow, 'records', params);
 
 // ── 维保 M7 ──────────────────────────────────────────────────────────
@@ -91,20 +91,20 @@ const execMaintenancePlan = (data) => invoke(FN.maintenance, 'execPlan', data);
 const autoScrapCheck = () => invoke(FN.scrap, 'autoCheck');
 const judgeScrap = (id, symptoms = []) => invoke(FN.scrap, 'judge', { id, symptoms });
 const getScrapList = (params) => invoke(FN.scrap, 'list', params);
-const submitScrap = (data) => invoke(FN.scrap, 'submit', data);
-const approveScrap = (id, pass = true) => invoke(FN.scrap, 'approve', { scrapId: id, approve: pass });
+const submitScrap = (data) => invoke(FN.scrap, 'submit', data).then((r) => { logOperation({ type: 'scrap', action: 'submit', target: data && data.id }); return r; });
+const approveScrap = (id, pass = true) => invoke(FN.scrap, 'approve', { scrapId: id, approve: pass }).then((r) => { logOperation({ type: 'scrap', action: 'approve', target: id, result: pass ? 'approved' : 'rejected' }); return r; });
 const recordScrapDisposal = (data) => invoke(FN.scrap, 'disposal', data);
 
 // ── 采购验收 M2 ───────────────────────────────────────────────────────
 const createPurchase = (data) => invoke(FN.purchase, 'create', data);
 // 审批需透传 pass：pass=false 表示驳回，云函数据此置 rejected（修复「驳回恒变通过」）
-const approvePurchase = (id, pass = true) => invoke(FN.purchase, 'approve', { id, pass });
-const createAcceptance = (data) => invoke(FN.purchase, 'accept', data);
+const approvePurchase = (id, pass = true) => invoke(FN.purchase, 'approve', { id, pass }).then((r) => { logOperation({ type: 'purchase', action: 'approve', target: id, result: pass ? 'approved' : 'rejected' }); return r; });
+const createAcceptance = (data) => invoke(FN.purchase, 'accept', data).then((r) => { logOperation({ type: 'purchase', action: 'accept', target: data && data.purchaseId }); return r; });
 const getPurchaseList = (params) => invoke(FN.purchase, 'list', params);
 
 // ── 库房 M3 ──────────────────────────────────────────────────────────
 const registerStore = (data) => invoke(FN.store, 'register', data);
-const inbound = (data) => invoke(FN.store, 'inbound', data);
+const inbound = (data) => invoke(FN.store, 'inbound', data).then((r) => { logOperation({ type: 'store', action: 'inbound', target: data && data.code }); return r; });
 const getInboundRecords = (params) => invoke(FN.store, 'records', params);
 
 // ── 现场使用 M6 ───────────────────────────────────────────────────────
@@ -151,7 +151,13 @@ const getHomeStatus = () => invoke(FN.stats, 'homeStatus');
 // ── 系统管理 M13 ──────────────────────────────────────────────────────
 const getOrgTree = () => invoke(FN.system, 'orgTree');
 const manageOrg = (data) => invoke(FN.system, 'org', data);
-const manageUser = (data) => invoke(FN.system, 'user', data);
+const manageUser = (data) => invoke(FN.system, 'user', data).then((r) => {
+  // 操作日志闭环（item 3）：仅对「增/改/删」用户这类权限变更动作留痕，列表查询不记
+  if (data && ['add', 'update', 'delete'].includes(data.op)) {
+    logOperation({ type: 'user', action: data.op, target: data.id || (data.data && data.data._id) || '' });
+  }
+  return r;
+});
 const listUsers = () => invoke(FN.system, 'user', { op: 'list' });
 const seedAdmin = (data = {}) => invoke(FN.system, 'seedAdmin', data);
 const getDict = (type) => invoke(FN.system, 'dict', { type });

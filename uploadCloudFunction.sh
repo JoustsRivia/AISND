@@ -1,1 +1,30 @@
-${installPath} cloud functions deploy --e ${envId} --n quickstartFunctions --r --project ${projectPath}
+#!/usr/bin/env bash
+# uploadCloudFunction.sh —— 云函数定点部署脚本（单函数）
+#
+# 用法：
+#   bash uploadCloudFunction.sh <envId> <functionName> <projectPath>
+#
+# 示例：
+#   bash uploadCloudFunction.sh prod-1f2a3b auth /path/to/project
+#
+# 说明：
+#   - 仅部署单个云函数（--n <functionName>），不涉及目录通配，避免误部署脚手架。
+#   - 脚手架 cloudfunctions/tpl 缺少 index.js，属不可运行的模板；传 tpl 将直接拒绝。
+#   - INSTALL_PATH 指向微信云开发 CLI（tcb / cloudbase），可用环境变量覆盖。
+
+set -euo pipefail
+
+ENV_ID="${1:?用法: uploadCloudFunction.sh <envId> <functionName> <projectPath>}"
+FUNC_NAME="${2:?缺少云函数名（functionName）}"
+PROJECT_PATH="${3:?缺少项目路径（projectPath）}"
+
+# 防误部署：脚手架模板 tpl 不可作为云函数推送
+if [ "$FUNC_NAME" = "tpl" ]; then
+  echo "❌ 拒绝部署脚手架模板 cloudfunctions/tpl（缺少 index.js，非可运行云函数）。" >&2
+  echo "   如需新建云函数，请参考 cloudfunctions/tpl/README.md 复制并重命名。" >&2
+  exit 1
+fi
+
+INSTALL_PATH="${INSTALL_PATH:-tcb}"
+
+"$INSTALL_PATH" cloud functions deploy --e "$ENV_ID" --n "$FUNC_NAME" --r --project "$PROJECT_PATH"

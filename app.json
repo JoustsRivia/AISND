@@ -6,7 +6,8 @@
     "pages/scan/scan",
     "pages/message/message",
     "pages/profile/profile",
-    "pages/login/login"
+    "pages/login/login",
+    "pages/register/register"
   ],
   "subpackages": [
     {

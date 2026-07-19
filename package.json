@@ -1,0 +1,10 @@
+{
+  "name": "snd-mini",
+  "version": "1.0.0",
+  "private": true,
+  "description": "SND 工器具安全管理小程序（微信云开发）—— 云函数单测与 helper 注释规范校验",
+  "scripts": {
+    "test": "node --test cloudfunctions/_tests/cloud-functions.test.js",
+    "lint:helpers": "node scripts/helper-comments.js"
+  }
+}

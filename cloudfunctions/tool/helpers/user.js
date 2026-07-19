@@ -1,4 +1,4 @@
-// cloudfunctions/tpl/helpers/user.js  （模板，与各函数 helpers/ 一致）
+// cloudfunctions/tool/helpers/user.js
 // ★ 隔离层：仅此文件可调用 cloud.getWXContext() 等 wx-server-sdk 环境能力。
 // 迁移到自有服务器时，只重写本文件（改为从请求头/Token 解析身份），调用方无感知。
 const cloud = require('wx-server-sdk');

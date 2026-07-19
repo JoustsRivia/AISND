@@ -1,0 +1,50 @@
+<!-- pages/register/register.wxml —— 独立注册页（仅注册分支，复用 api.register） -->
+<view class="login">
+  <view class="hero login-hero">
+    <view class="brand-sub">SND 智慧安监系统</view>
+    <view class="brand-title">账号注册</view>
+  </view>
+
+  <view class="form-wrap">
+    <view class="form card">
+      <view class="form-row">
+        <text class="label">角色</text>
+        <picker mode="selector" range="{{roles}}" range-key="name" value="{{roleIndex}}" bindchange="onRoleChange">
+          <view class="picker">{{roles[roleIndex].name}} ▾</view>
+        </picker>
+      </view>
+      <view class="role-desc">ⓘ {{roles[roleIndex].desc}}</view>
+
+      <view class="form-row">
+        <text class="label">所属单位</text>
+        <picker mode="selector" range="{{units}}" range-key="name" value="{{unitIndex}}" bindchange="onUnitChange">
+          <view class="picker">{{units[unitIndex].name}} ▾</view>
+        </picker>
+      </view>
+      <view class="form-row">
+        <text class="label">机构/班组</text>
+        <picker mode="selector" range="{{orgOptions}}" range-key="label" value="{{orgIndex}}" bindchange="onOrgChange">
+          <view class="picker">{{orgOptions[orgIndex].label}} ▾</view>
+        </picker>
+      </view>
+
+      <view class="form-row">
+        <text class="label">用户名</text>
+        <input class="input" placeholder="请输入用户名" value="{{username}}" bindinput="onUserInput" />
+      </view>
+      <view class="form-row">
+        <text class="label">密码</text>
+        <input class="input" password placeholder="请输入密码" value="{{password}}" bindinput="onPwdInput" />
+      </view>
+      <view class="form-row">
+        <text class="label">昵称</text>
+        <input class="input" placeholder="选填，默认同用户名" value="{{nickname}}" bindinput="onNickInput" />
+      </view>
+
+      <button type="primary" loading="{{loading}}" bindtap="onRegister">注册并登录</button>
+
+      <view class="note">🔒 小程序管理员由系统初始化分配；其余角色（含专班负责人 / 项目部负责人 / 安监部管理人员）均可自助注册</view>
+      <view class="forgot" bindtap="goLogin">已有账号？<text class="link">去登录</text></view>
+    </view>
+  </view>
+</view>
