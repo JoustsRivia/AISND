@@ -6,6 +6,37 @@ const ok = (data) => ({ code: 0, data });
 const fail = (message, code = 1) => ({ code, message });
 const now = () => new Date();
 
+// ── 日志留存策略（item 5：后台可配置）────────────────────────────────────
+// 默认留存天数（按日志类型分类型合规留存），可被 system_config / dicts 中的策略覆盖。
+const DEFAULT_RETENTION_DAYS = 180;
+const DEFAULT_RETENTION = { user: 365, scrap: 365, purchase: 365, store: 365, cert: 730 };
+// 60s 内存缓存，避免每条日志都回查配置（配置变更时主动失效）
+let __retentionCache = null;
+function clearRetentionCache() { __retentionCache = null; }
+async function getRetentionPolicy({ useCache = true } = {}) {
+  if (useCache && __retentionCache && Date.now() - __retentionCache.ts < 60000) return __retentionCache.value;
+  const r = await db.listBy('dicts', { type: 'retention', key: 'policy' }, 1);
+  const item = r.data && r.data[0];
+  const value = (item && item.data) || DEFAULT_RETENTION;
+  __retentionCache = { value, ts: Date.now() };
+  return value;
+}
+
+// ── 日志写入限流（item 3：按 action 分级）────────────────────────────────
+// 同一 operator + 同 action 在窗口内超阈值则拒绝（429）。
+// 默认档 60s/30 防刷；管理端批量操作（白名单）使用更高阈值，避免正常批量管理（导入/批量入库）被误伤。
+const ACTION_RATE = {
+  default: { window: 60 * 1000, max: 30 },
+  import: { window: 60 * 1000, max: 200 }, // 批量导入/建档
+  batch: { window: 60 * 1000, max: 300 },  // 批量入库/生成
+};
+const BATCH_ACTIONS = ['importTools', 'batchInbound', 'batchGen', 'batchImport'];
+function rateLimitFor(action) {
+  if (BATCH_ACTIONS.includes(action)) return ACTION_RATE.batch;
+  if (action && ACTION_RATE[action]) return ACTION_RATE[action];
+  return ACTION_RATE.default;
+}
+
 // 与 cloudfunctions/auth/index.js 同源的密码哈希（sha1 + 'tms_' 盐），保证账号在两处校验一致。
 const crypto = require('crypto');
 function hashPwd(p) { return p ? crypto.createHash('sha1').update('tms_' + p).digest('hex') : ''; }
@@ -294,19 +325,20 @@ async function log(payload) {
   // 确保集合已存在（生产首写自愈；mock 下幂等无副作用），必须在限流查询前完成，
   // 否则真实环境首次写日志时集合尚未建立会使限流查询抛错。
   await db.ensureCollection('operation_logs');
-  // 留存期可配置化（item 7）：按日志类型取不同合规留存天数，默认 180 天
-  const DEFAULT_RETENTION_DAYS = 180;
-  const RETENTION_DAYS = { user: 365, scrap: 365, purchase: 365, store: 365, cert: 730 };
-  // 写入限流（item 4 防刷）：同一 operator 近 60s 内超过阈值则拒绝（429）
-  const rec = Date.now() - 60 * 1000;
-  const recent = (await db.collection('operation_logs').where({ operator: openid, ts: _.gt(rec) }).get()).data || [];
-  if (recent.length >= 30) return fail('操作过于频繁，请稍后再试', 429);
+  // 写入限流（item 3 防刷，按 action 分级）：同一 operator + 同 action 在窗口内超阈值则拒绝（429）。
+  // 批量操作（白名单）更高阈值，避免正常批量管理被误伤。
+  const action = payload.action || 'unknown';
+  const rate = rateLimitFor(action);
+  const rec = Date.now() - rate.window;
+  const recent = (await db.collection('operation_logs').where({ operator: openid, action, ts: _.gt(rec) }).get()).data || [];
+  if (recent.length >= rate.max) return fail('操作过于频繁，请稍后再试', 429);
   const t = now();
-  // 合规留痕（item 3）：
+  // 合规留痕：
   //   - serverTime：服务端落点时刻；与客户端动作时刻 clientTime（api 富化）形成双时间戳，便于合规对账。
-  //   - retainedUntil：合规留存到期日（按类型可配置，默认 180 天），便于安监留痕周期清理 / 归档。
+  //   - retainedUntil：合规留存到期日（item 5：配置驱动，回退默认 180 天），便于安监留痕周期清理 / 归档。
   //   - source：来源标记。其余字段（operator/operatorName/action/target/clientTime…）由调用方透传。
-  const retentionDays = RETENTION_DAYS[payload.type] || DEFAULT_RETENTION_DAYS;
+  const policy = await getRetentionPolicy();
+  const retentionDays = policy[payload.type] || DEFAULT_RETENTION_DAYS;
   const a = await db.add('operation_logs', {
     operator: openid,
     ...payload,
@@ -386,6 +418,28 @@ async function cleanupLogs(payload = {}, isTimer = false) {
   return ok({ removed, before: before.toISOString() });
 }
 
+// M13.3 日志留存策略（item 5：后台可配置）
+//   op=get ：返回当前生效策略（合并默认），供管理后台展示
+//   op=set ：仅管理员；更新策略并持久化到 dicts（type=retention, key=policy），立即失效缓存
+async function retention(payload = {}) {
+  const { op = 'get', policy } = payload;
+  if (op === 'get') {
+    const p = await getRetentionPolicy({ useCache: false });
+    return ok({ policy: p, defaults: DEFAULT_RETENTION });
+  }
+  // set：仅管理员可改留存策略（S1 越权收口）
+  const g = await requireAdmin();
+  if (g.err) return g.err;
+  if (!policy || typeof policy !== 'object' || Array.isArray(policy)) return fail('请提供留存策略对象', 400);
+  for (const k of Object.keys(policy)) {
+    if (!Number.isInteger(policy[k]) || policy[k] < 0) return fail('留存天数必须为非负整数', 400);
+  }
+  const merged = { ...DEFAULT_RETENTION, ...policy };
+  await db.saveDict('retention', 'policy', merged);
+  clearRetentionCache();
+  return ok({ policy: merged });
+}
+
 exports.main = async (event) => {
   const ev = event || {};
   // 定时器触发时无 action，由 triggerName 路由（config.json 的 logCleanup → cleanupLogs）
@@ -401,6 +455,7 @@ exports.main = async (event) => {
       case 'checkTemplate': return checkTemplate(payload);
       case 'log': return log(payload);
       case 'listLog': return listLog(payload);
+      case 'retention': return retention(payload);
       case 'cleanupLogs': return cleanupLogs(payload, !!ev.triggerName);
       default: return fail('未知 action: ' + action);
     }

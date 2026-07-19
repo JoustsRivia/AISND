@@ -195,12 +195,61 @@ test('system.listLog: 非管理员列表脱敏 operator（仅留 operatorName）
   assert.strictEqual(r.data.list[0].operator, undefined); // 私密 openid 已脱敏
 });
 
-// ───────────────── log：写入限流防刷（Item 4，429）─────────────────
-test('system.log: 近 60s 同 operator 写入超阈值被拒（429）', async () => {
+// ───────────────── log：写入限流防刷（Item 3，按 action 分级，429）─────────────────
+test('system.log: 近 60s 同 operator + 同 action 写入超阈值被拒（429）', async () => {
   const now = Date.now();
   const arr = [];
-  for (let i = 0; i < 30; i++) arr.push({ _id: 'r' + i, type: 'borrow', operator: 'test_openid', ts: now - i * 1000 });
+  for (let i = 0; i < 30; i++) arr.push({ _id: 'r' + i, type: 'borrow', action: 'borrow', operator: 'test_openid', ts: now - i * 1000 });
   mock.__store.operation_logs = arr;
   const r = await system.main({ action: 'log', payload: { type: 'borrow', action: 'borrow', target: 'T1', operatorName: 'x' } });
   assert.strictEqual(r.code, 429);
+});
+
+test('system.log: 批量操作(白名单)在更高阈值内不被拦截', async () => {
+  const now = Date.now();
+  const arr = [];
+  for (let i = 0; i < 100; i++) arr.push({ _id: 'b' + i, type: 'import', action: 'batchImport', operator: 'test_openid', ts: now - i * 100 });
+  mock.__store.operation_logs = arr;
+  const r = await system.main({ action: 'log', payload: { type: 'import', action: 'batchImport', target: 'T1', operatorName: 'x' } });
+  assert.strictEqual(r.code, 0); // 100 < 300，批量放行
+});
+
+test('system.log: 同 action 分级限流——普通 action 超 30 被拒，批量 action 同量放行', async () => {
+  const now = Date.now();
+  const a = [];
+  for (let i = 0; i < 31; i++) a.push({ _id: 'n' + i, type: 'borrow', action: 'borrow', operator: 'test_openid', ts: now - i * 100 });
+  for (let i = 0; i < 100; i++) a.push({ _id: 'k' + i, type: 'import', action: 'batchImport', operator: 'test_openid', ts: now - i * 100 });
+  mock.__store.operation_logs = a;
+  const rNormal = await system.main({ action: 'log', payload: { type: 'borrow', action: 'borrow', target: 'T1', operatorName: 'x' } });
+  assert.strictEqual(rNormal.code, 429); // 普通动作超 30 被拒
+  const rBatch = await system.main({ action: 'log', payload: { type: 'import', action: 'batchImport', target: 'T1', operatorName: 'x' } });
+  assert.strictEqual(rBatch.code, 0); // 批量动作 100 < 300 放行
+});
+
+// ───────────────── retention：后台可配置（Item 5）─────────────────
+test('system.retention: get 返回默认策略（合并默认）', async () => {
+  seedAdmin();
+  const r = await system.main({ action: 'retention', payload: { op: 'get' } });
+  assert.strictEqual(r.code, 0);
+  assert.strictEqual(r.data.policy.user, 365);
+  assert.strictEqual(r.data.policy.cert, 730);
+  assert.strictEqual(r.data.defaults.user, 365);
+});
+
+test('system.retention: 管理员 set 更新策略后日志按新值留存', async () => {
+  seedAdmin();
+  const setR = await system.main({ action: 'retention', payload: { op: 'set', policy: { user: 400, borrow: 220 } } });
+  assert.strictEqual(setR.code, 0);
+  assert.strictEqual(setR.data.policy.user, 400);
+  const logR = await system.main({ action: 'log', payload: { type: 'user' } });
+  assert.strictEqual(logR.code, 0);
+  const u = mock.__store.operation_logs[mock.__store.operation_logs.length - 1];
+  const days = Math.round((u.retainedUntil - u.serverTime) / (24 * 3600 * 1000));
+  assert.strictEqual(days, 400);
+});
+
+test('system.retention: 非管理员 set 被拒（403）', async () => {
+  mock.__store.users = [{ _id: 'u2', openid: 'test_openid', role: 'worker', status: 'active', bound: true }];
+  const r = await system.main({ action: 'retention', payload: { op: 'set', policy: { user: 999 } } });
+  assert.strictEqual(r.code, 403);
 });

@@ -10,6 +10,7 @@
     "lint:helpers": "node scripts/helper-comments.js",
     "lint:db-base": "node scripts/check-db-base.js",
     "check:syntax": "node scripts/check-syntax.js",
+    "check:frontend": "node scripts/check-frontend-decoupled.js",
     "validate:functions": "node scripts/validate-functions.js",
     "validate:deploy": "node scripts/validate-deploy.js",
     "drill:mongo": "node scripts/migrate-drill/mongo.js",

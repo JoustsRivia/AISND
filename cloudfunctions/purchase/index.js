@@ -1,6 +1,8 @@
 // cloudfunctions/purchase/index.js —— M2 采购验收（纯业务，只引用 helpers）
 const { getOpenid } = require('./helpers/user');
 const db = require('./helpers/db');
+// RBAC 数据范围原语（来自 _shared/dbBase.js 单一源，迁移零改动）
+const { scopeFilter, listOrgs } = db;
 const ok = (data) => ({ code: 0, data });
 const fail = (message, code = 1) => ({ code, message });
 const now = () => new Date();
@@ -45,12 +47,18 @@ async function approve(payload) {
   return ok({ id, status: approve ? 'approved' : 'rejected' });
 }
 
-// 采购单列表（审批/台账用，支持分页）
+// 采购单列表（审批/台账用，支持分页；item 1：RBAC 按组织子树收窄）
 async function list(payload = {}) {
   const { status, applicant, page = 0, size = 50 } = payload;
+  const openid = getOpenid();
+  const me = await db.getCurrentUser(openid);
   const where = {};
   if (status) where.status = status;
   if (applicant) where.applicant = applicant;
+  // RBAC 数据范围（item 1）：复用 _shared/dbBase.js 单一源 scopeFilter 按组织子树收窄，
+  // 杜绝单位/机构级角色看到越权采购数据；全局角色看全量、单位角色看整单位子树。
+  const orgs = (await listOrgs(500)).data || [];
+  Object.assign(where, scopeFilter(me, orgs, { orgId: payload.orgId || undefined, unitId: payload.unitId }));
   const skip = page * size;
   const res = await db.listBy('purchases', where, size, skip);
   return ok(res.data || []);

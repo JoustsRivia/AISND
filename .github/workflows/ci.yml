@@ -20,6 +20,8 @@ jobs:
         run: npm run lint:helpers
       - name: 隔离层单一源校验（防漂移）
         run: npm run lint:db-base
+      - name: 前端零直连门禁（§4 #7，架构铁律①不可绕过）
+        run: npm run check:frontend
       - name: 云函数构建产物门禁（可部署性干跑）
         run: npm run validate:functions
       - name: 真实 CLI 部署干跑（§4 #2，注入凭据则真正跑通 tcb fn deploy --dry-run；未配置则优雅跳过）
@@ -30,13 +32,21 @@ jobs:
           SECRET_KEY: ${{ secrets.SECRET_KEY }}
           TCB_SECRET_ID: ${{ secrets.TCB_SECRET_ID }}
           TCB_SECRET_KEY: ${{ secrets.TCB_SECRET_KEY }}
-        run: npm run validate:deploy
-      - name: 真实 MongoDB 演练（§4 #3 / #6，起 mongodb-memory-server 后跑多域注入回归；未装驱动则优雅跳过）
+        run: |
+          npm install -g @cloudbase/cli > /dev/null 2>&1 || true
+          npm run validate:deploy
+      - name: 真实 MongoDB 演练（§4 #3 / #6，起 mongodb-memory-server 后跑全业务域注入回归；未装驱动则优雅跳过）
         continue-on-error: true
         run: |
           npm install --no-save mongodb mongodb-memory-server || true
-          (npx --yes mongodb-memory-server > /tmp/mongo.log 2>&1 &) ; sleep 10
-          export MONGODB_URI="$(grep -rho 'mongodb://[^ ]*' /tmp/mongo.log 2>/dev/null | head -1 || true)"
+          node scripts/start-mongo-memory.js > /tmp/mongo.log 2>&1 &
+          MONGO_PID=$!
+          for i in $(seq 1 30); do
+            if [ -f /tmp/mongo-uri.txt ]; then break; fi
+            sleep 2
+          done
+          export MONGODB_URI="$(cat /tmp/mongo-uri.txt 2>/dev/null || true)"
           npm run drill:mongo
+          kill $MONGO_PID 2>/dev/null || true
       - name: 全量 JS 语法检查
         run: npm run check:syntax

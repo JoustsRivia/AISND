@@ -1,6 +1,8 @@
 // cloudfunctions/store/index.js —— M3 库房（纯业务，只引用 helpers）
 const { getOpenid } = require('./helpers/user');
 const db = require('./helpers/db');
+// RBAC 数据范围原语（来自 _shared/dbBase.js 单一源，迁移零改动）
+const { scopeFilter, listOrgs } = db;
 const ok = (data) => ({ code: 0, data });
 const fail = (message, code = 1) => ({ code, message });
 const now = () => new Date();
@@ -36,8 +38,10 @@ async function records(payload = {}) {
   const where = {};
   if (storeId) where.storeId = storeId;
   if (toolId) where.toolId = toolId;
-  // 数据范围：仅返回当前用户所属组织，避免跨组织可见
-  if (me && me.orgId) where.orgId = me.orgId;
+  // RBAC 数据范围（item 1）：复用 _shared/dbBase.js 单一源 scopeFilter 按组织子树收窄，
+  // 杜绝单位/机构级角色看到越权数据；全局角色看全量、单位角色看整单位子树、机构/班组看本机构子树。
+  const orgs = (await listOrgs(500)).data || [];
+  Object.assign(where, scopeFilter(me, orgs, { orgId: payload.orgId || undefined, unitId: payload.unitId }));
   const skip = page * size;
   const res = await db.listBy('inbound_records', where, size, skip);
   return ok(res.data || []);

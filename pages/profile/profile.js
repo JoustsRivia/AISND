@@ -24,6 +24,8 @@ Page({
     // 同步全局主题到本页根视图
     this.setData({ themeClass: theme.classOf(app.globalData.theme), themeDark: app.globalData.theme === 'dark' });
     this.load();
+    // 广播档案变更（Item 4）：角色/组织更新后通知订阅方（如 permission 页）实时刷新
+    auth.emitProfileChanged();
   },
 
   onThemeToggle(e) {

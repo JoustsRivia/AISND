@@ -21,4 +21,16 @@ const addOrg = (data) => coll('orgs').add({ data });
 const remove = (name, id) => coll(name).doc(id).remove();
 const removeOrg = (id) => coll('orgs').doc(id).remove();
 const countBy = (name, filter = {}) => coll(name).where(filter).count();
-module.exports = { _, add, getById, update, listBy, coll, collection: coll, getCurrentUser, listOrgs, addOrg, remove, removeOrg, countBy, ensureCollection };
+// 字典 upsert（按 type+key 唯一）：用于留存策略等「后台可配置」项（item 5）。
+const saveDict = async (type, key, data) => {
+  const cur = await listBy('dicts', { type, key }, 1);
+  const existing = cur.data && cur.data[0];
+  if (existing) {
+    const { _id, ...rest } = data;
+    await update('dicts', existing._id, { ...rest, updatedAt: new Date() });
+    return existing._id;
+  }
+  const a = await add('dicts', { type, key, data, createdAt: new Date() });
+  return a._id;
+};
+module.exports = { _, add, getById, update, listBy, coll, collection: coll, getCurrentUser, listOrgs, addOrg, remove, removeOrg, countBy, saveDict, ensureCollection };

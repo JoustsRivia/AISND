@@ -17,6 +17,8 @@ const maintenance = require('../maintenance/index');
 const store = require('../store/index');
 const reconcile = require('../reconcile/index');
 const file = require('../file/index');
+const purchase = require('../purchase/index');
+const tool = require('../tool/index');
 const mock = require('./mock-cloud');
 
 beforeEach(() => {
@@ -211,6 +213,133 @@ test('store.batchInbound: 批量写入入库记录', async () => {
   assert.strictEqual(r.code, 0);
   assert.strictEqual(r.data.count, 2);
   assert.strictEqual(mock.__store.inbound_records.length, 2);
+});
+
+// ───────────────────────── store：入库记录 RBAC 数据范围（item 1） ─────────────────────────
+test('store.records: 单位级角色按组织子树见全队入库记录，跨机构被拦截', async () => {
+  mock.__store.orgs = [
+    { _id: 'o1', parentId: null }, { _id: 'o2', parentId: 'o1' }, { _id: 'o3', parentId: 'o1' }, { _id: 'oX', parentId: null },
+  ];
+  mock.__store.users = [{ openid: 'lead1', role: 'project_lead', orgId: 'o1', status: 'active' }];
+  mock.__store.inbound_records = [
+    { _id: 'i1', orgId: 'o1' }, { _id: 'i2', orgId: 'o2' }, { _id: 'i3', orgId: 'o3' }, { _id: 'iX', orgId: 'oX' },
+  ];
+  mock.__setOpenid('lead1');
+  const r1 = await store.main({ action: 'records', payload: {} });
+  assert.strictEqual(r1.code, 0);
+  assert.strictEqual(r1.data.length, 3); // o1/o2/o3
+  const r2 = await store.main({ action: 'records', payload: { orgId: 'oX' } });
+  assert.strictEqual(r2.data.length, 3); // 越权下钻被忽略
+});
+
+test('store.records: 普通用户仅见本机构子树入库记录', async () => {
+  mock.__store.orgs = [{ _id: 'o1', parentId: null }, { _id: 'oX', parentId: null }];
+  mock.__store.users = [{ openid: 'w1', role: 'worker', orgId: 'oX', status: 'active' }];
+  mock.__store.inbound_records = [{ _id: 'i1', orgId: 'oX' }, { _id: 'i2', orgId: 'o1' }];
+  mock.__setOpenid('w1');
+  const r = await store.main({ action: 'records', payload: {} });
+  assert.strictEqual(r.code, 0);
+  assert.strictEqual(r.data.length, 1);
+  assert.strictEqual(r.data[0]._id, 'i1');
+});
+
+test('store.records: 全局角色看全量入库记录', async () => {
+  mock.__store.orgs = [{ _id: 'o1', parentId: null }, { _id: 'oX', parentId: null }];
+  mock.__store.users = [{ openid: 'a1', role: 'admin', status: 'active' }];
+  mock.__store.inbound_records = [{ _id: 'i1', orgId: 'o1' }, { _id: 'i2', orgId: 'oX' }];
+  mock.__setOpenid('a1');
+  const r = await store.main({ action: 'records', payload: {} });
+  assert.strictEqual(r.code, 0);
+  assert.strictEqual(r.data.length, 2);
+});
+
+// ───────────────────────── maintenance：报修/计划 RBAC 数据范围（item 1） ─────────────────────────
+test('maintenance.list: 单位级角色按组织子树见报修单，跨机构被拦截', async () => {
+  mock.__store.orgs = [{ _id: 'o1', parentId: null }, { _id: 'o2', parentId: 'o1' }, { _id: 'oX', parentId: null }];
+  mock.__store.users = [{ openid: 'p1', role: 'project_lead', orgId: 'o1', status: 'active' }];
+  mock.__store.repair_records = [
+    { _id: 'r1', orgId: 'o1', status: 'pending' }, { _id: 'r2', orgId: 'o2', status: 'pending' }, { _id: 'rX', orgId: 'oX', status: 'pending' },
+  ];
+  mock.__setOpenid('p1');
+  const r1 = await maintenance.main({ action: 'list', payload: {} });
+  assert.strictEqual(r1.code, 0);
+  assert.strictEqual(r1.data.length, 2); // o1/o2
+  const r2 = await maintenance.main({ action: 'list', payload: { orgId: 'oX' } });
+  assert.strictEqual(r2.data.length, 2); // 越权下钻被忽略
+});
+
+test('maintenance.list: 普通用户仅见本机构报修单', async () => {
+  mock.__store.orgs = [{ _id: 'o1', parentId: null }, { _id: 'oX', parentId: null }];
+  mock.__store.users = [{ openid: 'w1', role: 'worker', orgId: 'oX', status: 'active' }];
+  mock.__store.repair_records = [{ _id: 'r1', orgId: 'oX' }, { _id: 'r2', orgId: 'o1' }];
+  mock.__setOpenid('w1');
+  const r = await maintenance.main({ action: 'list', payload: {} });
+  assert.strictEqual(r.code, 0);
+  assert.strictEqual(r.data.length, 1);
+  assert.strictEqual(r.data[0]._id, 'r1');
+});
+
+test('maintenance.listPlan: 按组织子树收窄保养计划', async () => {
+  mock.__store.orgs = [{ _id: 'o1', parentId: null }, { _id: 'oX', parentId: null }];
+  mock.__store.users = [{ openid: 'p1', role: 'project_lead', orgId: 'o1', status: 'active' }];
+  mock.__store.maintenance_records = [{ _id: 'm1', type: 'plan', orgId: 'o1' }, { _id: 'mX', type: 'plan', orgId: 'oX' }];
+  mock.__setOpenid('p1');
+  const r = await maintenance.main({ action: 'listPlan', payload: {} });
+  assert.strictEqual(r.code, 0);
+  assert.strictEqual(r.data.length, 1);
+  assert.strictEqual(r.data[0]._id, 'm1');
+});
+
+// ───────────────────────── purchase：采购单 RBAC 数据范围（item 1） ─────────────────────────
+test('purchase.list: 单位级角色按组织子树见采购单，跨机构被拦截', async () => {
+  mock.__store.orgs = [{ _id: 'o1', parentId: null }, { _id: 'o2', parentId: 'o1' }, { _id: 'oX', parentId: null }];
+  mock.__store.users = [{ openid: 'p1', role: 'project_lead', orgId: 'o1', status: 'active' }];
+  mock.__store.purchases = [
+    { _id: 'pu1', orgId: 'o1', status: 'pending' }, { _id: 'pu2', orgId: 'o2', status: 'pending' }, { _id: 'puX', orgId: 'oX', status: 'pending' },
+  ];
+  mock.__setOpenid('p1');
+  const r = await purchase.main({ action: 'list', payload: {} });
+  assert.strictEqual(r.code, 0);
+  assert.strictEqual(r.data.length, 2); // o1/o2
+  const r2 = await purchase.main({ action: 'list', payload: { orgId: 'oX' } });
+  assert.strictEqual(r2.data.length, 2); // 越权下钻被忽略
+});
+
+test('purchase.list: 普通用户仅见本机构采购单', async () => {
+  mock.__store.orgs = [{ _id: 'o1', parentId: null }, { _id: 'oX', parentId: null }];
+  mock.__store.users = [{ openid: 'w1', role: 'worker', orgId: 'oX', status: 'active' }];
+  mock.__store.purchases = [{ _id: 'pu1', orgId: 'oX' }, { _id: 'pu2', orgId: 'o1' }];
+  mock.__setOpenid('w1');
+  const r = await purchase.main({ action: 'list', payload: {} });
+  assert.strictEqual(r.code, 0);
+  assert.strictEqual(r.data.length, 1);
+  assert.strictEqual(r.data[0]._id, 'pu1');
+});
+
+// ───────────────────────── tool：台账 RBAC 数据范围（item 1，复用 scopeWhere） ─────────────────────────
+test('tool.list: 单位级角色按组织子树见台账，跨机构被拦截', async () => {
+  mock.__store.orgs = [{ _id: 'o1', parentId: null }, { _id: 'o2', parentId: 'o1' }, { _id: 'oX', parentId: null }];
+  mock.__store.users = [{ openid: 'p1', role: 'project_lead', orgId: 'o1', status: 'active' }];
+  mock.__store.tools = [
+    { _id: 't1', orgId: 'o1', status: 'qualified' }, { _id: 't2', orgId: 'o2', status: 'qualified' }, { _id: 'tX', orgId: 'oX', status: 'qualified' },
+  ];
+  mock.__setOpenid('p1');
+  const r = await tool.main({ action: 'list', payload: {} });
+  assert.strictEqual(r.code, 0);
+  assert.strictEqual(r.data.list.length, 2); // o1/o2
+  const r2 = await tool.main({ action: 'list', payload: { orgId: 'oX' } });
+  assert.strictEqual(r2.data.list.length, 2); // 越权下钻被忽略
+});
+
+test('tool.list: 普通用户仅见本机构台账', async () => {
+  mock.__store.orgs = [{ _id: 'o1', parentId: null }, { _id: 'oX', parentId: null }];
+  mock.__store.users = [{ openid: 'w1', role: 'worker', orgId: 'oX', status: 'active' }];
+  mock.__store.tools = [{ _id: 't1', orgId: 'oX' }, { _id: 't2', orgId: 'o1' }];
+  mock.__setOpenid('w1');
+  const r = await tool.main({ action: 'list', payload: {} });
+  assert.strictEqual(r.code, 0);
+  assert.strictEqual(r.data.list.length, 1);
+  assert.strictEqual(r.data.list[0]._id, 't1');
 });
 
 // ───────────────────────── reconcile：账物核对（M1.4） ─────────────────────────

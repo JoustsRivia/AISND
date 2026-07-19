@@ -1,6 +1,8 @@
 // cloudfunctions/maintenance/helpers/db.js （隔离层：仅此处可调用 cloud.database()）
 const base = require('./dbBase');
 const { cloud, db, _, collection } = base;
+// RBAC 数据范围原语（来自 _shared/dbBase.js 单一源，迁移零改动）
+const { subtreeIds, roleScope, allowedOrgIds, scopeFilter } = base;
 const c = collection;
 const add = (name, data) => c(name).add({ data });
 const getById = (name, id) => c(name).doc(id).get();
@@ -12,5 +14,10 @@ const updateTool = (id, data) => c('tools').doc(id).update({ data });
 // 读取当前用户档案（role/orgId/status），供服务端鉴权与数据范围推导
 const findUser = (openid) => collection('users').where({ openid }).get();
 const getCurrentUser = base.getCurrentUser;
+const listOrgs = (size = 200) => collection('orgs').limit(size).get();
 
-module.exports = { collection, _, add, getById, update, listBy, updateTool, findUser, getCurrentUser };
+module.exports = {
+  collection, _, add, getById, update, listBy, updateTool, findUser, getCurrentUser, listOrgs,
+  // RBAC 数据范围原语（透出，供 index.js 复用，迁移零改动）
+  subtreeIds, roleScope, allowedOrgIds, scopeFilter,
+};

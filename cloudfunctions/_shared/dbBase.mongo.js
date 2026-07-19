@@ -206,10 +206,19 @@ function allowedOrgIds(user, orgs, opts = {}) {
   return base;
 }
 
+// 组织范围过滤片段（与 dbBase.js 完全一致）：返回可直接合并进列表 where 的 orgId 条件。
+// 业务列表统一调用本函数，避免重复子树推导；迁移到真实 mongodb 时行为一致。
+function scopeFilter(user, orgs, opts = {}) {
+  const ids = allowedOrgIds(user, orgs, opts);
+  if (ids === null) return {};
+  if (ids.includes('__unbound__')) return { orgId: '__unbound__' };
+  return { orgId: _.in(ids) };
+}
+
 module.exports = {
   cloud, db, _, collection, regExp, getById, add, update, listBy, getCurrentUser,
   // RBAC 数据范围原语（纯函数，业务函数按需复用，迁移零改动）
-  GLOBAL_ROLES, UNIT_ROLES, subtreeIds, roleScope, allowedOrgIds,
+  GLOBAL_ROLES, UNIT_ROLES, subtreeIds, roleScope, allowedOrgIds, scopeFilter,
   // 适配层专属：生产注入真实 mongodb 集合工厂
   setCollectionFactory,
 };

@@ -1,6 +1,8 @@
 // cloudfunctions/maintenance/index.js —— M7 维保报修（纯业务，只引用 helpers）
 const { getOpenid } = require('./helpers/user');
 const db = require('./helpers/db');
+// RBAC 数据范围原语（来自 _shared/dbBase.js 单一源，迁移零改动）
+const { scopeFilter, listOrgs } = db;
 const ok = (data) => ({ code: 0, data });
 const fail = (message, code = 1) => ({ code, message });
 const now = () => new Date();
@@ -16,10 +18,19 @@ async function requireApprover() {
   return { u };
 }
 
+// 当前用户的组织子树（item 1：列表按组织范围收窄用）
+async function scopeOf(payload = {}) {
+  const me = await db.getCurrentUser(getOpenid());
+  const orgs = (await listOrgs(500)).data || [];
+  return scopeFilter(me, orgs, { orgId: payload.orgId || undefined, unitId: payload.unitId });
+}
+
 // 保养计划（M7.1）
 async function create(payload) {
   const openid = getOpenid();
-  const doc = { ...payload, type: 'plan', status: 'planned', creator: openid, createdAt: now() };
+  const me = await db.getCurrentUser(openid);
+  // 服务端归属：计划归属当前用户组织（防越权挂靠）
+  const doc = { ...payload, type: 'plan', status: 'planned', creator: openid, orgId: (me && me.orgId) || '', createdAt: now() };
   const added = await db.add('maintenance_records', doc);
   return ok({ _id: added._id, ...doc });
 }
@@ -27,7 +38,9 @@ async function create(payload) {
 // 故障报修（M7.2）
 async function report(payload) {
   const openid = getOpenid();
-  const doc = { ...payload, status: 'pending', reporter: openid, createdAt: now() };
+  const me = await db.getCurrentUser(openid);
+  // 服务端归属：报修单归属当前用户组织（防越权挂靠，并支撑列表按组织范围收窄）
+  const doc = { ...payload, status: 'pending', reporter: openid, orgId: (me && me.orgId) || '', createdAt: now() };
   const added = await db.add('repair_records', doc);
   if (payload.toolId) {
     try {
@@ -64,21 +77,23 @@ async function record(payload) {
   return ok({ id, status: 'repaired' });
 }
 
-// 报修/维修列表
+// 报修/维修列表（item 1：RBAC 按组织子树收窄）
 async function list(payload = {}) {
   const { toolId, status } = payload;
   const where = {};
   if (toolId) where.toolId = toolId;
   if (status) where.status = status;
+  Object.assign(where, await scopeOf(payload));
   const res = await db.listBy('repair_records', where, 50);
   return ok(res.data || []);
 }
 
-// 保养计划列表（M7.1）
+// 保养计划列表（M7.1，item 1：RBAC 按组织子树收窄）
 async function listPlan(payload = {}) {
   const { status } = payload;
   const where = { type: 'plan' };
   if (status) where.status = status;
+  Object.assign(where, await scopeOf(payload));
   const res = await db.listBy('maintenance_records', where, 100);
   return ok(res.data || []);
 }

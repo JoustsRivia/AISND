@@ -27,6 +27,8 @@ const DOMAINS = [
   { dir: 'file',   coll: 'files',          sample: { fileID: 'cloud://x/y.png', type: 'image', refId: 'T-F', uploadedBy: 'o1', createdAt: new Date('2026-03-01') } },
   { dir: 'store',  coll: 'stores',         sample: { name: 'A库房', orgId: 'oX', createdAt: new Date('2026-04-01') } },
   { dir: 'tool',   coll: 'tools',          sample: { code: 'C1', name: '扳手', category: 'common', status: 'qualified', expireAt: new Date('2026-05-01') } },
+  { dir: 'maintenance', coll: 'repair_records', sample: { toolId: 'T-M', status: 'pending', reporter: 'o1', orgId: 'oX', createdAt: new Date('2026-06-01') } },
+  { dir: 'purchase',    coll: 'purchases',       sample: { name: 'P物资', status: 'pending', applicant: 'o1', orgId: 'oX', createdAt: new Date('2026-07-01') } },
 ];
 
 async function main() {
