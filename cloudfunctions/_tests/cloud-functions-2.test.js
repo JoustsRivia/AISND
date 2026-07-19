@@ -16,6 +16,7 @@ const borrow = require('../borrow/index');
 const maintenance = require('../maintenance/index');
 const store = require('../store/index');
 const reconcile = require('../reconcile/index');
+const file = require('../file/index');
 const mock = require('./mock-cloud');
 
 beforeEach(() => {
@@ -82,6 +83,63 @@ test('borrow.return: 外观正常 → 器具回 qualified', async () => {
   const r = await borrow.main({ action: 'return', payload: { id: 't1', appearance: 'normal' } });
   assert.strictEqual(r.code, 0);
   assert.strictEqual(mock.__store.tools[0].status, 'qualified');
+});
+
+// ───────────────────────── borrow：RBAC 数据范围（item 1） ─────────────────────────
+test('borrow.records: 单位级角色按组织子树见全队领用记录，且忽略越权 orgId 下钻', async () => {
+  mock.__store.orgs = [
+    { _id: 'o1', parentId: null },
+    { _id: 'o2', parentId: 'o1' },
+    { _id: 'o3', parentId: 'o1' },
+    { _id: 'oX', parentId: null },
+  ];
+  mock.__store.users = [{ openid: 'lead1', role: 'project_lead', orgId: 'o1', status: 'active' }];
+  mock.__store.borrow_records = [
+    { _id: 'b1', orgId: 'o1', by: 'u_a', type: 'borrow' },
+    { _id: 'b2', orgId: 'o2', by: 'u_b', type: 'borrow' },
+    { _id: 'b3', orgId: 'o3', by: 'u_c', type: 'borrow' },
+    { _id: 'b4', orgId: 'oX', by: 'u_d', type: 'borrow' },
+  ];
+  mock.__setOpenid('lead1');
+  // 不带 orgId：默认看本人单位子树 o1/o2/o3（3 条）
+  const r1 = await borrow.main({ action: 'records', payload: {} });
+  assert.strictEqual(r1.code, 0);
+  assert.strictEqual(r1.data.length, 3);
+  // 越权传入子树外的 orgId=oX 应被忽略，仍只返回本人子树（绝不泄漏 oX）
+  const r2 = await borrow.main({ action: 'records', payload: { orgId: 'oX' } });
+  assert.strictEqual(r2.code, 0);
+  assert.strictEqual(r2.data.length, 3);
+});
+
+test('borrow.records: 普通用户仅见本人记录（领用记录不可越权可见）', async () => {
+  mock.__store.orgs = [{ _id: 'o1', parentId: null }];
+  mock.__store.users = [{ openid: 'w1', role: 'worker', orgId: 'o1', status: 'active' }];
+  mock.__store.borrow_records = [
+    { _id: 'b1', orgId: 'o1', by: 'w1', type: 'borrow' },
+    { _id: 'b2', orgId: 'o1', by: 'other', type: 'borrow' },
+  ];
+  mock.__setOpenid('w1');
+  const r = await borrow.main({ action: 'records', payload: {} });
+  assert.strictEqual(r.code, 0);
+  assert.strictEqual(r.data.length, 1);
+  assert.strictEqual(r.data[0]._id, 'b1');
+});
+
+test('borrow.records: 全局角色看全量，且可主动下钻到指定组织子树', async () => {
+  mock.__store.orgs = [{ _id: 'o1', parentId: null }, { _id: 'oX', parentId: null }];
+  mock.__store.users = [{ openid: 'a1', role: 'admin', status: 'active' }];
+  mock.__store.borrow_records = [
+    { _id: 'b1', orgId: 'o1', by: 'u_a', type: 'borrow' },
+    { _id: 'b2', orgId: 'oX', by: 'u_b', type: 'borrow' },
+  ];
+  mock.__setOpenid('a1');
+  const r1 = await borrow.main({ action: 'records', payload: {} });
+  assert.strictEqual(r1.code, 0);
+  assert.strictEqual(r1.data.length, 2); // 全局：全量
+  const r2 = await borrow.main({ action: 'records', payload: { orgId: 'o1' } });
+  assert.strictEqual(r2.code, 0);
+  assert.strictEqual(r2.data.length, 1); // 主动下钻到 o1 子树
+  assert.strictEqual(r2.data[0]._id, 'b1');
 });
 
 // ───────────────────────── maintenance：报修 / 审批 / 复检（M7） ─────────────────────────
@@ -198,4 +256,29 @@ test('reconcile.finishTask: 管理角色标记完成并统计差异', async () =
   assert.strictEqual(r.code, 0);
   assert.strictEqual(r.data.status, 'done');
   assert.strictEqual(r.data.diff, 1);
+});
+
+// ───────────────────────── file：附件列表 RBAC 数据范围（item 1） ─────────────────────────
+test('file.listFiles: 跨机构即使持有 refId 也被组织范围拦截', async () => {
+  mock.__store.orgs = [{ _id: 'o1', parentId: null }, { _id: 'oX', parentId: null }];
+  mock.__store.files = [
+    { _id: 'f1', refId: 't1', orgId: 'o1' },
+    { _id: 'f2', refId: 't1', orgId: 'o1' },
+  ];
+  // 机构 oX 用户试图用 refId=t1 越权查看 o1 的附件
+  mock.__store.users = [{ openid: 'x1', role: 'worker', orgId: 'oX', status: 'active' }];
+  mock.__setOpenid('x1');
+  const r = await file.main({ action: 'listFiles', payload: { refId: 't1' } });
+  assert.strictEqual(r.code, 0);
+  assert.strictEqual(r.data.length, 0); // 跨机构被拦截
+});
+
+test('file.listFiles: 本机构用户可见同机构 refId 附件', async () => {
+  mock.__store.orgs = [{ _id: 'o1', parentId: null }];
+  mock.__store.files = [{ _id: 'f1', refId: 't1', orgId: 'o1' }];
+  mock.__store.users = [{ openid: 'w1', role: 'worker', orgId: 'o1', status: 'active' }];
+  mock.__setOpenid('w1');
+  const r = await file.main({ action: 'listFiles', payload: { refId: 't1' } });
+  assert.strictEqual(r.code, 0);
+  assert.strictEqual(r.data.length, 1);
 });

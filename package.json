@@ -15,5 +15,9 @@
     "drill:mongo": "node scripts/migrate-drill/mongo.js",
     "hooks:install": "node scripts/install-hooks.js",
     "seed:gen": "node scripts/gen-seed.js"
+  },
+  "devDependencies": {
+    "mongodb": "^6.3.0",
+    "mongodb-memory-server": "^10.1.1"
   }
 }

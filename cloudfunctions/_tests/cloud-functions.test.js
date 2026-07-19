@@ -131,3 +131,38 @@ test('scrap.approve: 非授权角色被拒（403）', async () => {
   const r = await scrap.main({ action: 'approve', payload: { scrapId: 's1', approve: true } });
   assert.strictEqual(r.code, 403);
 });
+
+// ───────────────────────── scrap：RBAC 数据范围（item 1） ─────────────────────────
+test('scrap.list: 单位级角色按组织子树见待审报废，且忽略越权 orgId 下钻', async () => {
+  mock.__store.orgs = [
+    { _id: 'o1', parentId: null },
+    { _id: 'o2', parentId: 'o1' },
+    { _id: 'oX', parentId: null },
+  ];
+  mock.__store.users = [{ openid: 'lead1', role: 'project_lead', orgId: 'o1', status: 'active' }];
+  mock.__store.scrap_records = [
+    { _id: 's1', status: 'pending', orgId: 'o1', toolId: 't1' },
+    { _id: 's2', status: 'pending', orgId: 'o2', toolId: 't2' },
+    { _id: 's3', status: 'pending', orgId: 'oX', toolId: 't3' },
+  ];
+  mock.__setOpenid('lead1');
+  const r1 = await scrap.main({ action: 'list', payload: {} });
+  assert.strictEqual(r1.code, 0);
+  assert.strictEqual(r1.data.length, 2); // o1/o2 子树
+  const r2 = await scrap.main({ action: 'list', payload: { orgId: 'oX' } });
+  assert.strictEqual(r2.code, 0);
+  assert.strictEqual(r2.data.length, 2); // 越权 oX 被忽略
+});
+
+test('scrap.list: 全局角色看全量待审报废', async () => {
+  mock.__store.orgs = [{ _id: 'o1', parentId: null }, { _id: 'oX', parentId: null }];
+  mock.__store.users = [{ openid: 'a1', role: 'admin', status: 'active' }];
+  mock.__store.scrap_records = [
+    { _id: 's1', status: 'pending', orgId: 'o1', toolId: 't1' },
+    { _id: 's2', status: 'pending', orgId: 'oX', toolId: 't2' },
+  ];
+  mock.__setOpenid('a1');
+  const r = await scrap.main({ action: 'list', payload: {} });
+  assert.strictEqual(r.code, 0);
+  assert.strictEqual(r.data.length, 2); // 全局：全量
+});

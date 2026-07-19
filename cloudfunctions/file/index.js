@@ -1,7 +1,7 @@
 // cloudfunctions/file/index.js
 // 业务逻辑层（M14 条码文件 / 上传元数据）：只引用 ./helpers，绝不直接 cloud.database()/getWXContext()。
 const { getOpenid } = require('./helpers/user');
-const { findTool, add, listBy } = require('./helpers/db');
+const { findTool, add, listBy, findUser, listOrgs, allowedOrgIds, roleScope, _ } = require('./helpers/db');
 
 const ok = (data) => ({ code: 0, data });
 const fail = (message, code = 1) => ({ code, message });
@@ -29,9 +29,15 @@ async function saveFileMeta(payload) {
   const openid = getOpenid();
   const { fileID, type, refId, name } = payload;
   if (!fileID) return fail('缺少 fileID');
+  // 归属 orgId：优先取 refId 对应器具（若存在），服务端收窄防越权挂靠
+  let orgId;
+  if (refId) {
+    const tRes = await findTool(refId);
+    orgId = tRes.data && tRes.data.orgId;
+  }
   const added = await add('files', {
     fileID, type: type || 'image', refId: refId || '',
-    name: name || '', uploadedBy: openid, createdAt: new Date(),
+    name: name || '', uploadedBy: openid, orgId, createdAt: new Date(),
   });
   return ok({ _id: added._id, fileID });
 }
@@ -40,7 +46,21 @@ async function saveFileMeta(payload) {
 async function listFiles(payload) {
   const { refId } = payload;
   if (!refId) return fail('缺少 refId');
-  const res = await listBy('files', { refId }, 50);
+  const openid = getOpenid();
+  let where = { refId };
+  // RBAC 数据范围（item 1）：在已知 refId 基础上，按组织子树再收窄
+  const me = await findUser(openid);
+  const u = me.data && me.data[0];
+  const orgs = (await listOrgs(500)).data || [];
+  const ids = allowedOrgIds(u, orgs, { orgId: payload.orgId, unitId: payload.unitId });
+  if (ids === null) {
+    // 全局角色：看全量（不过滤 orgId）
+  } else if (ids.includes('__unbound__')) {
+    where.orgId = '__unbound__'; // 无任何可见组织数据 → 命中空集
+  } else {
+    where.orgId = _.in(ids);
+  }
+  const res = await listBy('files', where, 50);
   return ok(res.data || []);
 }
 

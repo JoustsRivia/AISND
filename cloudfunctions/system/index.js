@@ -291,20 +291,28 @@ async function checkTemplate(payload) {
 // ── 操作日志上报 ──────────────────────────────────────────────────────
 async function log(payload) {
   const openid = getOpenid();
+  // 留存期可配置化（item 7）：按日志类型取不同合规留存天数，默认 180 天
+  const DEFAULT_RETENTION_DAYS = 180;
+  const RETENTION_DAYS = { user: 365, scrap: 365, purchase: 365, store: 365, cert: 730 };
+  // 写入限流（item 4 防刷）：同一 operator 近 60s 内超过阈值则拒绝（429）
+  const rec = Date.now() - 60 * 1000;
+  const recent = (await db.collection('operation_logs').where({ operator: openid, ts: _.gt(rec) }).get()).data || [];
+  if (recent.length >= 30) return fail('操作过于频繁，请稍后再试', 429);
   await db.ensureCollection('operation_logs');
   const t = now();
   // 合规留痕（item 3）：
   //   - serverTime：服务端落点时刻；与客户端动作时刻 clientTime（api 富化）形成双时间戳，便于合规对账。
-  //   - retainedUntil：合规留存到期日（默认 180 天），便于安监留痕周期清理 / 归档。
-  //   - source：来源标记。其余字段（operator/operatorName/action/target/clientTime…）由调用方透传。
-  const a = await db.add('operation_logs', {
-    operator: openid,
-    ...payload,
-    ts: t,
-    serverTime: t,
-    source: 'client',
-    retainedUntil: new Date(t.getTime() + 180 * 24 * 3600 * 1000),
-  });
+    //   - retainedUntil：合规留存到期日（按类型可配置，默认 180 天），便于安监留痕周期清理 / 归档。
+    //   - source：来源标记。其余字段（operator/operatorName/action/target/clientTime…）由调用方透传。
+    const retentionDays = RETENTION_DAYS[payload.type] || DEFAULT_RETENTION_DAYS;
+    const a = await db.add('operation_logs', {
+      operator: openid,
+      ...payload,
+      ts: t,
+      serverTime: t,
+      source: 'client',
+      retainedUntil: new Date(t.getTime() + retentionDays * 24 * 3600 * 1000),
+    });
   return ok({ _id: a._id });
 }
 
@@ -355,7 +363,9 @@ async function listLog(payload = {}) {
   const total = rows.length;
   const max = Math.min(Number(limit) || 50, 200);
   const off = Number(skip) || 0;
-  const list = rows.slice(off, off + max);
+  let list = rows.slice(off, off + max);
+  // 字段级脱敏（item 4）：非管理员不返回 operator（openid 私密字段），仅保留可读 operatorName
+  if (wantMine) list = list.map(({ operator, ...rest }) => rest);
   return ok({ list, total, hasMore: off + max < total });
 }
 

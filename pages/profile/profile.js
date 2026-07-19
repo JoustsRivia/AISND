@@ -58,6 +58,7 @@ Page({
           title: '账户与资质',
           items: [
             { key: 'profile', icon: '👤', label: '我的档案', value: p ? (ROLE_TEXT[p.role] || p.role) : '', arrow: true },
+            { key: 'permission', icon: '🔑', label: '我的权限', arrow: true },
             { key: 'cert', icon: '📜', label: '持证管理', arrow: true },
             { key: 'cert-expire', icon: '⏰', label: '证书即将到期', badge: certBadge ? String(certBadge) : '', arrow: true },
           ],
@@ -82,6 +83,7 @@ Page({
   onSelect(e) {
     const key = e.detail.key;
     if (key === 'logout') return this.onLogout();
+    if (key === 'permission') { wx.navigateTo({ url: '/pages/permission/permission' }); return; }
     if (key === 'about') { wx.showModal({ title: '关于系统', content: '工器具安全管理小程序 V1.0\n助力电力工器具全生命周期安全管控。', showCancel: false }); return; }
     if (key === 'system') { wx.navigateTo({ url: '/pkg-system/pages/org/org' }); return; }
     if (key === 'cert' || key === 'cert-expire') { wx.navigateTo({ url: '/pkg-cert/pages/list/list' }); return; }

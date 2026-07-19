@@ -3,7 +3,7 @@
 const { getOpenid } = require('./helpers/user');
 const {
   findTool, updateTool, addScrap, updateScrap, listScrap, listTools,
-  getCurrentUser, add, listBy, _,
+  getCurrentUser, add, listBy, _, findUser, listOrgs, allowedOrgIds,
 } = require('./helpers/db');
 
 const ok = (data) => ({ code: 0, data });
@@ -74,7 +74,7 @@ async function submit(payload) {
     toolId: id, code: res.data.code, name: res.data.name,
     reason: reason || '', photos: photos || [], symptoms: symptoms || [],
     mustScrap: jd.mustScrap, reasons: jd.reasons || [],
-    status: 'pending', applicant: openid, createdAt: new Date(),
+    status: 'pending', applicant: openid, orgId: res.data.orgId, createdAt: new Date(),
   });
   await updateTool(id, { status: 'forbidden', updatedAt: new Date() });
   return ok({ scrapId: rec._id, mustScrap: jd.mustScrap, reasons: jd.reasons || [] });
@@ -141,7 +141,21 @@ async function disposal(payload) {
 
 // 待审批/处置列表（审批页、处置页共用）
 async function list(payload = {}) {
-  const res = await listScrap({ status: payload.status || 'pending' });
+  const openid = getOpenid();
+  let where = { status: payload.status || 'pending' };
+  // RBAC 数据范围（item 1）：单位/机构级角色在报废待审列表里强制按组织子树收窄
+  const me = await findUser(openid);
+  const u = me.data && me.data[0];
+  const orgs = (await listOrgs(500)).data || [];
+  const ids = allowedOrgIds(u, orgs, { orgId: payload.orgId, unitId: payload.unitId });
+  if (ids === null) {
+    // 全局角色：看全量（不过滤 orgId）
+  } else if (ids.includes('__unbound__')) {
+    where.orgId = '__unbound__'; // 无任何可见组织数据 → 命中空集
+  } else {
+    where.orgId = _.in(ids);
+  }
+  const res = await listScrap(where);
   return ok(res.data || []);
 }
 

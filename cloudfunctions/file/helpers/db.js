@@ -3,6 +3,8 @@
 // 迁移到自有服务器时，只重写本文件（改为 MySQL/MongoDB 客户端），业务 index.js 零改动。
 const base = require('./dbBase');
 const { cloud, db, _, collection } = base;
+// RBAC 数据范围原语（来自 _shared/dbBase.js 单一源，迁移零改动）
+const { subtreeIds, roleScope, allowedOrgIds } = base;
 
 // ── users ──
 const findUser = (openid) => collection('users').where({ openid }).get();
@@ -33,11 +35,17 @@ const add = (name, data) => collection(name).add({ data });
 const update = (name, id, data) => collection(name).doc(id).update({ data });
 const listBy = (name, filter = {}, size = 50) => collection(name).where(filter).limit(size).get();
 
+// 读取当前用户档案（role/orgId/status），供服务端鉴权与数据范围推导
+const getCurrentUser = base.getCurrentUser;
+const listOrgs = (size = 200) => collection('orgs').limit(size).get();
 module.exports = {
-  collection, _, regExp,
+  collection, _, regExp, listOrgs,
   findUser, addUser, updateUser, listUsers,
   findTool, addTool, updateTool, listTools, countTools,
   addBorrow, listBorrow,
   addScrap, updateScrap, listScrap,
   getById, add, update, listBy,
+  getCurrentUser,
+  // RBAC 数据范围原语（透出，供 index.js 复用，迁移零改动）
+  subtreeIds, roleScope, allowedOrgIds,
 };

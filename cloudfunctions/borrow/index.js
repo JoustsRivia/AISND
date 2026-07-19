@@ -1,7 +1,7 @@
 // cloudfunctions/borrow/index.js
 // 业务逻辑层（M5 领用归还 P0）：只引用 ./helpers，绝不直接 cloud.database()/getWXContext()。
 const { getOpenid } = require('./helpers/user');
-const { findTool, updateTool, findUser, addBorrow, listBorrow, listBy, addRepair } = require('./helpers/db');
+const { findTool, updateTool, findUser, addBorrow, listBorrow, listBy, addRepair, listOrgs, _, allowedOrgIds, roleScope } = require('./helpers/db');
 
 const ok = (data) => ({ code: 0, data });
 const fail = (message, code = 1) => ({ code, message });
@@ -41,7 +41,8 @@ async function borrow(payload) {
     updatedAt: new Date(),
   };
   await updateTool(id, patch);
-  await addBorrow({ toolId: id, code: t.code, name: t.name, type: 'borrow', by: openid, ts: new Date() });
+  // 记录归属 orgId 随器具（服务端收窄，防越权挂靠）；borrow_records 新增 orgId 字段
+  await addBorrow({ toolId: id, code: t.code, name: t.name, type: 'borrow', by: openid, orgId: t.orgId, ts: new Date() });
   return ok({ _id: id, status: 'in_use' });
 }
 
@@ -75,17 +76,36 @@ async function returnTool(payload) {
       console.error('[borrow] return auto-create repair failed', e);
     }
   }
-  await addBorrow({ toolId: id, code: t.code, name: t.name, type: 'return', by: openid, appearance, ts: new Date() });
+  await addBorrow({ toolId: id, code: t.code, name: t.name, type: 'return', by: openid, orgId: t.orgId, appearance, ts: new Date() });
   return ok({ _id: id, status: patch.status, damaged });
 }
 
 // 领用/归还记录（M5.1.4 / M5.2.3）
 async function records(payload = {}) {
-  const { openid, orgId, type } = payload;
+  const openid = getOpenid(); // 服务端身份为准，忽略客户端伪造的 openid
+  const { orgId, type } = payload;
   const where = {};
-  // 默认按当前领用人过滤，杜绝「领用记录全员可见」
-  where.by = openid || getOpenid();
   if (type) where.type = type;
+
+  // RBAC 数据范围（item 1：单位/机构级角色在真实领用列表里强制按组织子树收窄）
+  // 复用 _shared/dbBase.js 单一源的 allowedOrgIds 统一推导（全局/单位/机构三档），迁移零改动。
+  const me = await findUser(openid);
+  const u = me.data && me.data[0];
+  const orgs = (await listOrgs(500)).data || [];
+  const ids = allowedOrgIds(u, orgs, { orgId: orgId || undefined, unitId: payload.unitId });
+  if (ids === null) {
+    // 全局角色：看全量（不过滤 orgId）
+  } else if (ids.includes('__unbound__')) {
+    where.orgId = '__unbound__'; // 无任何可见组织数据 → 命中空集
+  } else {
+    where.orgId = _.in(ids);
+  }
+
+  // 非全局/单位角色：仍仅看本人领用记录（保留原有「领用记录全员不可见」约束，防越权）
+  if (!u || (roleScope(u.role) !== 'global' && roleScope(u.role) !== 'unit')) {
+    where.by = openid;
+  }
+
   const res = await listBorrow(where, 50);
   return ok(res.data || []);
 }

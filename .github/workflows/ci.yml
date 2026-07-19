@@ -25,5 +25,12 @@ jobs:
       - name: 真实 CLI 部署干跑（迭代 Item 1，未配置则跳过）
         continue-on-error: true
         run: npm run validate:deploy
+      - name: 真实 MongoDB 演练（迭代 Item 2/3/6，未装驱动则优雅跳过）
+        continue-on-error: true
+        run: |
+          npm install --no-save mongodb mongodb-memory-server || true
+          (npx --yes mongodb-memory-server > /tmp/mongo.log 2>&1 &) ; sleep 10
+          export MONGODB_URI="$(grep -rho 'mongodb://[^ ]*' /tmp/mongo.log 2>/dev/null | head -1 || true)"
+          npm run drill:mongo
       - name: 全量 JS 语法检查
         run: npm run check:syntax
