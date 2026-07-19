@@ -185,10 +185,12 @@ async function userManage(payload) {
 }
 
 // ── 种子管理员账号（仅需首次，无需已登录）─────────────────────────────
-// 创建/绑定当前微信身份为「小程序管理员(admin)」，账号 Jousts / qwer1234，
-// 拥有小程序全部数据管理权限（最高权限）。幂等保护：若已存在 admin，则拒绝重复播种。
-const SEED_USERNAME = 'Jousts';
-const SEED_PASSWORD = 'qwer1234';
+// 创建/绑定当前微信身份为「小程序管理员(admin)」，拥有小程序全部数据管理权限（最高权限）。
+// 幂等保护：若已存在 admin，则拒绝重复播种。
+// ★ 安全：凭证仅由后端持有。优先读取环境变量（部署时可覆盖，避免口令进入源码/小程序包），
+//   缺省回退到内置默认值，保证未配置环境时行为不变。前端不再硬编码任何口令。
+const SEED_USERNAME = process.env.SEED_ADMIN_USERNAME || 'Jousts';
+const SEED_PASSWORD = process.env.SEED_ADMIN_PASSWORD || 'qwer1234';
 async function seedAdmin(payload = {}) {
   const openid = getOpenid();
   const username = (payload.username || SEED_USERNAME).trim();
@@ -215,7 +217,8 @@ async function seedAdmin(payload = {}) {
   } else {
     await db.add('users', { ...doc, openid, createdAt: now() });
   }
-  return ok({ username, role: 'admin' });
+  // 凭证一次性回传前端展示（前端不留存、不硬编码），便于管理员首次登录后妥善保存
+  return ok({ username, password, role: 'admin' });
 }
 
 // ── 字典：增删改查（管理员）──────────────────────────────────────────
