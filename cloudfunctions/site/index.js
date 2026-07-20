@@ -57,19 +57,20 @@ async function submitCheck(payload) {
     const t = await safeGetTool(toolId);
     if (!t) return fail('器具不存在', 404);
   }
-  const doc = { toolId: toolId || '', items, abnormal, remark, operator: openid, ts: now() };
+  const me = await db.getCurrentUser(openid);
+  const doc = { toolId: toolId || '', items, abnormal, remark, operator: openid, orgId: (me && me.orgId) || '', ts: now() };
   const added = await db.add('spot_checks', doc);
   return ok({ _id: added._id, ...doc });
 }
 
-// 操作规程（M6.3）
-async function opGuide(payload) {
-  const { id } = payload;
+// 操作规程（M6.3）：列表按组织子树收窄
+async function opGuide(payload = {}) {
+  const { id, orgId } = payload;
   if (id) {
     const r = await safeGetById('op_guides', id);
     return ok(r || null);
   }
-  const res = await db.listBy('op_guides', {}, 50);
+  const res = await db.scopedList('op_guides', {}, { orgId, size: 50 });
   return ok(res.data || []);
 }
 
@@ -78,8 +79,9 @@ async function briefing(payload) {
   const g = requireOpenid();
   if (g.err) return g.err;
   const openid = g.openid;
+  const me = await db.getCurrentUser(openid);
   const { team = '', content = '', participants = '', date = '' } = payload || {};
-  const doc = { team, content, participants, date, leader: openid, ts: now() };
+  const doc = { team, content, participants, date, leader: openid, orgId: (me && me.orgId) || '', ts: now() };
   const added = await db.add('briefings', doc);
   return ok({ _id: added._id, ...doc });
 }
@@ -89,22 +91,24 @@ async function batchCheck(payload) {
   const g = requireOpenid();
   if (g.err) return g.err;
   const openid = g.openid;
+  const me = await db.getCurrentUser(openid);
   const { ids = [] } = payload;
   if (!ids.length) return fail('请选择器具');
   const tools = await db.listByIds('tools', ids);
+  const orgId = (me && me.orgId) || '';
   const docs = (tools.data || []).map((t) => ({
-    toolId: t._id, items: [{ name: '批量点检', result: '合格' }], abnormal: false, operator: openid, ts: now(),
+    toolId: t._id, items: [{ name: '批量点检', result: '合格' }], abnormal: false, operator: openid, orgId, ts: now(),
   }));
   for (const d of docs) await db.add('spot_checks', d);
   return ok({ count: docs.length });
 }
 
-// 每日点检汇总（M6.1 班组点检看板）：今日已完成项 + 抽样待点检计划
-async function dailyList() {
+// 每日点检汇总（M6.1 班组点检看板）：今日已完成项 + 抽样待点检计划（按组织子树收窄）
+async function dailyList(payload = {}) {
   const today = ymd(now());
   const [toolRes, checkRes] = await Promise.all([
-    db.listBy('tools', {}, 1000),
-    db.listBy('spot_checks', {}, 500),
+    db.scopedList('tools', {}, { orgId: payload.orgId, size: 1000 }),
+    db.scopedList('spot_checks', {}, { orgId: payload.orgId, size: 500 }),
   ]);
   const tools = (toolRes.data || []).slice(0, 8);
   const todayChecks = (checkRes.data || []).filter((r) => ymd(r.ts) === today);

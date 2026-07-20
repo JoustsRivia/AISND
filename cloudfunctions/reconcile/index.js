@@ -50,13 +50,13 @@ async function createTask(payload = {}) {
   return ok({ _id: added._id, ...doc });
 }
 
-// 任务列表
+// 任务列表（按组织子树收窄）
 async function list(payload = {}) {
-  const { month, status } = payload;
-  const where = {};
-  if (month) where.month = month;
-  if (status) where.status = status;
-  const res = await db.listBy('reconcile_tasks', where, 50);
+  const { month, status, orgId } = payload;
+  const filter = {};
+  if (month) filter.month = month;
+  if (status) filter.status = status;
+  const res = await db.scopedList('reconcile_tasks', filter, { orgId, size: 50 });
   const data = (res.data || []).map((t) => ({
     _id: t._id, month: t.month, status: t.status, total: t.total,
     diff: (t.items || []).filter((i) => i.result && i.result !== 'pending' && i.result !== 'match').length,
@@ -65,11 +65,18 @@ async function list(payload = {}) {
   return ok(data);
 }
 
-// 任务明细（含逐项）
+// 任务明细（含逐项，含越权防护）
 async function getTask(payload) {
   const { id } = payload;
   const r = await db.getById('reconcile_tasks', id);
   if (!r.data) return fail('任务不存在', 404);
+  // 越权防护：校验该 task.orgId 是否在调用者允许范围内
+  const me = await db.getCurrentUser(getOpenid());
+  const orgs = (await db.listOrgs(500)).data || [];
+  const allowed = db.allowedOrgIds(me, orgs, {});
+  if (allowed !== null && !allowed.includes('__unbound__') && !allowed.includes(r.data.orgId)) {
+    return fail('无权查看该核对任务', 403);
+  }
   return ok(r.data);
 }
 
@@ -100,12 +107,12 @@ async function finishTask(payload) {
   return ok({ id, status: 'done', diff: diff.length });
 }
 
-// 差异清单：跨任务汇总所有非"相符"且已确认的明细
+// 差异清单：跨任务汇总所有非"相符"且已确认的明细（按组织子树收窄）
 async function diff(payload = {}) {
-  const { month } = payload;
-  const where = { status: 'done' };
-  if (month) where.month = month;
-  const res = await db.listBy('reconcile_tasks', where, 50);
+  const { month, orgId } = payload;
+  const filter = { status: 'done' };
+  if (month) filter.month = month;
+  const res = await db.scopedList('reconcile_tasks', filter, { orgId, size: 50 });
   const rows = [];
   (res.data || []).forEach((t) => {
     (t.items || []).forEach((it) => {

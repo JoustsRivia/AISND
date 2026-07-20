@@ -1,25 +1,33 @@
 // cloudfunctions/warning/index.js —— M11 预警消息（纯业务，只引用 helpers）
 const db = require('./helpers/db');
+const { getOpenid } = require('./helpers/user');
 const _ = db._;
 const ok = (data) => ({ code: 0, data });
 const fail = (message, code = 1) => ({ code, message });
 const now = () => new Date();
 
-// 消息列表（按级别/已读过滤）
+// 消息列表（按级别/已读过滤，按组织子树收窄）
 async function list(payload = {}) {
-  const { level, read } = payload;
-  const where = {};
-  if (level) where.level = level;
-  if (read !== undefined && read !== null) where.read = read;
-  const res = await db.listBy('warnings', where, 50);
+  const { level, read, orgId } = payload;
+  const filter = {};
+  if (level) filter.level = level;
+  if (read !== undefined && read !== null) filter.read = read;
+  const res = await db.scopedList('warnings', filter, { orgId, size: 50 });
   return ok(res.data || []);
 }
 
-// 标记已读
+// 标记已读（含越权防护）
 async function read(payload) {
   const { id } = payload;
   const r = await db.getById('warnings', id);
   if (!r.data) return fail('消息不存在', 404);
+  // 越权防护：校验该 warning.orgId 是否在调用者允许范围内
+  const me = await db.getCurrentUser(getOpenid());
+  const orgs = (await db.listOrgs(500)).data || [];
+  const allowed = db.allowedOrgIds(me, orgs, {});
+  if (allowed !== null && !allowed.includes('__unbound__') && !allowed.includes(r.data.orgId)) {
+    return fail('无权操作该预警', 403);
+  }
   await db.update('warnings', id, { read: true, readAt: now() });
   return ok({ id });
 }
@@ -29,15 +37,16 @@ async function subscribe() {
   return ok({ subscribed: true });
 }
 
-// 全部标记已读
+// 全部标记已读（仅标记本人可见范围内的未读）
 async function readAll() {
-  const res = await db.listBy('warnings', { read: _.neq(true) }, 200);
+  const res = await db.scopedList('warnings', { read: _.neq(true) }, { size: 200 });
   const list = res.data || [];
   await Promise.all(list.map((w) => db.update('warnings', w._id, { read: true, readAt: now() })));
   return ok({ count: list.length });
 }
 
 // 预警自动生成（M11.1）：扫描试验到期/超期、证书到期、隐患超期、报废异动，写入 warnings
+// generate 不加 RBAC（全量扫描），但写入 warnings 文档时透传被扫描对象的 orgId
 async function generate() {
   const now = Date.now();
   const DAY = 86400000;
@@ -46,9 +55,9 @@ async function generate() {
     const r = await db.listBy('warnings', { type, refId, read: _.neq(true) }, 50);
     return (r.data || []).length > 0;
   };
-  const push = async (w) => {
+  const push = async (w, orgId) => {
     if (await exists(w.type, w.refId)) return; // 同类型同对象不重复推送
-    const a = await db.add('warnings', { ...w, read: false, createdAt: new Date() });
+    const a = await db.add('warnings', { ...w, orgId: orgId || '', read: false, createdAt: new Date() });
     out.push(a._id);
   };
   try {
@@ -59,10 +68,10 @@ async function generate() {
       const exp = new Date(t.expireAt).getTime();
       if (exp < now) {
         await push({ level: 'urgent', type: 'test_overdue', refId: t._id, toolId: t._id,
-          title: '试验已超期', content: `${t.name}（${t.code}）试验有效期已过，禁止领用并应逐级告警` });
+          title: '试验已超期', content: `${t.name}（${t.code}）试验有效期已过，禁止领用并应逐级告警` }, t.orgId);
       } else if (exp - now <= 15 * DAY) {
         await push({ level: 'important', type: 'test_due', refId: t._id, toolId: t._id,
-          title: '试验即将到期', content: `${t.name}（${t.code}）将于 ${t.expireAt} 到期，请按时送检` });
+          title: '试验即将到期', content: `${t.name}（${t.code}）将于 ${t.expireAt} 到期，请按时送检` }, t.orgId);
       }
     }
     // 证书到期前30天（M9.2.2）
@@ -71,7 +80,7 @@ async function generate() {
       if (!c.expireAt) continue;
       if (new Date(c.expireAt).getTime() - now <= 30 * DAY) {
         await push({ level: 'important', type: 'cert_due', refId: c._id, certId: c._id,
-          title: '特种作业证即将到期', content: `${(c.name || '持证人')} 的 ${c.type || '证件'} 将于 ${c.expireAt} 到期` });
+          title: '特种作业证即将到期', content: `${(c.name || '持证人')} 的 ${c.type || '证件'} 将于 ${c.expireAt} 到期` }, c.orgId);
       }
     }
     // 隐患整改超期升级（M10.2.6）
@@ -80,7 +89,7 @@ async function generate() {
       if (!h.dueDate) continue;
       if (new Date(h.dueDate).getTime() < now) {
         await push({ level: 'urgent', type: 'hazard_overdue', refId: h._id, hazardId: h._id,
-          title: '隐患整改超期', content: `隐患「${h.title || h.content || ''}」已超过整改期限 ${h.dueDate}，请升级处理` });
+          title: '隐患整改超期', content: `隐患「${h.title || h.content || ''}」已超过整改期限 ${h.dueDate}，请升级处理` }, h.orgId);
       }
     }
     // 报废器具异常在库/外流（M8.2.4）
@@ -88,7 +97,7 @@ async function generate() {
     for (const t of (scrapped.data || [])) {
       if (t.borrower) {
         await push({ level: 'urgent', type: 'scrap_inuse', refId: t._id, toolId: t._id,
-          title: '报废器具异常在库', content: `已报废器具 ${t.name}（${t.code}）仍显示被领用，疑似外流，请核查` });
+          title: '报废器具异常在库', content: `已报废器具 ${t.name}（${t.code}）仍显示被领用，疑似外流，请核查` }, t.orgId);
       }
     }
   } catch (e) { /* 单类异常不影响其他类别生成 */ }

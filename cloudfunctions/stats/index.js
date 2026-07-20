@@ -67,14 +67,15 @@ async function dashboard(payload = {}) {
   });
 }
 
-// 个人工作台统计（我的页）
+// 个人工作台统计（我的页）：按组织子树收窄待办计数，个人维度保留按 openid 过滤
 async function myStats() {
   const openid = ensureLogin();
+  const scope = await db.scopeWhere({});
   const [t, q, pending, warns, checks] = await Promise.all([
-    db.countBy('tools', {}),
-    db.countBy('tools', { status: 'qualified' }),
-    db.countBy('tools', { status: 'pending_test' }),
-    db.countBy('warnings', { read: false }),
+    db.scopedCount('tools', scope),
+    db.scopedCount('tools', { ...scope, status: 'qualified' }),
+    db.scopedCount('tools', { ...scope, status: 'pending_test' }),
+    db.scopedCount('warnings', { read: false, ...scope }),
     db.countBy('spot_checks', { operator: openid }),
   ]);
   return ok({
@@ -84,20 +85,21 @@ async function myStats() {
   });
 }
 
-// 六化达标（真实口径，不再硬编码 100）
+// 六化达标（真实口径，按组织子树收窄，不同等级角色看不同范围）
 async function sixStandard() {
   await ensureRole(SENSITIVE_ROLES);
+  const scope = await db.scopeWhere({});
   const [t, q, c, h, hc, cer, u, tools, scrapped, disposed] = await Promise.all([
-    db.countBy('tools', {}),
-    db.countBy('tools', { status: 'qualified' }),
-    db.countBy('spot_checks', {}),
-    db.countBy('hazards', {}),
-    db.countBy('hazards', { status: 'closed' }),
-    db.countBy('certificates', { status: 'valid' }),
-    db.countBy('users', {}),
-    db.listBy('tools', {}, 500),
-    db.countBy('tools', { status: 'scrapped' }),
-    db.countBy('scrap_records', { status: 'disposed' }),
+    db.scopedCount('tools', scope),
+    db.scopedCount('tools', { ...scope, status: 'qualified' }),
+    db.scopedCount('spot_checks', scope),
+    db.scopedCount('hazards', scope),
+    db.scopedCount('hazards', { ...scope, status: 'closed' }),
+    db.scopedCount('certificates', { ...scope, status: 'valid' }),
+    db.scopedCount('users', scope),
+    db.scopedList('tools', scope, { size: 500 }),
+    db.scopedCount('tools', { ...scope, status: 'scrapped' }),
+    db.scopedCount('scrap_records', { ...scope, status: 'disposed' }),
   ]);
   const pct = (a, b) => (b > 0 ? Math.round((a / b) * 100) : 0);
   // 一物一档完整率：必填字段齐全的器具占比（缺字段/空集合均守护）
@@ -132,7 +134,7 @@ async function exportReport(payload = {}) {
   // 生成 CSV（含组织维度，orgId 属用户输入需转义，防止公式注入）
   const lines = [];
   lines.push(csvRow(['报表类型', '安全工器具统计分析报表']));
-  lines.push(csvRow(['组织ID', orgId != null ? orgId : '全组织']));
+  lines.push(csvRow(['组织ID', payload.orgId != null ? payload.orgId : '全组织']));
   lines.push(csvRow(['生成时间', new Date().toISOString()]));
   lines.push([]);
   lines.push(csvRow(['状态', '数量']));
@@ -188,18 +190,19 @@ async function trend(payload = {}) {
 
 // 工作台模块徽标聚合（P0 可视化：让能力被感知）
 // 返回各功能模块的待办/积压计数，前端按 module key 渲染状态徽标。
-// tone 仅表示语义（abnormal=红 / pending=橙），色值一律由前端设计令牌解析，禁止硬编码。
+// 按组织子树收窄：全局角色看全量、单位看整单位子树、机构/班组看本机构子树。
 async function homeStatus() {
   ensureLogin();
+  const scope = await db.scopeWhere({});
   const [warnings, pendingTest, expiring, repairPending, scrapPending, hazardsOpen, purchPending, missing] = await Promise.all([
-    db.countBy('warnings', { read: false }),
-    db.countBy('tools', { status: 'pending_test' }),
-    db.countBy('tools', { status: 'qualified', ...db.expiringSoon(15) }),
-    db.countBy('repair_records', { status: 'pending' }),
-    db.countBy('scrap_records', { status: 'pending' }),
-    db.countBy('hazards', { status: db._.in(['open', 'assigned']) }),
-    db.countBy('purchases', { status: 'pending' }),
-    db.countBy('tools', { status: 'missing' }),
+    db.scopedCount('warnings', { read: false, ...scope }),
+    db.scopedCount('tools', { status: 'pending_test', ...scope }),
+    db.scopedCount('tools', { status: 'qualified', ...db.expiringSoon(15), ...scope }),
+    db.scopedCount('repair_records', { status: 'pending', ...scope }),
+    db.scopedCount('scrap_records', { status: 'pending', ...scope }),
+    db.scopedCount('hazards', { status: db._.in(['open', 'assigned']), ...scope }),
+    db.scopedCount('purchases', { status: 'pending', ...scope }),
+    db.scopedCount('tools', { status: 'missing', ...scope }),
   ]);
   const m = (r, tone) => ({ count: (r && r.total) || 0, tone });
   return ok({

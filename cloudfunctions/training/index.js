@@ -27,7 +27,8 @@ async function assign(payload) {
   if (g.err) return g.err;
   const { userId, courseId } = payload;
   if (!userId || !courseId) return fail('缺少 userId 或 courseId', 400);
-  const doc = { ...payload, status: 'assigned', createdAt: now() };
+  const me = await db.getCurrentUser(getOpenid());
+  const doc = { ...payload, orgId: (me && me.orgId) || '', status: 'assigned', createdAt: now() };
   const added = await db.add('training_records', doc);
   return ok({ _id: added._id, ...doc });
 }
