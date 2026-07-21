@@ -1,7 +1,9 @@
-# 自动生成的隔离层副本（单一源：cloudfunctions/_shared/dbBase.js / userBase.js）
-# 由 scripts/bundle-db-base.js 在 npm pretest / 部署前生成，勿手工修改。
-cloudfunctions/*/helpers/dbBase.js
-cloudfunctions/*/helpers/userBase.js
+# 隔离层副本（单一源：shared/dbBase.js / userBase.js）
+# 由 scripts/bundle-db-base.js 生成；初期开发阶段入库，确保微信开发者工具直传云函数时
+# helpers/ 下含 dbBase.js / userBase.js，云端运行时可正常 require('./userBase')。
+# 后续若改为 CI 流水线部署，可恢复忽略（改为部署前自动 bundle）。
+# cloudfunctions/*/helpers/dbBase.js
+# cloudfunctions/*/helpers/userBase.js
 
 # 依赖与构建产物
 node_modules/
