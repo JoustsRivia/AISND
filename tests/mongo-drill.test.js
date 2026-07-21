@@ -1,5 +1,5 @@
 'use strict';
-// cloudfunctions/_tests/mongo-drill.test.js
+// tests/mongo-drill.test.js
 //
 // 验证「真实驱动工厂注入」机制（迭代 Item 2）：
 //   通过 dbBase.mongo.js 的 setCollectionFactory 注入一个自定义集合工厂（模拟真实驱动），
@@ -12,8 +12,8 @@
 const Module = require('module');
 const path = require('path');
 
-const REPO = path.resolve(__dirname, '..', '..');
-const mongoBase = require(path.join(REPO, 'cloudfunctions', '_shared', 'dbBase.mongo.js'));
+const REPO = path.resolve(__dirname, '..');
+const mongoBase = require(path.join(REPO, 'shared', 'dbBase.mongo.js'));
 
 // 内存集合工厂（模拟「真实驱动」），验证工厂注入路径
 function makeMemFactory() {

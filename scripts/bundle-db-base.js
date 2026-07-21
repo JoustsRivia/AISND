@@ -4,8 +4,8 @@
 // （微信逐函数部署约束，跨函数 require 共享文件会在运行时失败）。
 //
 // 当前打包两份单一源：
-//   - cloudfunctions/_shared/dbBase.js      → <fn>/helpers/dbBase.js    （数据能力隔离层）
-//   - cloudfunctions/_shared/userBase.js    → <fn>/helpers/userBase.js  （鉴权助手隔离层）
+//   - shared/dbBase.js      → <fn>/helpers/dbBase.js    （数据能力隔离层）
+//   - shared/userBase.js    → <fn>/helpers/userBase.js  （鉴权助手隔离层）
 //
 // 用法：node scripts/bundle-db-base.js
 // 约定：本文件由 npm pretest 与 uploadCloudFunction.sh 自动调用，无需手动执行。
@@ -16,7 +16,7 @@ const fs = require('fs');
 const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..');
-const SHARED = path.join(ROOT, 'cloudfunctions', '_shared');
+const SHARED = path.join(ROOT, 'shared');
 const CLOUD = path.join(ROOT, 'cloudfunctions');
 
 // [单一源文件, 目标文件名]

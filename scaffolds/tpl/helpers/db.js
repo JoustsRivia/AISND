@@ -1,4 +1,4 @@
-// cloudfunctions/tpl/helpers/db.js  （模板，与各函数 helpers/ 一致）
+// scaffolds/tpl/helpers/db.js  （模板，与各函数 helpers/ 一致）
 // ★ 隔离层：仅此文件可调用 cloud.database() 等 wx-server-sdk 数据能力。
 // 迁移到自有服务器时，只重写本文件（改为 MySQL/MongoDB 客户端），业务 index.js 零改动。
 const cloud = require('wx-server-sdk');

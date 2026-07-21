@@ -20,7 +20,7 @@
 - `cert/helpers/db.js`、`check/helpers/db.js`、`performance/helpers/db.js`、`stats/helpers/db.js` 透出 RBAC 原语（`allowedOrgIds`/`roleScope`/`subtreeIds`/`scopeFilter`）+ `listOrgs`。
 - 新增通用 `scopedList(coll, filter, opts)` 模板（统一把「服务端 `orgId` 归属 + 列表 `scopeFilter` 按组织子树收窄」沉淀为 helpers 纯函数），`stats` 另增 `scopeWhere`/`scopedCount` 同构原语；业务 `index.js` 列表零重复样板。
 - `cert/index.js list`、`check/index.js listHazard/assessList`、`performance/index.js list/rank/summary`、`stats/index.js dashboard/exportReport` 全面改用 `scopedList`/`scopeWhere`；写库（`reportHazard`/`assess`/`score`/`rewardAdd`/`upsert`）统一以服务端 `me.orgId` 归属，防越权挂靠。
-- 配套单测 `cloudfunctions/_tests/rbac-domains.test.js`（9 项）：cert/check/performance 四档「全局看全量 / 单位看子树 / 普通仅本机构 / 越权下钻被忽略」全验证。
+- 配套单测 `tests/rbac-domains.test.js`（9 项）：cert/check/performance 四档「全局看全量 / 单位看子树 / 普通仅本机构 / 越权下钻被忽略」全验证。
 
 **【Item 2 · CI 真正全绿观察 + 门禁自检】**（上轮 §4 建议 #2）
 - 上轮已接好 Secret 注入（`TCB_ENV_ID`/`SECRET_ID`/`SECRET_KEY`/`TCB_SECRET_ID`/`TCB_SECRET_KEY`）、CloudBase CLI 安装、内存 Mongo 启动脚本；本轮在 CI 新增「前端零直连门禁·自检」步骤（`npm run check:frontend:self`），先验证规则引擎本身未漂移再跑拦截，避免门禁形同虚设（详见 Item 7）。
@@ -38,7 +38,7 @@
 - 事件总线 `utils/eventBus.js` + `auth.emitProfileChanged/onProfileChanged/refreshProfile` 三处同步：`pages/index`（onShow 订阅 `profile:changed`→`refresh()` 并 `refreshBadges()`）、`pages/profile`（绑定成功后 `emitProfileChanged` 且订阅→`load()`）、`pages/permission`（订阅→`refresh()`）。切换组织 / 被管理员调整角色后统一经 `auth.refreshProfile()` 拉取并广播，首页九宫格徽标、profile、permission 三页同步刷新；onHide/onUnload 清理订阅防泄漏。
 
 **【Item 6 · 迁移契约回归扩展至「写后读」双向】**（上轮 §4 建议 #6）
-- `cloudfunctions/_tests/migration-bridge.test.js` 新增 **④ 写后读双向一致**：断言 wx 内存库与 mongo 适配层在 `add → getById → update → getById → remove → count` 全流程返回结构一致（业务 helpers 解构消费的命名导出 + `scopeFilter` 行为一致）。
+- `tests/migration-bridge.test.js` 新增 **④ 写后读双向一致**：断言 wx 内存库与 mongo 适配层在 `add → getById → update → getById → remove → count` 全流程返回结构一致（业务 helpers 解构消费的命名导出 + `scopeFilter` 行为一致）。
 - 修复真实契约 bug：`_shared/dbBase.mongo.js` 的 `.doc(id).get()` 原返回裸 `doc`，与 wx-server-sdk / wx-mock 的 `{ data: doc }` 不一致；统一为 `{ data: doc }`，使「换掉 wx-server-sdk 即整体迁移」在 `getById` 维度真正等价（同步修正 `migration-drill.test.js` 断言以对齐新契约）。
 
 **【Item 7 · 前端零直连门禁扩展为规则引擎】**（上轮 §4 建议 #7）
@@ -89,10 +89,10 @@
 
 - 目标仓库：`JoustsRivia/AISND`（经用户确认使用授权 token）。
 - 本迭代提交（覆盖上轮 §4 全部 7 项目标）：
-  - **Item 1 RBAC 全域闭环**：`cert/{index,helpers/db}.js`、`check/{index,helpers/db}.js`、`performance/{index,helpers/db}.js`、`stats/{index,helpers/db}.js`：列表 `scopedList`/`scopeWhere` 按组织子树收窄 + 写库服务端 `orgId` 归属；新增 `cloudfunctions/_tests/rbac-domains.test.js`（9 项）。
+  - **Item 1 RBAC 全域闭环**：`cert/{index,helpers/db}.js`、`check/{index,helpers/db}.js`、`performance/{index,helpers/db}.js`、`stats/{index,helpers/db}.js`：列表 `scopedList`/`scopeWhere` 按组织子树收窄 + 写库服务端 `orgId` 归属；新增 `tests/rbac-domains.test.js`（9 项）。
   - **Item 3/4 留存/限流后台闭环**：`system/index.js` 限流 `rateLimit`/`rateStats` + 留存/清理审计；`utils/api.js` 新增 `getRateLimit/setRateLimit/getRateStats/getRetention/setRetention`；`pkg-system/pages/log/{log.js,log.wxml,log.wxss}` 留存编辑 + 手动清理 + 限流编辑 + 限流看板 + 策略变更筛选。
   - **Item 5 权限实时刷新**：`pages/index/index.js`（订阅刷新 + 徽标）、`pages/profile/profile.js`（emit + 订阅）、`utils/auth.js`/`utils/eventBus.js`（事件总线）。
-  - **Item 6 迁移契约双向**：`cloudfunctions/_shared/dbBase.mongo.js`（`.doc(id).get()` 统一 `{data:doc}`）、`cloudfunctions/_tests/migration-bridge.test.js`（写后读双向）、`migration-drill.test.js`（对齐断言）。
+  - **Item 6 迁移契约双向**：`shared/dbBase.mongo.js`（`.doc(id).get()` 统一 `{data:doc}`）、`tests/migration-bridge.test.js`（写后读双向）、`migration-drill.test.js`（对齐断言）。
   - **Item 7 门禁规则引擎**：`scripts/check-frontend-decoupled.js`（可配置规则 + 维度上报 + 自检 + CI 注解）、`package.json`（`check:frontend:self`）、`.github/workflows/ci.yml`（自检步骤）。
   - 测试：`system-log.test.js`（+6 限流/看板/审计）、`rbac-domains.test.js`（新增 9）。
   - `ITERATION_REPORT.md`：本报告。

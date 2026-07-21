@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 // scripts/validate-functions.js
 // CI「构建产物」门禁（沙箱无云环境，仅能做静态 + 隔离层一致性校验）：
-//   对每个可部署云函数（排除 _shared / _tests / tpl 脚手架）验证：
+//   对每个可部署云函数（cloudfunctions/ 现仅含可部署函数，脚手架 _shared/_tests/tpl 已迁出）验证：
 //     1) 结构完整：含 index.js 与 package.json（可被云函数 CLI 识别）；
 //     2) 语法可解析：目录内全部 *.js 通过 node --check；
-//     3) 隔离层自包含：helpers/ 下已生成 dbBase.js / userBase.js 且与 _shared/* 单一源一致
+//     3) 隔离层自包含：helpers/ 下已生成 dbBase.js / userBase.js 且与 shared/* 单一源一致
 //        （先由 bundle-db-base.js 打包，再校验，杜绝「漏打包即部署」）。
 //
 // 用法：node scripts/validate-functions.js
@@ -17,7 +17,7 @@ const path = require('path');
 const { execSync } = require('child_process');
 
 const ROOT = path.resolve(__dirname, '..');
-const SHARED = path.join(ROOT, 'cloudfunctions', '_shared');
+const SHARED = path.join(ROOT, 'shared');
 const CLOUD = path.join(ROOT, 'cloudfunctions');
 
 // 先打包隔离层（保证后续校验基于「将被部署」的真实产物）
@@ -34,7 +34,8 @@ const SRC_TO_DEST = [
   ['userBase.js', 'userBase.js'],
 ];
 
-const SKIP = new Set(['_shared', '_tests', 'tpl']); // tpl 为脚手架，禁止部署
+// cloudfunctions/ 现仅含可部署云函数；脚手架（shared 单一源 / tests 单测 / scaffolds/tpl 模板）已迁出，无需跳过。
+const SKIP = new Set();
 
 let checked = 0;
 let bad = 0;

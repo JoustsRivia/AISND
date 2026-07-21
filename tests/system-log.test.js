@@ -1,5 +1,5 @@
 'use strict';
-// cloudfunctions/_tests/system-log.test.js
+// tests/system-log.test.js
 //
 // 覆盖迭代 Item 3（审计日志合规留存 + 字段级权限）+ Item 4（服务端分页）后端逻辑：
 //   - log：写入合规字段 serverTime / retainedUntil / source，并保留 operatorName / clientTime 透传
@@ -7,7 +7,7 @@
 //             + 字段级权限（非管理员强制仅见自身，管理员可切 scope）
 //   - cleanupLogs：超期(retainedUntil)日志清理；定时器(triggerName)触发免管理员校验
 //
-// 运行：node --test cloudfunctions/_tests   （pretest 会自动打包隔离层，或本文件顶部自举打包）
+// 运行：node --test tests   （pretest 会自动打包隔离层，或本文件顶部自举打包）
 // 依赖：仅 Node 内置。
 
 require('./mock-cloud'); // 必须在 require 业务云函数前安装 wx-server-sdk 拦截
@@ -16,12 +16,12 @@ require('./mock-cloud'); // 必须在 require 业务云函数前安装 wx-server
 const { execSync } = require('child_process');
 const path = require('path');
 try {
-  execSync('node scripts/bundle-db-base.js', { cwd: path.resolve(__dirname, '..', '..'), stdio: 'pipe' });
+  execSync('node scripts/bundle-db-base.js', { cwd: path.resolve(__dirname, '..'), stdio: 'pipe' });
 } catch (e) { /* 已由 pretest 生成则忽略 */ }
 
 const { test, beforeEach } = require('node:test');
 const assert = require('node:assert');
-const system = require('../system/index');
+const system = require('../cloudfunctions/system/index');
 const mock = require('./mock-cloud');
 
 beforeEach(() => {

@@ -1,5 +1,5 @@
 'use strict';
-// cloudfunctions/_tests/migration-bridge.test.js
+// tests/migration-bridge.test.js
 //
 // 迁移契约「反向校验」常驻单测（Item 6）：把「换掉 wx-server-sdk 即整体迁移」从
 // 理论保证升级为每提交必跑的回归卡点。
@@ -9,7 +9,7 @@
 //   3) 真实驱动行为回归（可选）：配置 MONGODB_URI 时，对全业务域用【真实】helpers/db.js
 //      跑 add/listBy/getById 一致性（与 scripts/migrate-drill/mongo.js 同源）。
 //
-// 运行：node --test cloudfunctions/_tests/migration-bridge.test.js
+// 运行：node --test tests/migration-bridge.test.js
 // 依赖：仅 Node 内置；mongodb 可选（未配置 MONGODB_URI 时跳过真实驱动回归）。
 
 require('./mock-cloud'); // 安装 wx-server-sdk 拦截，使直接 require dbBase.js(wx) 可解析
@@ -18,8 +18,8 @@ const path = require('path');
 const { test } = require('node:test');
 const assert = require('node:assert');
 
-const wxBase = require('../_shared/dbBase');
-const mongoBase = require('../_shared/dbBase.mongo');
+const wxBase = require('../shared/dbBase');
+const mongoBase = require('../shared/dbBase.mongo');
 
 // 业务 helpers 从 dbBase 解构消费的命名导出（迁移契约的最小接口面）
 const EXPECTED = [
@@ -92,8 +92,8 @@ test('迁移契约③：真实 MongoDB 行为回归（需 MONGODB_URI）', async
   if (!uri) { console.log('⏭️  未配置 MONGODB_URI，跳过真实 MongoDB 行为回归'); return; }
   let mongodb;
   try { mongodb = require('mongodb'); } catch (e) { console.log('⏭️  可选依赖 mongodb 未安装，跳过真实 MongoDB 行为回归'); return; }
-  const { mongoCollectionFactory } = require('./mongo-store');
-  const REPO = path.resolve(__dirname, '..', '..');
+  const { mongoCollectionFactory } = require('../scripts/migrate-drill/mongo-store');
+  const REPO = path.resolve(__dirname, '..');
   const MongoClient = mongodb.MongoClient;
   const client = new MongoClient(uri);
   await client.connect();

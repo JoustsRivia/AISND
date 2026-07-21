@@ -16,7 +16,7 @@ const path = require('path');
 const Module = require('module');
 
 const REPO = path.resolve(__dirname, '..', '..');
-const mongoBase = require(path.join(REPO, 'cloudfunctions', '_shared', 'dbBase.mongo.js'));
+const mongoBase = require(path.join(REPO, 'shared', 'dbBase.mongo.js'));
 const { mongoCollectionFactory } = require('./mongo-store');
 
 // 逐业务域回归用例：每个域用其【真实】helpers/db.js 的通用原语 add / listBy / getById

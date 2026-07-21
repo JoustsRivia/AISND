@@ -1,4 +1,4 @@
-// cloudfunctions/_shared/dbBase.js
+// shared/dbBase.js
 // ★ 隔离层单一源（可迁移契约的核心）。
 //
 // 设计背景：微信云函数「逐函数独立部署」，跨函数 require 共享文件会在运行时失败

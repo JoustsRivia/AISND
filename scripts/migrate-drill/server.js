@@ -3,7 +3,7 @@
 // 「换掉 dbBase.js 即整体迁移」端到端演练服务（零依赖，仅用 Node 内置 http）。
 //
 // 做法：覆盖 require，使 borrow 业务云函数内部的 require('./dbBase') 解析到
-// cloudfunctions/_shared/dbBase.mongo.js（MongoDB 适配实现），再挂载最小 HTTP 接口，
+// shared/dbBase.mongo.js（MongoDB 适配实现），再挂载最小 HTTP 接口，
 // 证明【真实的】borrow/helpers/db.js 业务代码在「自有服务器」环境下零改动即可运行。
 //
 // 用法：
@@ -20,7 +20,7 @@ const path = require('path');
 const Module = require('module');
 
 const REPO = path.resolve(__dirname, '..', '..');
-const mongoBase = require(path.join(REPO, 'cloudfunctions', '_shared', 'dbBase.mongo.js'));
+const mongoBase = require(path.join(REPO, 'shared', 'dbBase.mongo.js'));
 
 // 覆盖 require：业务 helpers 的 require('./dbBase') -> mongo 适配实现
 const origRequire = Module.prototype.require;

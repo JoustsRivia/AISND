@@ -42,7 +42,7 @@ bash uploadCloudFunction.sh <envId> <functionName> <projectPath>
 # 例：bash uploadCloudFunction.sh prod-1f2a3b auth /path/to/project
 ```
 
-- `cloudfunctions/tpl` 为脚手架模板，**禁止部署**（脚本已内置拒绝）。
+- `scaffolds/tpl` 为脚手架模板，**禁止部署**（脚本已内置拒绝）。
 - 各业务函数在 `cloudfunctions/<fn>/` 下，需各自携带 `index.js` + `helpers/` + `package.json`。
 
 ---
@@ -56,7 +56,7 @@ bash uploadCloudFunction.sh <envId> <functionName> <projectPath>
 node scripts/helper-comments.js
 
 # 云函数核心业务单测（item 2）：auth / purchase / scrap
-node --test cloudfunctions/_tests/cloud-functions.test.js
+node --test tests/cloud-functions.test.js
 ```
 
 > 根目录 `package.json` 已封装脚本：`npm run lint:helpers` 与 `npm test`。

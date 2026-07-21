@@ -1,10 +1,10 @@
 'use strict';
-// cloudfunctions/_tests/cloud-functions-2.test.js
+// tests/cloud-functions-2.test.js
 //
 // 扩展单测覆盖（迭代建议 item 1）：borrow / maintenance / store / reconcile 四个核心云函数。
 // 沿用同一 mock-cloud 拦截层，业务云函数（index.js + helpers）零改动，证明「换掉 wx-server-sdk 即可复用」。
 //
-// 运行：node --test cloudfunctions/_tests/cloud-functions-2.test.js
+// 运行：node --test tests/cloud-functions-2.test.js
 // 依赖：仅 Node 内置（node:test / node:assert），无需安装依赖。
 
 require('./mock-cloud'); // 必须在 require 业务云函数前安装 wx-server-sdk 拦截
@@ -12,13 +12,13 @@ require('./mock-cloud'); // 必须在 require 业务云函数前安装 wx-server
 const { test, beforeEach } = require('node:test');
 const assert = require('node:assert');
 
-const borrow = require('../borrow/index');
-const maintenance = require('../maintenance/index');
-const store = require('../store/index');
-const reconcile = require('../reconcile/index');
-const file = require('../file/index');
-const purchase = require('../purchase/index');
-const tool = require('../tool/index');
+const borrow = require('../cloudfunctions/borrow/index');
+const maintenance = require('../cloudfunctions/maintenance/index');
+const store = require('../cloudfunctions/store/index');
+const reconcile = require('../cloudfunctions/reconcile/index');
+const file = require('../cloudfunctions/file/index');
+const purchase = require('../cloudfunctions/purchase/index');
+const tool = require('../cloudfunctions/tool/index');
 const mock = require('./mock-cloud');
 
 beforeEach(() => {

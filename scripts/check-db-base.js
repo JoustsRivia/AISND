@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // scripts/check-db-base.js
 // 隔离层单一源「漂移卡点」（CI / pre-commit 用）：
-//   1) 各单一源（_shared/dbBase.js、_shared/userBase.js）语法有效；
+//   1) 各单一源（shared/dbBase.js、shared/userBase.js）语法有效；
 //   2) 重新打包后与各函数 helpers/ 下对应副本完全一致（杜绝手工改副本导致漂移）。
 //
 // 退出码 1 = 存在漂移或不一致；0 = 通过。
@@ -14,7 +14,7 @@ const os = require('os');
 const { execSync } = require('child_process');
 
 const ROOT = path.resolve(__dirname, '..');
-const SHARED = path.join(ROOT, 'cloudfunctions', '_shared');
+const SHARED = path.join(ROOT, 'shared');
 const CLOUD = path.join(ROOT, 'cloudfunctions');
 
 // [单一源, 副本名]
@@ -52,7 +52,7 @@ for (const fn of fs.readdirSync(CLOUD).sort()) {
     if (fs.existsSync(dest)) {
       n++;
       if (fs.readFileSync(dest, 'utf8') !== src) {
-        console.error(`⚠️ 漂移：${path.relative(ROOT, dest)} 与 _shared/${srcName} 不一致，请重跑 node scripts/bundle-db-base.js`);
+        console.error(`⚠️ 漂移：${path.relative(ROOT, dest)} 与 shared/${srcName} 不一致，请重跑 node scripts/bundle-db-base.js`);
         bad++;
       }
     } else {
@@ -64,4 +64,4 @@ if (bad > 0) {
   console.error(`\n发现 ${bad} 处漂移。`);
   process.exit(1);
 }
-console.log(`✅ 隔离层单一源校验通过：${n} 个副本均可由 _shared/* 一致生成（dbBase.js + userBase.js）`);
+console.log(`✅ 隔离层单一源校验通过：${n} 个副本均可由 shared/* 一致生成（dbBase.js + userBase.js）`);

@@ -16,9 +16,9 @@ const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..');
 
-// 扫描范围：业务源码；排除测试、模板、脚本自身与 node_modules
+// 扫描范围：业务源码；排除脚本自身与 node_modules（tests/、scaffolds/ 不在扫描目录内）
 const SCAN_DIRS = ['utils', 'pages', 'components', 'cloudfunctions', 'app.js'];
-const EXCLUDE_DIRS = ['_tests', 'tpl', 'node_modules'];
+const EXCLUDE_DIRS = ['node_modules'];
 const EXCLUDE_FILES = ['secret-scan.js', 'helper-comments.js', 'mock-cloud.js'];
 
 // 命中即视为高危：变量名含这些词，且被直接赋值为字符串字面量（非 process.env / 非函数调用 / 非占位符）

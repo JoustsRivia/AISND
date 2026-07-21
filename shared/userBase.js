@@ -1,4 +1,4 @@
-// cloudfunctions/_shared/userBase.js
+// shared/userBase.js
 // ★ 隔离层「鉴权助手」单一源（与 dbBase.js 平行，同为隔离层唯一源）。
 //
 // 设计背景：微信云函数「逐函数独立部署」，跨函数 require 共享文件会在运行时失败

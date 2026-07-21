@@ -1,21 +1,21 @@
 'use strict';
-// cloudfunctions/_tests/migration-drill.test.js
+// tests/migration-drill.test.js
 //
 // 「自有服务器」适配实测演练（迭代 Item 7）：
-//   用 cloudfunctions/_shared/dbBase.mongo.js（MongoDB 适配实现）替换业务云函数的 ./dbBase，
+//   用 shared/dbBase.mongo.js（MongoDB 适配实现）替换业务云函数的 ./dbBase，
 //   复用【真实的】 borrow/helpers/db.js 业务代码（零改动），验证「换掉 wx-server-sdk 即整体迁移」。
 //
 // 这是把「迁移契约」从「理论可迁移」（mock 反向证明）升级为「实测可迁移」的关键证据：
 // 业务层（addBorrow / listBorrow / getCurrentUser…）在微信云开发与自有 MongoDB 服务器下行为一致。
 //
-// 运行：node --test cloudfunctions/_tests
+// 运行：node --test tests
 
 const Module = require('module');
 const path = require('path');
 
-const REPO = path.resolve(__dirname, '..', '..');
+const REPO = path.resolve(__dirname, '..');
 const BORROW_DB = path.join(REPO, 'cloudfunctions', 'borrow', 'helpers', 'db.js');
-const mongoBase = require(path.join(REPO, 'cloudfunctions', '_shared', 'dbBase.mongo.js'));
+const mongoBase = require(path.join(REPO, 'shared', 'dbBase.mongo.js'));
 
 // 覆盖 require：仅当「业务 helpers 内部 require('./dbBase')」时返回 mongo 适配实现。
 // 用 DRILL_ACTIVE 标志隔离，避免污染同进程内的其他测试文件（如 auth/purchase 单测）。

@@ -1,5 +1,5 @@
 'use strict';
-// cloudfunctions/_tests/mock-cloud.js
+// tests/mock-cloud.js
 //
 // 云函数单元测试 mock 层。作用：拦截任意云函数模块内部的 require('wx-server-sdk')，
 // 返回内存态数据库 + 可注入的微信上下文，使业务云函数（index.js + helpers）能在 Node 下

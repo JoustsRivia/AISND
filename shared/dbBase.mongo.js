@@ -1,11 +1,11 @@
-// cloudfunctions/_shared/dbBase.mongo.js
+// shared/dbBase.mongo.js
 // ★ 隔离层「自有服务器」适配实现（与 dbBase.js 同接口的 MongoDB 版本）。
 //
 // 设计目的：把「迁移契约」从「理论可迁移」升级为「实测可迁移」。
 //   生产：调用 setCollectionFactory((name) => mongoDb.collection(name)) 接入真实 mongodb 驱动；
 //         该驱动返回的 Collection 只需实现本文件约定的少量方法（find/insertOne/...），
 //         即可被下方查询原语复用，业务代码零改动。
-//   演练/测试：默认使用内置内存集合（零依赖、可独立运行），由 cloudfunctions/_tests/migration-drill.test.js
+//   演练/测试：默认使用内置内存集合（零依赖、可独立运行），由 tests/migration-drill.test.js
 //         与 scripts/migrate-drill/server.js 端到端验证。
 //
 // 关键：业务 helpers/db.js 与 index.js 不改一行，仅在「微信云开发」与「自有 MongoDB 服务器」之间

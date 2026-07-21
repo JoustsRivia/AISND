@@ -1,5 +1,5 @@
 'use strict';
-// cloudfunctions/_tests/rbac-domains.test.js
+// tests/rbac-domains.test.js
 //
 // 迭代 Item 1（RBAC 注入剩余业务域闭环）：覆盖 cert / check / performance 三个读接口的
 // 「按组织子树收窄」行为，验证 scopedList 通用模板在各域真正生效：
@@ -9,16 +9,16 @@
 //   - 写库带服务端 orgId（防止越权挂靠）
 //
 // 沿用 mock-cloud 拦截层，业务云函数（index.js + helpers）零改动，证明「换掉 wx-server-sdk 即可复用」。
-// 运行：node --test cloudfunctions/_tests
+// 运行：node --test tests
 
 require('./mock-cloud'); // 必须在 require 业务云函数前安装 wx-server-sdk 拦截
 
 const { test, beforeEach } = require('node:test');
 const assert = require('node:assert');
 
-const cert = require('../cert/index');
-const check = require('../check/index');
-const performance = require('../performance/index');
+const cert = require('../cloudfunctions/cert/index');
+const check = require('../cloudfunctions/check/index');
+const performance = require('../cloudfunctions/performance/index');
 const mock = require('./mock-cloud');
 
 beforeEach(() => {

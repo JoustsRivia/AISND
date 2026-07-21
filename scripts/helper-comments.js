@@ -4,7 +4,7 @@
 //
 // 规则（来自迭代建议 item 6）：cloudfunctions/<fn>/helpers/db.js 与 user.js 的
 // 第一行情景注释必须以「本函数真实路径」开头，即 `// cloudfunctions/<fn>/helpers/<name>.js`。
-// 该首行用于迁移改写时快速识别归属函数；复制粘贴残留的 `cloudfunctions/tpl/...`
+// 该首行用于迁移改写时快速识别归属函数；复制粘贴残留的 `scaffolds/tpl/...`
 // 会误导维护者，故必须保持与真实路径一致。
 //
 // 用法：

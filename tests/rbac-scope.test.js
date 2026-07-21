@@ -1,16 +1,16 @@
 'use strict';
-// cloudfunctions/_tests/rbac-scope.test.js
+// tests/rbac-scope.test.js
 //
 // 覆盖迭代 Item 7（RBAC 数据范围真正落地）的「共享数据范围原语」：
 //   纯函数 subtreeIds / roleScope / allowedOrgIds（来自 _shared/dbBase.js 单一源）。
 // 通过 dbBase.mongo.js 引用（不依赖 wx-server-sdk，可在 Node 直接运行），
 // 与 dbBase.js 同源同构，验证「迁移契约」下 RBAC 原语行为一致。
 //
-// 运行：node --test cloudfunctions/_tests
+// 运行：node --test tests
 
 const { test } = require('node:test');
 const assert = require('node:assert');
-const base = require('../_shared/dbBase.mongo.js');
+const base = require('../shared/dbBase.mongo.js');
 
 // 组织树：单位 u1 → 项目部 p1 → 班组 t1 / t2
 const ORGS = [

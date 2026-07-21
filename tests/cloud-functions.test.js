@@ -1,12 +1,12 @@
 'use strict';
-// cloudfunctions/_tests/cloud-functions.test.js
+// tests/cloud-functions.test.js
 //
 // 云函数核心业务单测（node:test）。覆盖上次迭代建议 item 2 点名的三处高风险逻辑：
 //   - auth：register/signin 越权守卫（禁止客户端伪造 admin 角色）
 //   - purchase：approve pass=false → rejected 态流转（修复「驳回恒变通过」回归）
 //   - scrap：autoCheck 待审/禁用候选识别 + judge 超期自动判定
 //
-// 运行：node --test cloudfunctions/_tests
+// 运行：node --test tests
 // 依赖：仅 Node 内置（node:test / node:assert / node:crypto），无需安装依赖。
 
 require('./mock-cloud'); // 必须在 require 业务云函数前安装 wx-server-sdk 拦截
@@ -15,9 +15,9 @@ const { test, beforeEach } = require('node:test');
 const assert = require('node:assert');
 const crypto = require('node:crypto');
 
-const auth = require('../auth/index');
-const purchase = require('../purchase/index');
-const scrap = require('../scrap/index');
+const auth = require('../cloudfunctions/auth/index');
+const purchase = require('../cloudfunctions/purchase/index');
+const scrap = require('../cloudfunctions/scrap/index');
 const mock = require('./mock-cloud');
 
 // 与 cloudfunctions/auth / system 同源的密码哈希（sha1 + 'tms_' 盐），用于断言口令已哈希
