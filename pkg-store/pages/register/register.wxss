@@ -4,4 +4,15 @@
 .row.col { flex-direction: column; align-items: flex-start; }
 .label { width: 180rpx; font-size: 28rpx; }
 .ipt { width: 100%; margin-top: 12rpx; font-size: 28rpx; }
+.row:not(.col) .ipt { margin-top: 0; }
+.picker-txt { font-size: 28rpx; color: var(--c-text, #333); }
+.picker-txt.ph { color: var(--c-text-light, #999); }
+
+/* R21 分区动态列表 */
+.zones { width: 100%; }
+.zone-item { display: flex; align-items: center; margin-top: 12rpx; }
+.zone-ipt { flex: 1; margin-top: 0; }
+.zone-del { margin-left: 16rpx; padding: 6rpx 16rpx; font-size: 24rpx; color: #e54d42; border: 1rpx solid #e54d42; border-radius: 8rpx; }
+.add-zone { margin-top: 16rpx; font-size: 26rpx; color: var(--c-primary); }
+
 .register button { margin-top: 40rpx; background: var(--c-primary); }

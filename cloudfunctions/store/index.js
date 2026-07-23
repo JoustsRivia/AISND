@@ -74,6 +74,17 @@ async function batchInbound(payload) {
   return ok({ count: total });
 }
 
+// 库房列表（R14：供器具录入页选择存放库房）—— 按当前用户组织范围过滤
+async function list(payload = {}) {
+  const openid = getOpenid();
+  const me = await db.getCurrentUser(openid);
+  const orgs = (await listOrgs(500)).data || [];
+  const where = {};
+  Object.assign(where, scopeFilter(me, orgs, { orgId: payload.orgId || undefined }));
+  const res = await db.listBy('stores', where, 200);
+  return ok(res.data || []);
+}
+
 exports.main = async (event) => {
   const { action, payload = {} } = event;
   try {
@@ -82,6 +93,7 @@ exports.main = async (event) => {
       case 'inbound': return inbound(payload);
       case 'records': return records(payload);
       case 'batchInbound': return batchInbound(payload);
+      case 'list': return list(payload);
       default: return fail('未知 action: ' + action);
     }
   } catch (e) {

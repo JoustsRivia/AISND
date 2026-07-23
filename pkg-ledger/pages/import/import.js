@@ -42,6 +42,33 @@ Page({
 
   onText(e) { this.setData({ text: e.detail.value }); },
 
+  // 选择微信会话文件（CSV/TXT）并读取内容填入 textarea
+  onChooseFile() {
+    wx.chooseMessageFile({
+      count: 1,
+      type: 'file',
+      extension: ['csv', 'txt'],
+      success: (res) => {
+        const fp = res.tempFiles && res.tempFiles[0] && res.tempFiles[0].path;
+        if (!fp) {
+          wx.showToast({ title: '未选择文件', icon: 'none' });
+          return;
+        }
+        wx.getFileSystemManager().readFile({
+          filePath: fp,
+          encoding: 'utf-8',
+          success: (r) => {
+            const text = (r && r.data) ? String(r.data) : '';
+            this.setData({ text, result: '' });
+            wx.showToast({ title: '文件已读取', icon: 'success' });
+          },
+          fail: () => wx.showToast({ title: '文件读取失败', icon: 'none' }),
+        });
+      },
+      fail: () => { /* 用户取消，静默 */ },
+    });
+  },
+
   // 解析 CSV → 行对象数组，过滤空行与缺名称行
   _parse() {
     const raw = (this.data.text || '').trim();
@@ -86,7 +113,12 @@ Page({
       const res = await api.importTools({ rows }).catch((e) => ({ count: 0, error: e.message }));
       wx.hideLoading();
       const n = (res && res.count) || 0;
-      this.setData({ result: `成功导入 ${n} 台工器具`, text: '' });
+      const errors = (res && res.errors) || [];
+      let result = `成功导入 ${n} 台工器具`;
+      if (errors.length) {
+        result += `\n失败行号：${errors.map((e) => e.line || e.row || e).join(', ')}`;
+      }
+      this.setData({ result, text: '' });
       wx.showToast({ title: `导入 ${n} 台`, icon: n > 0 ? 'success' : 'none' });
     } catch (e) {
       wx.hideLoading();

@@ -19,7 +19,28 @@ Page({
   },
 
   async query(code) {
+    wx.showLoading({ title: '核验中…' });
     const r = await api.verifyTestTag(code).catch(() => null);
-    this.setData({ result: r });
+    wx.hideLoading();
+    if (r && r.toolId) {
+      // R17 成功反馈
+      wx.vibrateShort({ type: 'medium' });
+      this.setData({ result: r, code });
+    } else {
+      // R17 失败反馈
+      wx.vibrateShort({ type: 'heavy' });
+      this.setData({ result: null });
+      wx.showModal({
+        title: '未识别器具',
+        content: '编码「' + code + '」未匹配到有效器具档案，请核对标识牌/条码后重试。',
+        showCancel: false,
+      });
+    }
+  },
+
+  // R17 查看档案
+  onGoArchive() {
+    if (!this.data.result || !this.data.result.toolId) return;
+    wx.navigateTo({ url: '/pages/tool-detail/tool-detail?id=' + this.data.result.toolId });
   },
 });

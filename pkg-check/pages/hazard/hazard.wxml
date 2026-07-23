@@ -1,4 +1,5 @@
 <!-- pkg-check/pages/hazard/hazard.wxml —— M10.2 隐患管理 -->
+<!-- R20：级别改 A/B/C/D 四色标签；位置增加定位；考核对象联想搜索 -->
 <view class="hazard">
   <!-- 子功能：现场检查 / 考核评比 -->
   <view class="card subnav">
@@ -17,13 +18,31 @@
     </view>
     <view class="row">
       <text class="label">级别</text>
-      <picker mode="selector" range="{{levelLabels}}" value="{{levelIdx}}" bindchange="onPickLevel">
-        <view class="picker">{{levelLabels[levelIdx]}}▾</view>
+      <picker mode="selector" range="{{levelOptions}}" range-key="label" value="{{levelIdx}}" bindchange="onPickLevel">
+        <view class="picker">
+          <text class="level-tag level-{{levelOptions[levelIdx].key}}">{{levelOptions[levelIdx].label}}</text>
+          <text class="level-desc">{{levelOptions[levelIdx].desc}}</text>
+        </view>
       </picker>
     </view>
     <view class="row col">
       <text class="label">位置</text>
-      <input class="inp" placeholder="如：#3配电室" value="{{location}}" bindinput="bindLocation" />
+      <view class="loc-row">
+        <input class="inp" placeholder="如：#3配电室" value="{{location}}" bindinput="bindLocation" />
+        <button size="mini" bindtap="onGetLocation">📍定位</button>
+      </view>
+      <text wx:if="{{coords}}" class="muted loc-coords">经纬度：{{coords}}</text>
+    </view>
+    <view class="row col">
+      <text class="label">考核对象</text>
+      <input class="inp" placeholder="输入姓名/工号搜索" value="{{targetKeyword}}" bindinput="onTargetSearch" />
+      <view wx:if="{{targetResults.length}}" class="search-dropdown">
+        <view wx:for="{{targetResults}}" wx:key="_id" class="search-item" data-idx="{{index}}" bindtap="onTargetSelect">
+          <text>{{item.nickname || item.username}}（{{item.employeeId || '无工号'}}）</text>
+          <text class="muted">{{item.orgName || ''}}</text>
+        </view>
+      </view>
+      <text wx:if="{{assessmentTarget}}" class="muted">已选：{{assessmentTargetName}}</text>
     </view>
     <button type="primary" loading="{{submitting}}" bindtap="onSubmit">提交上报</button>
   </view>

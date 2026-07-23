@@ -1,0 +1,47 @@
+<!-- components/org-cascading-picker/org-cascading-picker.wxml -->
+<!-- R03 组织层级联动选择器：单位 → 项目部 → 班组 -->
+<view class="org-cascading">
+  <!-- 单位 -->
+  <picker
+    mode="selector"
+    range="{{units}}"
+    range-key="name"
+    value="{{unitIndex}}"
+    bindchange="onUnitChange"
+  >
+    <view class="org-picker-field">
+      <text>{{unitIndex >= 0 ? units[unitIndex].name : '选择单位'}}</text>
+      <text class="arrow">▸</text>
+    </view>
+  </picker>
+
+  <!-- 项目部 -->
+  <picker
+    wx:if="{{depts.length}}"
+    mode="selector"
+    range="{{depts}}"
+    range-key="name"
+    value="{{deptIndex}}"
+    bindchange="onDeptChange"
+  >
+    <view class="org-picker-field">
+      <text>{{deptIndex >= 0 ? depts[deptIndex].name : '选择项目部'}}</text>
+      <text class="arrow">▸</text>
+    </view>
+  </picker>
+
+  <!-- 班组 -->
+  <picker
+    wx:if="{{!twoLevel && teams.length}}"
+    mode="selector"
+    range="{{teams}}"
+    range-key="name"
+    value="{{teamIndex}}"
+    bindchange="onTeamChange"
+  >
+    <view class="org-picker-field">
+      <text>{{teamIndex >= 0 ? teams[teamIndex].name : '选择班组'}}</text>
+      <text class="arrow">▸</text>
+    </view>
+  </picker>
+</view>

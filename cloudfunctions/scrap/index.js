@@ -3,7 +3,7 @@
 const { getOpenid } = require('./helpers/user');
 const {
   findTool, updateTool, addScrap, updateScrap, listScrap, listTools,
-  getCurrentUser, add, listBy, _, findUser, listOrgs, allowedOrgIds,
+  getCurrentUser, add, listBy, _, findUser, listOrgs, allowedOrgIds, roleScope,
 } = require('./helpers/db');
 
 const ok = (data) => ({ code: 0, data });
@@ -63,11 +63,22 @@ async function autoCheck() {
 }
 
 // 报废申请（M8.1.2）：提交即禁用以待审批
+// R11：submit 增加跨组织隔离校验——非全局角色只能报废自身可见组织子树内的器具
 async function submit(payload) {
   const openid = getOpenid();
   const { id, reason, photos, symptoms } = payload;
   const res = await findTool(id);
   if (!res.data) return fail('器具不存在', 404);
+  // R11 跨组织隔离
+  const me = await findUser(openid);
+  const u = me.data && me.data[0];
+  if (u && roleScope(u.role) !== 'global') {
+    const orgs = (await listOrgs(500)).data || [];
+    const ids = allowedOrgIds(u, orgs, {});
+    if (ids !== null && !ids.includes('__unbound__') && !ids.includes(res.data.orgId)) {
+      return fail('无权报废其他组织器具', 403);
+    }
+  }
   const j = await judge({ id, symptoms: symptoms || [] });
   const jd = j.data || {};
   const rec = await addScrap({
@@ -125,11 +136,17 @@ async function disposal(payload) {
     updatedAt: new Date(),
   });
   // M8.2.4：处置完成却仍登记库位/保管人 → 疑似外流，写告警（去重）
+  // R24：补 toolCode/orgName/keeperName/refType，供消息中心富化展示与跳转
   if (t.store || t.keeper) {
     const exist = await listBy('warnings', { type: 'scrap_outflow', refId: rec.toolId, read: _.neq(true) }, 10);
     if (!exist.data || exist.data.length === 0) {
+      const orgs = (await listBy('orgs', {}, 500)).data || [];
+      const orgName = (orgs.find((o) => o._id === t.orgId) || {}).name || '';
+      const allUsers = (await listBy('users', {}, 500)).data || [];
+      const keeperName = (allUsers.find((u) => u.openid === t.keeper) || {}).nickname || '';
       await add('warnings', {
-        level: 'urgent', type: 'scrap_outflow', refId: rec.toolId, toolId: rec.toolId,
+        level: 'urgent', type: 'scrap_outflow', refType: 'scrap', refId: rec.toolId, toolId: rec.toolId,
+        toolCode: t.code || '', orgName, keeperName,
         title: '报废器具未完成物理移出',
         content: `${t.name}（${t.code}）已报废处置，但仍登记在「${t.store || '未知库位'}」，请立即物理隔离移出，防止外流`,
         read: false, createdAt: new Date(),

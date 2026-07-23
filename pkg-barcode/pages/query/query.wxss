@@ -1,12 +1,27 @@
-/* pkg-barcode/pages/query/query.wxss */
-.q { padding-bottom: 40rpx; }
-.row { display: flex; align-items: center; padding: 22rpx 0; border-bottom: 1rpx solid var(--c-divider); }
-.label { width: 140rpx; font-size: 28rpx; }
-.input { flex: 1; text-align: right; font-size: 28rpx; }
-.q .card button { margin: 16rpx 16rpx 0 0; background: var(--c-primary); }
-.card .name { font-size: 30rpx; font-weight: 600; }
-.card .muted { display: block; margin-top: 8rpx; font-size: 24rpx; }
-.tag { font-size: 22rpx; padding: 2rpx 14rpx; border-radius: 8rpx; }
-.tag.ok { background: var(--c-success-bg); color: var(--c-success); }
-.tag.no { background: var(--c-danger-bg); color: var(--c-danger); }
-.warn { display: block; margin-top: 12rpx; color: var(--c-warning); font-size: 24rpx; }
+/* pkg-barcode/pages/query/query.wxss —— R17 核验反馈 kv 列表样式 */
+
+.kv-list {
+  margin: var(--sp-2) 0;
+  padding: var(--sp-2);
+  background: var(--c-surface-2);
+  border-radius: var(--r-sm);
+}
+.kv {
+  display: flex;
+  align-items: baseline;
+  padding: 8rpx 0;
+  border-bottom: 1rpx solid var(--c-divider);
+}
+.kv:last-child { border-bottom: none; }
+.kv .k {
+  width: 160rpx;
+  flex-shrink: 0;
+  font-size: var(--fs-sm);
+  color: var(--c-text-muted);
+}
+.kv .v {
+  flex: 1;
+  font-size: var(--fs-md);
+  color: var(--c-text);
+  font-weight: 500;
+}

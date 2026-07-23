@@ -1,0 +1,75 @@
+/* components/db-picker/db-picker.wxss */
+.db-picker-field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16rpx 24rpx;
+  background: #fff;
+  border: 1rpx solid #e0e0e0;
+  border-radius: 8rpx;
+  min-height: 80rpx;
+}
+.db-picker-field.is-disabled {
+  background: #f5f5f5;
+  color: #999;
+}
+.db-picker-text {
+  font-size: 28rpx;
+  color: #333;
+  flex: 1;
+}
+.db-picker-arrow {
+  font-size: 24rpx;
+  color: #999;
+  margin-left: 12rpx;
+}
+.db-picker-search {
+  position: relative;
+}
+.db-picker-input {
+  padding: 16rpx 60rpx 16rpx 24rpx;
+  background: #fff;
+  border: 1rpx solid #e0e0e0;
+  border-radius: 8rpx;
+  font-size: 28rpx;
+  min-height: 80rpx;
+}
+.db-picker-clear {
+  position: absolute;
+  right: 20rpx;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 28rpx;
+  color: #ccc;
+  padding: 8rpx;
+}
+.db-picker-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: #fff;
+  border: 1rpx solid #e0e0e0;
+  border-top: none;
+  border-radius: 0 0 8rpx 8rpx;
+  max-height: 400rpx;
+  overflow-y: auto;
+  z-index: 100;
+  box-shadow: 0 4rpx 12rpx rgba(0,0,0,0.1);
+}
+.db-picker-option {
+  padding: 20rpx 24rpx;
+  border-bottom: 1rpx solid #f5f5f5;
+}
+.db-picker-option:last-child {
+  border-bottom: none;
+}
+.db-picker-option-main {
+  font-size: 28rpx;
+  color: #333;
+}
+.db-picker-option-desc {
+  font-size: 24rpx;
+  color: #999;
+  margin-top: 4rpx;
+}

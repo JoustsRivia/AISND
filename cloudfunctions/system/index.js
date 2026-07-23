@@ -55,6 +55,58 @@ async function rateLimitFor(action) {
 const crypto = require('crypto');
 function hashPwd(p) { return p ? crypto.createHash('sha1').update('tms_' + p).digest('hex') : ''; }
 
+// ── R02 按组织树级别生成工号 ──────────────────────────────────────────
+// 规则：单位级(level 0) → 4 位(0001)；项目部级(level 1) → 6 位(260001，前两位为单位序号)；
+// 班组级(level 2) → 8 位(26010001，前两位单位序号 + 中两位项目部序号)。
+// 工号在组织树内唯一，注册时自动分配。
+async function generateEmployeeId(orgId, orgs) {
+  const list = orgs || ((await db.listBy('orgs', {}, 500)).data || []);
+  const byId = {};
+  list.forEach((o) => { byId[o._id] = o; });
+
+  const node = byId[orgId];
+  if (!node) return String(Date.now()).slice(-6);
+
+  // 找到根单位(level 0) → 单位序号
+  let unit = node;
+  while (unit.parentId && byId[unit.parentId]) unit = byId[unit.parentId];
+  const unitList = list.filter((o) => o.level === 0 && !o.parentId);
+  const unitIdx = Math.max(0, unitList.findIndex((o) => o._id === unit._id)) + 1;
+  const unitSeq = String(unitIdx).padStart(2, '0');
+
+  // 找到项目部(level 1) → 项目部序号
+  let projIdx = 0;
+  if (node.level >= 1) {
+    let proj = node;
+    while (proj && proj.level > 1) proj = byId[proj.parentId];
+    if (proj) {
+      const sibs = list.filter((o) => o.level === 1 && o.parentId === unit._id);
+      projIdx = Math.max(0, sibs.findIndex((o) => o._id === proj._id)) + 1;
+    }
+  }
+  const projSeq = String(projIdx).padStart(2, '0');
+
+  // 基于前缀查同组织树已有工号，取最大流水号 +1，保证唯一
+  let prefix;
+  if (node.level === 0) prefix = '';
+  else if (node.level === 1) prefix = unitSeq;
+  else prefix = unitSeq + projSeq;
+
+  const len = node.level === 0 ? 4 : (node.level === 1 ? 6 : 8);
+  const seqLen = len - prefix.length;
+
+  const allUsers = (await db.listBy('users', {}, 500)).data || [];
+  let max = 0;
+  const re = new RegExp('^' + prefix + '(\\d{' + seqLen + '})$');
+  for (const u of allUsers) {
+    if (!u.employeeId) continue;
+    const m = (u.employeeId || '').match(re);
+    if (m) max = Math.max(max, parseInt(m[1], 10) || 0);
+  }
+  const seq = String(max + 1).padStart(seqLen, '0');
+  return prefix + seq;
+}
+
 // ── 默认组织架构（示例）─────────────────────────────────────────────────
 // 组织节点字段：{ _id, name, parentId, level, kind }
 //   kind: 'unit'(所属单位) | 'project'(项目部/工程部) | 'team'(机构/班组)
@@ -85,20 +137,65 @@ async function orgTree() {
     await seedOrgs();
     res = await db.listBy('orgs', {}, 200);
   }
-  return ok(res.data || []);
+  // R06：返回当前版本号，供前端缓存比对
+  let version = 0;
+  try {
+    const vr = await db.listBy('configs', { key: 'orgTreeVersion' }, 1);
+    version = (vr.data && vr.data[0] && Number(vr.data[0].value)) || 0;
+  } catch (_) {}
+  return ok({ list: res.data || [], version });
 }
 
 // ── 组织架构管理（op: add | update | delete | seed）───────────────────
-// 服务端角色鉴权（S1）：**仅小程序管理员(admin)可管理用户与组织**。
-// admin 为最高数据管理权限；专班负责人(lead)/项目部负责人(project_lead)/安监部(supervisor)
-// 属业务管理角色，不再具备系统管理员权限，禁止进入系统管理后台。
-// 可分配角色：业务角色 + 小程序管理员(admin)。admin 由现有管理员在后台指派，
-// 普通用户注册自绑定白名单（cloudfunctions/auth SELF_BINDABLE_ROLES）不包含 admin，杜绝越权自建。
+// R09：组织编辑权限按角色档位分发
+//   admin → 全部组织树
+//   lead（专班负责人） → 本公司(root)及下属所有项目部
+//   project_lead（项目部负责人） → 本项目部的班组节点
+//   supervisor（安监部管理人员） → 只读
 const ROLE_WHITE = ['worker', 'group_lead', 'safety_officer', 'lease_admin', 'project_lead', 'lead', 'supervisor', 'admin'];
+
+// R09：获取当前用户可编辑的 orgId 范围
+// 返回 { canEdit: boolean, editableIds: string[] | null }
+//   editableIds === null 表示全部可编辑（admin）；空数组表示只读/无权限
+async function getOrgEditScope(u, orgs) {
+  if (!u) return { canEdit: false, editableIds: [] };
+  if (u.role === 'admin') return { canEdit: true, editableIds: null }; // 全部
+  if (u.role === 'lead') {
+    // 专班负责人：本单位子树全部
+    const ids = u.orgId ? db.subtreeIds(orgs, u.orgId) : [];
+    return { canEdit: true, editableIds: ids };
+  }
+  if (u.role === 'project_lead') {
+    // 项目部负责人：仅本项目部的班组节点（子树）
+    const ids = u.orgId ? db.subtreeIds(orgs, u.orgId) : [];
+    return { canEdit: true, editableIds: ids };
+  }
+  // supervisor / 其他：只读
+  return { canEdit: false, editableIds: [] };
+}
+
+// R09：校验当前用户是否可操作指定 orgId
+async function canEditOrg(u, targetOrgId, orgs) {
+  const scope = await getOrgEditScope(u, orgs);
+  if (!scope.canEdit) return false;
+  if (scope.editableIds === null) return true; // admin 全部
+  return scope.editableIds.includes(targetOrgId);
+}
+
 async function requireAdmin() {
   const u = await db.getCurrentUser(getOpenid());
   if (!u || u.status === 'disabled') return { err: fail('账号不可用', 403) };
   if (u.role !== 'admin') return { err: fail('仅小程序管理员(admin)可管理组织与用户', 403) };
+  return { u };
+}
+
+// R09：组织编辑权限守卫（admin/lead/project_lead 可编辑，supervisor 只读）
+async function requireOrgEditor() {
+  const u = await db.getCurrentUser(getOpenid());
+  if (!u || u.status === 'disabled') return { err: fail('账号不可用', 403) };
+  if (!['admin', 'lead', 'project_lead'].includes(u.role)) {
+    return { err: fail('无组织编辑权限（仅管理员/专班/项目部负责人）', 403) };
+  }
   return { u };
 }
 
@@ -110,15 +207,41 @@ async function resolveLevel(parentId) {
 }
 
 async function orgManage(payload) {
-  const g = await requireAdmin();
+  // R09：放宽为 admin/lead/project_lead 可编辑，supervisor 只读
+  const g = await requireOrgEditor();
   if (g.err) return g.err;
+  const u = g.u;
   const { op = 'add', id, data = {} } = payload;
+  const orgs = (await db.listBy('orgs', {}, 500)).data || [];
+
+  // R09：编辑/删除时校验目标 orgId 是否在当前用户可编辑范围内
+  if ((op === 'update' || op === 'delete') && id) {
+    const can = await canEditOrg(u, id, orgs);
+    if (!can) return fail('无权操作该组织节点', 403);
+  }
+  // R09：新增时校验父节点是否在可编辑范围内（admin 除外）
+  if (op === 'add' && data.parentId && u.role !== 'admin') {
+    const can = await canEditOrg(u, data.parentId, orgs);
+    if (!can) return fail('无权在该组织节点下新增', 403);
+  }
+
+  // R06：组织变更后递增 orgTreeVersion，驱动前端缓存失效
+  const bumpOrgVersion = async () => {
+    try {
+      const r = await db.listBy('configs', { key: 'orgTreeVersion' }, 1);
+      const cur = r.data && r.data[0];
+      const next = (cur && Number(cur.value) || 0) + 1;
+      if (cur) await db.update('configs', cur._id, { value: next, updatedAt: now() });
+      else await db.add('configs', { key: 'orgTreeVersion', value: next, createdAt: now() });
+    } catch (_) { /* 版本号更新失败不阻塞业务 */ }
+  };
 
   if (op === 'seed') {
     // 仅当组织架构为空时允许恢复默认，避免覆盖既有数据
     const cur = await db.listBy('orgs', {}, 1);
     if (cur.data && cur.data.length) return fail('组织架构已存在，无需恢复默认', 409);
     await seedOrgs();
+    await bumpOrgVersion();
     return ok({ seeded: true });
   }
 
@@ -132,6 +255,7 @@ async function orgManage(payload) {
       kind: data.kind || (level === 0 ? 'unit' : level === 1 ? 'project' : 'team'),
       createdAt: now(),
     });
+    await bumpOrgVersion();
     return ok({ _id: a._id });
   }
 
@@ -146,6 +270,7 @@ async function orgManage(payload) {
       kind: data.kind || (level === 0 ? 'unit' : level === 1 ? 'project' : 'team'),
       updatedAt: now(),
     });
+    await bumpOrgVersion();
     return ok({ id });
   }
 
@@ -157,6 +282,7 @@ async function orgManage(payload) {
     // 同时把归属该组织的用户置为未分配，避免登录页/数据范围出现脏引用
     await db.collection('users').where({ orgId: id }).update({ data: { orgId: '', unitId: '' } });
     await db.removeOrg(id);
+    await bumpOrgVersion();
     return ok({ id });
   }
 
@@ -172,8 +298,21 @@ async function userManage(payload) {
   await db.ensureCollection('users');
 
   if (op === 'list') {
-    const res = await db.listBy('users', {}, 200);
-    return ok(res.data || []);
+    // R10：支持按组织/角色/关键字检索 + 分页
+    const { orgId, role, keyword, page = 1, pageSize = 50 } = data;
+    let list = (await db.listBy('users', {}, 500)).data || [];
+    if (orgId) list = list.filter((u) => u.orgId === orgId);
+    if (role) list = list.filter((u) => u.role === role);
+    if (keyword) {
+      const k = String(keyword).toLowerCase();
+      list = list.filter((u) =>
+        [u.username, u.nickname, u.employeeId].some((f) => f != null && String(f).toLowerCase().includes(k))
+      );
+    }
+    const total = list.length;
+    const skip = Math.max(0, (Number(page) - 1) * Number(pageSize));
+    list = list.slice(skip, skip + Number(pageSize));
+    return ok({ list, total, page: Number(page), pageSize: Number(pageSize) });
   }
 
   if (op === 'add') {
@@ -183,6 +322,9 @@ async function userManage(payload) {
     // 用户名唯一性
     const dup = await db.listBy('users', { username: data.username }, 1);
     if (dup.data && dup.data.length) return fail('用户名已存在', 409);
+    // R02：自动生成组织树内唯一工号
+    const orgs = (await db.listBy('orgs', {}, 500)).data || [];
+    const employeeId = await generateEmployeeId(data.orgId || '', orgs);
     const a = await db.add('users', {
       openid: '',                 // 由管理员预建，首次微信登录时绑定当前身份
       username: data.username,
@@ -191,6 +333,7 @@ async function userManage(payload) {
       role: data.role || 'worker',
       unitId: data.unitId || '',
       orgId: data.orgId || '',
+      employeeId,                 // R02 工号
       bound: true,
       status: 'active',
       createdAt: now(),
@@ -474,6 +617,21 @@ async function rateStats() {
   return ok({ policy, denied: (denied && denied.total) || 0, configChanges: (sets && sets.total) || 0 });
 }
 
+// R09：返回当前用户的组织编辑权限范围（供前端控制增删改按钮显隐）
+async function orgPerm() {
+  const u = await db.getCurrentUser(getOpenid());
+  if (!u || u.status === 'disabled') return fail('账号不可用', 403);
+  const orgs = (await db.listBy('orgs', {}, 500)).data || [];
+  const scope = await getOrgEditScope(u, orgs);
+  return ok({
+    role: u.role,
+    canEdit: scope.canEdit,
+    canAdd: scope.canEdit,
+    canDelete: scope.canEdit && u.role !== 'project_lead', // 项目部负责人不可删除
+    editableIds: scope.editableIds, // null=全部可编辑，[]=只读
+  });
+}
+
 exports.main = async (event) => {
   const ev = event || {};
   // 定时器触发时无 action，由 triggerName 路由（config.json 的 logCleanup → cleanupLogs）
@@ -483,6 +641,7 @@ exports.main = async (event) => {
     switch (action) {
       case 'orgTree': return orgTree(payload);
       case 'org': return orgManage(payload);
+      case 'orgPerm': return orgPerm();
       case 'user': return userManage(payload);
       case 'dict': return dict(payload);
       case 'checkTemplate': return checkTemplate(payload);

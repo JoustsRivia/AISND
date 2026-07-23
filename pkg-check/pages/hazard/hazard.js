@@ -1,20 +1,23 @@
 // pkg-check/pages/hazard/hazard.js —— M10.2 隐患管理
+// R20：级别改 A/B/C/D 四色；位置增加 getLocation；考核对象联想搜索
 const api = require('../../../utils/api');
 const network = require('../../../utils/network');
-const { HAZARD_LEVEL } = require('../../../utils/constants');
 
-const LEVELS = [
-  { key: HAZARD_LEVEL.NORMAL, label: '一般' },
-  { key: HAZARD_LEVEL.SERIOUS, label: '严重' },
-  { key: HAZARD_LEVEL.MAJOR, label: '重大' },
+// R20：隐患级别 A/B/C/D（杜绝类/严禁类/违章类/规范类）
+const LEVEL_OPTIONS = [
+  { key: 'A', label: 'A-杜绝类', desc: '红色·立即停工' },
+  { key: 'B', label: 'B-严禁类', desc: '橙色·限期整改' },
+  { key: 'C', label: 'C-违章类', desc: '黄色·跟踪整改' },
+  { key: 'D', label: 'D-规范类', desc: '蓝色·建议改进' },
 ];
 
 const HAZARD_STATUS = { open: '待整改', tracking: '跟踪中', closed: '已闭环' };
 
 Page({
   data: {
-    desc: '', levelIdx: 0, location: '',
-    levelLabels: LEVELS.map((l) => l.label),
+    desc: '', levelIdx: 0, location: '', coords: '',
+    levelOptions: LEVEL_OPTIONS,
+    targetKeyword: '', targetResults: [], assessmentTarget: '', assessmentTargetName: '',
     list: [], loading: true, submitting: false,
   },
 
@@ -50,6 +53,44 @@ Page({
   bindDesc(e) { this.setData({ desc: e.detail.value }); },
   bindLocation(e) { this.setData({ location: e.detail.value }); },
 
+  // R20：获取定位
+  async onGetLocation() {
+    try {
+      const r = await wx.getLocation({ type: 'gcj02' });
+      this.setData({ coords: r.longitude.toFixed(6) + ',' + r.latitude.toFixed(6) });
+    } catch (err) {
+      wx.showToast({ title: '定位失败，请手动输入', icon: 'none' });
+    }
+  },
+
+  // R20：考核对象联想搜索
+  onTargetSearch(e) {
+    const keyword = e.detail.value;
+    this.setData({ targetKeyword: keyword });
+    if (!keyword.trim()) { this.setData({ targetResults: [] }); return; }
+    // 调用 user list 搜索（api.listUsers 已有 keyword 参数支持，R10）
+    api.listUsers().then((data) => {
+      const list = (data && data.list) || data || [];
+      const k = keyword.toLowerCase();
+      const results = list.filter((u) =>
+        [u.username, u.nickname, u.employeeId].some((f) => f != null && String(f).toLowerCase().includes(k))
+      ).slice(0, 10);
+      this.setData({ targetResults: results });
+    }).catch(() => this.setData({ targetResults: [] }));
+  },
+
+  // R20：选中考核对象
+  onTargetSelect(e) {
+    const idx = +e.currentTarget.dataset.idx;
+    const item = this.data.targetResults[idx];
+    if (!item) return;
+    this.setData({
+      assessmentTarget: item._id || item.openid || '',
+      assessmentTargetName: (item.nickname || item.username) + (item.employeeId ? '（' + item.employeeId + '）' : ''),
+      targetKeyword: '', targetResults: [],
+    });
+  },
+
   // 子功能入口：现场检查 / 考核评比
   onGo(e) { wx.navigateTo({ url: e.currentTarget.dataset.url }); },
 
@@ -63,9 +104,16 @@ Page({
     try { await network.requireOnline(); } catch (err) { return; }
     this.setData({ submitting: true });
     try {
-      await api.reportHazard({ desc, level: LEVELS[this.data.levelIdx].key, location });
+      await api.reportHazard({
+        desc,
+        level: LEVEL_OPTIONS[this.data.levelIdx].key,
+        location,
+        coords: this.data.coords,
+        assessmentTarget: this.data.assessmentTarget,
+        assessmentTargetName: this.data.assessmentTargetName,
+      });
       wx.showToast({ title: '已上报', icon: 'success' });
-      this.setData({ desc: '', location: '', levelIdx: 0 });
+      this.setData({ desc: '', location: '', levelIdx: 0, coords: '', assessmentTarget: '', assessmentTargetName: '', targetKeyword: '', targetResults: [] });
       await this.loadList();
     } catch (err) {
       wx.showToast({ title: '上报失败', icon: 'none' });

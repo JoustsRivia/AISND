@@ -42,3 +42,11 @@
 .org button { margin-top: 30rpx; background: var(--c-primary); }
 
 .muted { color: var(--c-text-weak); font-size: 26rpx; padding: 16rpx 0; }
+.muted.inline { display: inline; padding: 0; }
+
+/* R10：用户列表检索栏 */
+.search-bar { display: flex; align-items: center; gap: 12rpx; margin: 12rpx 0 8rpx; }
+.search-role { flex: 0 0 200rpx; }
+.search-role .picker { margin-top: 0; border-bottom: none; padding: 12rpx 8rpx; background: #F5F7FA; border-radius: 8rpx; font-size: 26rpx; }
+.search-input { flex: 1; font-size: 28rpx; padding: 12rpx 16rpx; background: #F5F7FA; border-radius: 8rpx; }
+.search-btn { flex: 0 0 auto; padding: 12rpx 24rpx; background: var(--c-primary); color: #fff; font-size: 26rpx; border-radius: 8rpx; }

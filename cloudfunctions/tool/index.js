@@ -127,12 +127,34 @@ async function enrichOperatorNames(t) {
 }
 
 // 器具详情（一物一档：内嵌 operations / testRecords）
+// R11：detail 增加跨组织隔离校验——非全局角色只能查看自身可见组织子树内的器具
 async function detail(payload) {
   const { id } = payload;
   const res = await findTool(id);
   if (!res.data) return fail('器具不存在', 404);
+  // R11 跨组织隔离：校验调用者是否有权查看该器具
+  const me = await getCurrentUser(getOpenid());
+  if (me && me.role !== 'admin' && me.role !== 'lead' && me.role !== 'supervisor') {
+    const orgs = (await listOrgs(500)).data || [];
+    const ids = allowedOrgIds(me, orgs, {});
+    if (ids !== null && !ids.includes('__unbound__') && !ids.includes(res.data.orgId)) {
+      return fail('无权查看该组织器具', 403);
+    }
+  }
   await enrichOperatorNames(res.data); // R18：履历操作人姓名富化
   return ok(derive(res.data)); // S2/P0：派生 expired + categoryName
+}
+
+// R13 日期约束校验（服务端权威）：检验日期/有效截止不得早于采购日期
+function validateDateConstraints(p) {
+  const { purchaseDate, lastTestDate, expireAt } = p;
+  if (purchaseDate && lastTestDate && new Date(lastTestDate) < new Date(purchaseDate)) {
+    return '检验日期不得早于采购日期';
+  }
+  if (purchaseDate && expireAt && new Date(expireAt) < new Date(purchaseDate)) {
+    return '有效截止日期不得早于采购日期';
+  }
+  return null;
 }
 
 // 器具新增录入（M1.3.1）—— 含服务端 RBAC（S5/P1：跨机构建档拦截）
@@ -145,6 +167,9 @@ async function create(payload) {
   if (payload.orgId && payload.orgId !== u.orgId && !isAdmin) return fail('无权为其他机构建档', 403);
   const orgId = (isAdmin && payload.orgId) ? payload.orgId : (u.orgId || '');
   if (!orgId) return fail('未绑定机构，无法建档', 403);
+  // R13 日期约束校验
+  const dateErr = validateDateConstraints(payload);
+  if (dateErr) return fail(dateErr, 400);
   // R15 器具编号自动生成：未传 code 时按类别自增（GL-{YY}-{缩写}-{0001}）
   const code = payload.code || await generateToolCode(payload.category);
   const doc = {
@@ -186,6 +211,10 @@ async function update(payload) {
   if (!cur.data) return fail('器具不存在', 404);
   // 非管理员只能编辑自身绑定机构的器具，防止越权改写他人机构档案
   if (!isAdmin && cur.data.orgId !== u.orgId) return fail('无权编辑其他机构器具', 403);
+  // R13 日期约束校验：合并已有字段后校验
+  const merged = { ...cur.data, ...rest };
+  const dateErr = validateDateConstraints(merged);
+  if (dateErr) return fail(dateErr, 400);
   delete rest.code; delete rest.createdBy; delete rest.createdAt; delete rest.orgId;
   await updateTool(id, { ...rest, updatedAt: new Date() });
   const res = await findTool(id);

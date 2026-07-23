@@ -1,4 +1,5 @@
 <!-- pkg-ledger/pages/tool-create/tool-create.wxml —— M1.3.1 器具录入 -->
+<!-- R13：日期改 picker mode="date" + 约束校验；R14：库房/保管人改 db-picker -->
 <view class="form">
   <view class="card">
     <view class="row">
@@ -16,11 +17,35 @@
     <view class="row"><text class="label">名称</text><input class="input" placeholder="如：绝缘手套（12kV）" value="{{form.name}}" data-k="name" bindinput="bind" /></view>
     <view class="row"><text class="label">规格型号</text><input class="input" placeholder="如：12kV" value="{{form.spec}}" data-k="spec" bindinput="bind" /></view>
     <view class="row"><text class="label">出厂编号</text><input class="input" placeholder="选填" value="{{form.factoryNo}}" data-k="factoryNo" bindinput="bind" /></view>
-    <view class="row"><text class="label">采购日期</text><input class="input" type="date" value="{{form.purchaseDate}}" data-k="purchaseDate" bindinput="bind" /></view>
+
+    <!-- R13：日期字段改为 picker mode="date" -->
+    <view class="row">
+      <text class="label">采购日期</text>
+      <picker mode="date" value="{{form.purchaseDate}}" data-k="purchaseDate" bindchange="onDate">
+        <view class="picker">{{form.purchaseDate || '选择日期'}} ▾</view>
+      </picker>
+    </view>
     <view class="row"><text class="label">检验周期(月)</text><input class="input" type="number" value="{{form.testPeriod}}" data-k="testPeriod" bindinput="bind" /></view>
-    <view class="row"><text class="label">上次试验</text><input class="input" type="date" value="{{form.lastTestDate}}" data-k="lastTestDate" bindinput="bind" /></view>
-    <view class="row"><text class="label">有效截止</text><input class="input" type="date" value="{{form.expireAt}}" data-k="expireAt" bindinput="bind" /></view>
-    <view class="row"><text class="label">存放库房</text><input class="input" placeholder="如：二班库房·A货架03" value="{{form.store}}" data-k="store" bindinput="bind" /></view>
+    <view class="row">
+      <text class="label">上次试验</text>
+      <picker mode="date" value="{{form.lastTestDate}}" start="{{form.purchaseDate}}" data-k="lastTestDate" bindchange="onDate">
+        <view class="picker">{{form.lastTestDate || '选择日期'}} ▾</view>
+      </picker>
+    </view>
+    <view class="row">
+      <text class="label">有效截止</text>
+      <picker mode="date" value="{{form.expireAt}}" start="{{form.purchaseDate}}" data-k="expireAt" bindchange="onDate">
+        <view class="picker">{{form.expireAt || '选择日期'}} ▾</view>
+      </picker>
+    </view>
+
+    <!-- R14：存放库房从 stores 表加载，picker 选择 -->
+    <view class="row">
+      <text class="label">存放库房</text>
+      <picker mode="selector" range="{{stores}}" range-key="name" value="{{storeIndex}}" bindchange="onStore">
+        <view class="picker">{{storeIndex >= 0 ? stores[storeIndex].name : '选择库房'}} ▾</view>
+      </picker>
+    </view>
     <view class="row"><text class="label">保管责任人</text><input class="input" placeholder="如：张工" value="{{form.keeper}}" data-k="keeper" bindinput="bind" /></view>
 
     <!-- M1.3.7 租赁专项字段（仅来源=租赁时显示） -->

@@ -79,13 +79,30 @@ Page({
     this.applyFilter();
   },
 
-  onRead(e) {
+  async onTap(e) {
     const id = e.currentTarget.dataset.id;
     if (!id) return;
-    api.readWarning(id).catch(() => {});
+    // 先标已读
+    await api.readWarning(id).catch(() => {});
     const raw = this.data.raw.map((m) => (m._id === id ? { ...m, read: true } : m));
     this.setData({ raw });
     this.applyFilter();
+    // 再按 refType 跳转
+    const msg = raw.find((m) => m._id === id) || {};
+    const refType = msg.refType;
+    const ROUTES = {
+      test:  '/pkg-test/pages/due-list/due-list',
+      hazard: '/pkg-check/pages/hazard/hazard',
+      scrap: '/pkg-scrap/pages/approve/approve',
+      cert:  '/pkg-cert/pages/list/list',
+    };
+    const url = ROUTES[refType];
+    if (url) {
+      wx.navigateTo({
+        url,
+        fail: () => { /* 跳转失败时仅保留已读状态 */ },
+      });
+    }
   },
 
   onMarkAll() {

@@ -5,6 +5,9 @@
 .tip-desc { font-size: 26rpx; color: var(--c-text-sub); margin-top: 12rpx; line-height: 1.5; }
 .tip-hint { font-size: 22rpx; color: var(--c-info); margin-top: 12rpx; line-height: 1.4; }
 .btn-tpl { margin-top: 24rpx; background: var(--c-info-bg); color: var(--c-info); font-size: 28rpx; }
+.btn-row { display: flex; gap: 16rpx; margin-top: 24rpx; }
+.btn-row .btn-tpl, .btn-row .btn-pick { flex: 1; margin-top: 0; }
+.btn-pick { background: var(--c-card); color: var(--c-text); font-size: 28rpx; border: 1rpx solid var(--c-divider); }
 .card { background: var(--c-card); border-radius: var(--r-lg); padding: var(--sp-3); box-shadow: var(--sh-card); margin-bottom: var(--sp-3); }
 .ta-label { font-size: 26rpx; color: var(--c-text-sub); margin-bottom: 16rpx; }
 .ta { width: 100%; min-height: 320rpx; font-size: 24rpx; line-height: 1.6; color: var(--c-text); border: 1rpx solid var(--c-divider); border-radius: var(--r-md); padding: 16rpx; box-sizing: border-box; }

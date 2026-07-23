@@ -47,17 +47,26 @@ async function readAll() {
 
 // 预警自动生成（M11.1）：扫描试验到期/超期、证书到期、隐患超期、报废异动，写入 warnings
 // generate 不加 RBAC（全量扫描），但写入 warnings 文档时透传被扫描对象的 orgId
+// R24：同时写入 toolCode/orgName/keeperName/refType，供前端列表富化展示与点击跳转
 async function generate() {
   const now = Date.now();
   const DAY = 86400000;
   const out = [];
+  // 预加载 orgs 和 users，用于富化 orgName / keeperName
+  const orgs = (await db.listBy('orgs', {}, 500)).data || [];
+  const users = (await db.listBy('users', {}, 500)).data || [];
+  const orgNameOf = {};
+  orgs.forEach((o) => { orgNameOf[o._id] = o.name || ''; });
+  const keeperNameOf = {};
+  users.forEach((u) => { if (u.openid) keeperNameOf[u.openid] = u.nickname || u.username || ''; });
+
   const exists = async (type, refId) => {
     const r = await db.listBy('warnings', { type, refId, read: _.neq(true) }, 50);
     return (r.data || []).length > 0;
   };
   const push = async (w, orgId) => {
     if (await exists(w.type, w.refId)) return; // 同类型同对象不重复推送
-    const a = await db.add('warnings', { ...w, orgId: orgId || '', read: false, createdAt: new Date() });
+    const a = await db.add('warnings', { ...w, orgId: orgId || '', orgName: orgNameOf[orgId] || '', read: false, createdAt: new Date() });
     out.push(a._id);
   };
   try {
@@ -67,10 +76,12 @@ async function generate() {
       if (!t.expireAt) continue;
       const exp = new Date(t.expireAt).getTime();
       if (exp < now) {
-        await push({ level: 'urgent', type: 'test_overdue', refId: t._id, toolId: t._id,
+        await push({ level: 'urgent', type: 'test_overdue', refType: 'test', refId: t._id, toolId: t._id,
+          toolCode: t.code || '', keeperName: keeperNameOf[t.borrower] || keeperNameOf[t.keeper] || '',
           title: '试验已超期', content: `${t.name}（${t.code}）试验有效期已过，禁止领用并应逐级告警` }, t.orgId);
       } else if (exp - now <= 15 * DAY) {
-        await push({ level: 'important', type: 'test_due', refId: t._id, toolId: t._id,
+        await push({ level: 'important', type: 'test_due', refType: 'test', refId: t._id, toolId: t._id,
+          toolCode: t.code || '', keeperName: keeperNameOf[t.keeper] || '',
           title: '试验即将到期', content: `${t.name}（${t.code}）将于 ${t.expireAt} 到期，请按时送检` }, t.orgId);
       }
     }
@@ -79,7 +90,7 @@ async function generate() {
     for (const c of (certs.data || [])) {
       if (!c.expireAt) continue;
       if (new Date(c.expireAt).getTime() - now <= 30 * DAY) {
-        await push({ level: 'important', type: 'cert_due', refId: c._id, certId: c._id,
+        await push({ level: 'important', type: 'cert_due', refType: 'cert', refId: c._id, certId: c._id,
           title: '特种作业证即将到期', content: `${(c.name || '持证人')} 的 ${c.type || '证件'} 将于 ${c.expireAt} 到期` }, c.orgId);
       }
     }
@@ -88,7 +99,7 @@ async function generate() {
     for (const h of (hazards.data || [])) {
       if (!h.dueDate) continue;
       if (new Date(h.dueDate).getTime() < now) {
-        await push({ level: 'urgent', type: 'hazard_overdue', refId: h._id, hazardId: h._id,
+        await push({ level: 'urgent', type: 'hazard_overdue', refType: 'hazard', refId: h._id, hazardId: h._id,
           title: '隐患整改超期', content: `隐患「${h.title || h.content || ''}」已超过整改期限 ${h.dueDate}，请升级处理` }, h.orgId);
       }
     }
@@ -96,7 +107,8 @@ async function generate() {
     const scrapped = await db.listBy('tools', { status: 'scrapped' }, 200);
     for (const t of (scrapped.data || [])) {
       if (t.borrower) {
-        await push({ level: 'urgent', type: 'scrap_inuse', refId: t._id, toolId: t._id,
+        await push({ level: 'urgent', type: 'scrap_inuse', refType: 'scrap', refId: t._id, toolId: t._id,
+          toolCode: t.code || '', keeperName: keeperNameOf[t.borrower] || '',
           title: '报废器具异常在库', content: `已报废器具 ${t.name}（${t.code}）仍显示被领用，疑似外流，请核查` }, t.orgId);
       }
     }

@@ -5,7 +5,10 @@
     <view class="tip-desc">先下载模板，按列填写后粘贴 CSV 文本到下方，点击「解析并导入」。</view>
     <view class="tip-hint">📌 {{catHint}}</view>
     <view class="tip-hint">📌 {{srcHint}}</view>
-    <button class="btn-tpl" bindtap="onDownloadTpl">⬇️ 下载导入模板</button>
+    <view class="btn-row">
+      <button class="btn-tpl" bindtap="onDownloadTpl">⬇️ 下载导入模板</button>
+      <button class="btn-pick" bindtap="onChooseFile">📁 选择文件</button>
+    </view>
   </view>
 
   <view class="card">

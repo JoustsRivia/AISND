@@ -10,6 +10,32 @@
   </view>
 
   <view class="card">
+    <!-- R16 搜索 + 扫码 -->
+    <view class="row col">
+      <text class="label">搜索器具</text>
+      <view class="search-bar">
+        <input class="input search-input" placeholder="输入名称/编号关键字"
+               value="{{keyword}}" bindinput="onSearch" confirm-type="search" />
+        <view class="scan-btn" bindtap="onScanCode">扫码</view>
+      </view>
+      <!-- 搜索结果下拉 -->
+      <view wx:if="{{searchResults.length}}" class="search-dropdown">
+        <view wx:for="{{searchResults}}" wx:key="_id"
+              class="search-item" data-i="{{index}}" bindtap="onSelectResult">
+          <view class="si-main">{{item.code}} · {{item.name}}</view>
+          <view class="si-sub">状态：{{item.status}}</view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 已选中器具（搜索/扫码） -->
+    <view wx:if="{{selectedTool}}" class="row sel-tool">
+      <text class="label">已选中</text>
+      <text class="sel-name">{{selectedTool.code}} · {{selectedTool.name}}</text>
+      <text class="muted" bindtap="onClearSelected">清除</text>
+    </view>
+
+    <!-- 候选 picker：禁用状态器具，作为备选 -->
     <view class="row"><text class="label">拟报废器具</text>
       <picker wx:if="{{candidates.length}}" mode="selector" range="{{candidates}}" range-key="name" value="{{idx}}" bindchange="onPick">
         <view class="picker">{{candidates[idx].name}}（{{candidates[idx].code}}）▾</view>

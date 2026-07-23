@@ -1,0 +1,23 @@
+/* components/org-cascading-picker/org-cascading-picker.wxss */
+.org-cascading {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+.org-picker-field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16rpx 24rpx;
+  background: #fff;
+  border: 1rpx solid #e0e0e0;
+  border-radius: 8rpx;
+  min-height: 80rpx;
+  font-size: 28rpx;
+  color: #333;
+}
+.org-picker-field .arrow {
+  font-size: 24rpx;
+  color: #999;
+  margin-left: 12rpx;
+}

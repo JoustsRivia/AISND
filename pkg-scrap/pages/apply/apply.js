@@ -21,6 +21,8 @@ Page({
     reason: '', photos: [], submitting: false,
     rules: RULES, symptoms: [], judge: null,
     canApprove: false,
+    // R16 搜索选择器
+    keyword: '', searchResults: [], selectedTool: null,
   },
 
   async onLoad() {
@@ -38,17 +40,72 @@ Page({
   onGo(e) { wx.navigateTo({ url: e.currentTarget.dataset.url }); },
 
   onPick(e) {
-    this.setData({ idx: +e.detail.value, symptoms: [], judge: null });
+    this.setData({ idx: +e.detail.value, symptoms: [], judge: null, selectedTool: null });
     this.runJudge();
+  },
+
+  // R16 关键字搜索（模糊匹配 name/code）
+  async onSearch(e) {
+    const keyword = e.detail.value || '';
+    this.setData({ keyword });
+    if (!keyword.trim()) { this.setData({ searchResults: [] }); return; }
+    try {
+      const r = await api.getToolList({ keyword, size: 20 });
+      this.setData({ searchResults: (r && r.list) || (Array.isArray(r) ? r : []) });
+    } catch (err) {
+      this.setData({ searchResults: [] });
+    }
+  },
+
+  // R17 扫码反查器具 → 自动选中
+  async onScanCode() {
+    wx.scanCode({
+      success: async (res) => {
+        const code = res.result;
+        if (!code) return;
+        wx.showLoading({ title: '核验中…' });
+        try {
+          const t = await api.verifyTestTag(code);
+          if (t && t.toolId) {
+            this.setData({ selectedTool: t, keyword: t.code || '', searchResults: [], symptoms: [], judge: null });
+            wx.showToast({ title: '已匹配器具', icon: 'success' });
+          } else {
+            wx.vibrateShort({ type: 'heavy' });
+            wx.showModal({ title: '未识别器具', content: '扫码内容：' + code + '，未匹配到器具档案。', showCancel: false });
+          }
+        } catch (err) {
+          wx.vibrateShort({ type: 'heavy' });
+          wx.showModal({ title: '未识别器具', content: '扫码内容：' + code + '，核验失败。', showCancel: false });
+        } finally {
+          wx.hideLoading();
+        }
+      },
+    });
+  },
+
+  // R16 从搜索结果中选中器具
+  onSelectResult(e) {
+    const t = this.data.searchResults[e.currentTarget.dataset.i];
+    if (!t) return;
+    this.setData({ selectedTool: t, keyword: (t.code || '') + ' ' + (t.name || ''), searchResults: [], symptoms: [], judge: null });
+  },
+
+  // 清除已选中器具
+  onClearSelected() {
+    this.setData({ selectedTool: null, keyword: '', searchResults: [] });
   },
 
   bindReason(e) { this.setData({ reason: e.detail.value }); },
 
   // M8.1.1 强制报废自动判定：基于器具状态/年限/试验 + 勾选症状
+  // R16：优先使用搜索选中的器具，否则回退到 candidates picker
   async runJudge() {
-    const c = this.data.candidates[this.data.idx];
+    const sel = this.data.selectedTool;
+    const c = sel || this.data.candidates[this.data.idx];
     if (!c) return;
-    const r = await api.judgeScrap(c._id, this.data.symptoms).catch(() => null);
+    const id = c._id || c.toolId;
+    if (!id) return;
+    const r = await api.judgeScrap(id, this.data.symptoms).catch(() => null);
     if (r) this.setData({ judge: r });
   },
 
@@ -69,11 +126,15 @@ Page({
 
   async onSubmit() {
     try { await network.requireOnline(); } catch (e) { return; }
-    const c = this.data.candidates[this.data.idx];
+    // R16：优先使用 selectedTool，否则回退 candidates picker
+    const sel = this.data.selectedTool;
+    const c = sel || this.data.candidates[this.data.idx];
     if (!c) { wx.showToast({ title: '请选择器具', icon: 'none' }); return; }
+    const id = c._id || c.toolId;
+    if (!id) { wx.showToast({ title: '器具信息异常', icon: 'none' }); return; }
     this.setData({ submitting: true });
     try {
-      const r = await api.submitScrap({ id: c._id, reason: this.data.reason, photos: this.data.photos, symptoms: this.data.symptoms });
+      const r = await api.submitScrap({ id, reason: this.data.reason, photos: this.data.photos, symptoms: this.data.symptoms });
       const must = r && r.mustScrap;
       wx.showModal({
         title: '已提交审批',

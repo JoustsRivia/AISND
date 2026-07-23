@@ -21,3 +21,30 @@
   flex: 1; text-align: center; padding: 20rpx 0; border-radius: 12rpx;
   background: #EEF3FF; color: #1A56DB; font-size: 28rpx; font-weight: 500;
 }
+
+/* R20 隐患级别 A/B/C/D 四色标签 */
+.level-tag {
+  display: inline-block; padding: 4rpx 16rpx; border-radius: 6rpx;
+  font-size: 26rpx; font-weight: 600; color: #fff;
+}
+.level-A { background: #E54D42; }
+.level-B { background: #F37B22; }
+.level-C { background: #F0A020; }
+.level-D { background: #3B97E0; }
+.level-desc { margin-left: 12rpx; font-size: 24rpx; color: #999; }
+
+/* R20 位置定位行 */
+.loc-row { display: flex; align-items: center; gap: 16rpx; width: 100%; }
+.loc-row .inp { flex: 1; }
+.loc-coords { margin-top: 8rpx; font-size: 24rpx; }
+
+/* R20 考核对象搜索下拉 */
+.search-dropdown {
+  width: 100%; margin-top: 8rpx;
+  border: 1rpx solid #e0e0e0; border-radius: 8rpx; max-height: 320rpx; overflow-y: auto;
+}
+.search-item {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 20rpx 24rpx; border-bottom: 1rpx solid #f5f5f5; font-size: 28rpx;
+}
+.search-item:last-child { border-bottom: none; }

@@ -1,8 +1,10 @@
-// pkg-system/pages/org/org.js —— M13 组织架构与用户管理（仅 supervisor/lead 可访问）
+// pkg-system/pages/org/org.js —— M13 组织架构与用户管理
+// R09：组织权限按树分发（admin/lead/project_lead 可编辑，supervisor 只读）
+// R10：人员列表分类检索（角色筛选 + 关键字搜索）
 const api = require('../../../utils/api');
 const auth = require('../../../utils/auth');
 const network = require('../../../utils/network');
-const { ROLES } = require('../../../utils/constants');
+const { ROLES, ROLE_ORDER } = require('../../../utils/constants');
 
 // 可分配角色（与 cloudfunctions/system ROLE_WHITE 同源；lead/supervisor 仅由系统内置，不放进分配列表）
 const ROLE_OPTIONS = [
@@ -24,6 +26,18 @@ const ROLE_TEXT = {
   admin: '小程序管理员',
 };
 
+// R10：检索用角色筛选项（含「全部」选项）
+const ROLE_FILTER_OPTIONS = [
+  { value: '', name: '全部角色' },
+].concat(
+  ROLE_ORDER.map((r) => ({ value: r, name: ROLE_TEXT[r] || r }))
+    .concat([{ value: ROLES.LEASE_ADMIN, name: ROLE_TEXT[ROLES.LEASE_ADMIN] }])
+    .concat([{ value: ROLES.ADMIN, name: ROLE_TEXT[ROLES.ADMIN] }])
+);
+
+// R09：可进入组织管理页的角色（supervisor 只读，其余可编辑）
+const ORG_VIEW_ROLES = [ROLES.ADMIN, ROLES.LEAD, ROLES.PROJECT_LEAD, ROLES.SUPERVISOR];
+
 Page({
   data: {
     // 组织树
@@ -32,6 +46,8 @@ Page({
     units: [],
     orgForm: { name: '', parentIndex: 0, kindIndex: 0, editingId: '' },
     parentOptions: [{ _id: '', name: '（根节点 / 所属单位）' }],
+    // R09：组织编辑权限
+    orgPerm: { role: '', canEdit: false, canAdd: false, canDelete: false, editableIds: null },
     // 用户
     users: [],
     roleOptions: ROLE_OPTIONS,
@@ -41,15 +57,22 @@ Page({
       roleIndex: 0, unitIndex: 0, orgIndex: 0,
     },
     orgOptions: [],
+    // R10：检索条件
+    roleFilterOptions: ROLE_FILTER_OPTIONS,
+    roleFilterIndex: 0,
+    keyword: '',
+    userPage: 1,
+    userPageSize: 50,
+    userTotal: 0,
     loading: false,
   },
 
   onShow() {
-    // 权限守卫：仅小程序管理员(admin)可进入系统管理后台（组织与用户管理）
+    // R09：放宽权限守卫，admin/lead/project_lead/supervisor 均可进入（supervisor 只读）
     const p = auth.getProfile();
-    if (!p || p.role !== ROLES.ADMIN) {
+    if (!p || !ORG_VIEW_ROLES.includes(p.role)) {
       wx.showModal({
-        title: '无权限', content: '仅小程序管理员(admin)可访问系统管理（组织/用户/字典/日志）。',
+        title: '无权限', content: '仅 admin / lead / project_lead / supervisor 可访问组织管理（supervisor 为只读）。',
         showCancel: false, success: () => wx.navigateBack(),
       });
       return;
@@ -58,17 +81,29 @@ Page({
   },
 
   async load() {
-    const [orgs, users] = await Promise.all([
+    // R09：并行拉取组织树、组织权限、用户列表
+    const [orgs, orgPerm, usersRes] = await Promise.all([
       api.getOrgTree().catch(() => []),
-      api.listUsers().catch(() => []),
+      api.getOrgPerm().catch(() => ({ role: '', canEdit: false, canAdd: false, canDelete: false, editableIds: [] })),
+      this.loadUsers(),
     ]);
     const list = orgs || [];
     const idMap = {};
     list.forEach((o) => { idMap[o._id] = o; });
+    // R09：根据 editableIds 计算每个节点的可编辑标记
+    const perm = orgPerm || { role: '', canEdit: false, canAdd: false, canDelete: false, editableIds: [] };
+    const editableIdsIsAll = perm.editableIds === null || perm.editableIds === undefined;
+    const editableSet = editableIdsIsAll ? null : new Set(perm.editableIds || []);
     // 扁平树（用于展示层级）
     const flat = [];
     const walk = (node, depth) => {
-      flat.push({ _id: node._id, name: node.name, kind: node.kind, depth, hasChild: list.some((c) => c.parentId === node._id) });
+      flat.push({
+        _id: node._id, name: node.name, kind: node.kind, depth,
+        hasChild: list.some((c) => c.parentId === node._id),
+        // editableIds 为 null 时全部可编辑；否则仅 editableIds 中的节点可编辑
+        canEditNode: editableSet === null ? perm.canEdit : (perm.canEdit && editableSet.has(node._id)),
+        canDeleteNode: editableSet === null ? perm.canDelete : (perm.canDelete && editableSet.has(node._id)),
+      });
       list.filter((c) => c.parentId === node._id).forEach((c) => walk(c, depth + 1));
     };
     list.filter((n) => !n.parentId).forEach((n) => walk(n, 0));
@@ -77,9 +112,48 @@ Page({
     const parentOptions = [{ _id: '', name: '（根节点 / 所属单位）' }].concat(
       list.map((o) => ({ _id: o._id, name: (o.kind === 'unit' ? '单位·' : o.kind === 'project' ? '项目部·' : '班组·') + o.name }))
     );
-    this.setData({ tree: flat, orgs: list, units, parentOptions }, () => this.refreshOrgOptions());
-    this.setData({ users: (users || []).map((u) => ({ ...u, roleText: ROLE_TEXT[u.role] || u.role })) });
+    this.setData({
+      tree: flat, orgs: list, units, parentOptions,
+      orgPerm: perm,
+    }, () => this.refreshOrgOptions());
+    // 用户列表
+    const users = (usersRes && usersRes.list) || (Array.isArray(usersRes) ? usersRes : []);
+    this.setData({
+      users: users.map((u) => ({ ...u, roleText: ROLE_TEXT[u.role] || u.role })),
+      userTotal: (usersRes && usersRes.total) || users.length,
+    });
   },
+
+  // R10：拉取用户列表（带角色筛选 + 关键字）
+  loadUsers() {
+    const { roleFilterOptions, roleFilterIndex, keyword, userPage, userPageSize } = this.data;
+    const role = roleFilterOptions[roleFilterIndex] ? roleFilterOptions[roleFilterIndex].value : '';
+    return api.manageUser({
+      op: 'list',
+      role: role || undefined,
+      keyword: keyword ? keyword.trim() : undefined,
+      page: userPage,
+      pageSize: userPageSize,
+    }).catch(() => ({ list: [], total: 0 }));
+  },
+
+  // R10：重新检索用户（重置到第一页）
+  async onUserSearch() {
+    this.setData({ userPage: 1 });
+    try {
+      const res = await this.loadUsers();
+      const users = (res && res.list) || [];
+      this.setData({
+        users: users.map((u) => ({ ...u, roleText: ROLE_TEXT[u.role] || u.role })),
+        userTotal: (res && res.total) || users.length,
+      });
+    } catch (err) {
+      wx.showToast({ title: (err && err.message) || '查询失败', icon: 'none' });
+    }
+  },
+  onRoleFilterChange(e) { this.setData({ roleFilterIndex: +e.detail.value }); },
+  onKeywordInput(e) { this.setData({ keyword: e.detail.value }); },
+  onKeywordClear() { this.setData({ keyword: '' }); },
 
   // 用户表单：根据所选单位，构建机构/班组候选项（带路径）
   refreshOrgOptions() {
@@ -112,7 +186,18 @@ Page({
   onOrgKind(e) { this.setData({ 'orgForm.kindIndex': +e.detail.value }); },
 
   async onOrgSubmit() {
-    const { orgForm, parentOptions, kindOptions } = this.data;
+    const { orgForm, parentOptions, kindOptions, orgPerm } = this.data;
+    // R09：编辑权限校验
+    if (orgForm.editingId && !orgPerm.canEdit) {
+      wx.showToast({ title: '无编辑权限', icon: 'none' }); return;
+    }
+    if (!orgForm.editingId && !orgPerm.canAdd) {
+      wx.showToast({ title: '无新增权限', icon: 'none' }); return;
+    }
+    if (orgForm.editingId && orgPerm.editableIds !== null && Array.isArray(orgPerm.editableIds)
+        && !orgPerm.editableIds.includes(orgForm.editingId)) {
+      wx.showToast({ title: '该节点无编辑权限', icon: 'none' }); return;
+    }
     if (!orgForm.name) { wx.showToast({ title: '请填写组织名称', icon: 'none' }); return; }
     try { await network.requireOnline(); } catch (e) { return; }
     this.setData({ loading: true });
@@ -136,6 +221,12 @@ Page({
   },
 
   onOrgEdit(e) {
+    // R09：编辑权限校验
+    const node = this.data.tree.find((x) => x._id === e.currentTarget.dataset.id);
+    if (node && !node.canEditNode) {
+      wx.showToast({ title: '该节点无编辑权限', icon: 'none' });
+      return;
+    }
     const id = e.currentTarget.dataset.id;
     const org = this.data.orgs.find((o) => o._id === id);
     if (!org) return;
@@ -151,6 +242,12 @@ Page({
 
   async onOrgDelete(e) {
     const id = e.currentTarget.dataset.id;
+    // R09：删除权限校验
+    const node = this.data.tree.find((x) => x._id === id);
+    if (node && !node.canDeleteNode) {
+      wx.showToast({ title: '该节点无删除权限', icon: 'none' });
+      return;
+    }
     const ok = await new Promise((resolve) => wx.showModal({
       title: '删除组织', content: '确认删除该组织？其下级需先删除；归属该组织的用户将被置为未分配。',
       success: (r) => resolve(r.confirm),

@@ -13,7 +13,7 @@
   </view>
 
   <view class="list">
-    <view wx:for="{{list}}" wx:key="_id" class="msg lv-{{item._cls}} {{item.read ? 'read' : ''}}" data-id="{{item._id}}" bindtap="onRead">
+    <view wx:for="{{list}}" wx:key="_id" class="msg lv-{{item._cls}} {{item.read ? 'read' : ''}}" data-id="{{item._id}}" bindtap="onTap">
       <view class="msg-bar"></view>
       <view class="msg-main">
         <view class="msg-top">
@@ -22,6 +22,13 @@
           <text wx:if="{{!item.read}}" class="dot"></text>
         </view>
         <text class="content">{{item.content}}</text>
+        <view wx:if="{{item.toolCode || item.orgName || item.keeperName}}" class="meta">
+          <text wx:if="{{item.toolCode}}">器具 {{item.toolCode}}</text>
+          <text wx:if="{{item.toolCode && (item.orgName || item.keeperName)}}"> | </text>
+          <text wx:if="{{item.orgName}}">{{item.orgName}}</text>
+          <text wx:if="{{item.orgName && item.keeperName}}"> | </text>
+          <text wx:if="{{item.keeperName}}">{{item.keeperName}}</text>
+        </view>
         <text wx:if="{{item._time}}" class="time">{{item._time}}</text>
       </view>
     </view>

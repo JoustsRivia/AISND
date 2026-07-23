@@ -16,3 +16,43 @@
     </view>
   </block>
 </view>
+
+<!-- 指派弹窗 -->
+<view wx:if="{{showAssignModal}}" class="modal-mask" catchtap="cancelAssign">
+  <view class="modal-box" catchtap="">
+    <view class="modal-title">指派培训</view>
+    <view wx:if="{{assignCourse}}" class="muted modal-sub">{{assignCourse.title}}</view>
+
+    <!-- 搜索 -->
+    <input class="search-input"
+           placeholder="搜索姓名/ID"
+           value="{{userSearchKey}}"
+           bindinput="onUserSearchInput" />
+
+    <!-- 搜索结果 -->
+    <scroll-view scroll-y class="search-list">
+      <view wx:if="{{userSearchResults.length === 0}}" class="muted center">无匹配用户</view>
+      <view wx:for="{{userSearchResults}}" wx:key="_id"
+            class="search-item {{item._selected ? 'sel' : ''}}"
+            data-index="{{index}}" catchtap="toggleSelectUser">
+        <text>{{item.name || item.nickName || item._id}}</text>
+        <text wx:if="{{item._selected}}" class="check">✓</text>
+      </view>
+    </scroll-view>
+
+    <!-- 已选 chips -->
+    <view wx:if="{{selectedUsers.length > 0}}" class="chips">
+      <view wx:for="{{selectedUsers}}" wx:key="_id" class="chip">
+        <text>{{item.name}}</text>
+        <text class="chip-x" data-id="{{item._id}}" catchtap="removeSelectedUser">×</text>
+      </view>
+    </view>
+
+    <view class="modal-actions">
+      <button size="mini" bindtap="cancelAssign">取消</button>
+      <button size="mini" type="primary" loading="{{assigning}}" bindtap="confirmAssign">
+        确认指派
+      </button>
+    </view>
+  </view>
+</view>

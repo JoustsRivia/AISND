@@ -21,12 +21,24 @@ async function hasValidCert(openid, category) {
 }
 
 // 领用（M5.1.1~M5.1.3）
+// R11：borrow 增加跨组织隔离校验——非全局角色只能领用自身可见组织子树内的器具
 async function borrow(payload) {
   const openid = getOpenid();
   const { id } = payload;
   const res = await findTool(id);
   if (!res.data) return fail('器具不存在', 404);
   const t = res.data;
+
+  // R11 跨组织隔离：校验调用者是否有权领用该组织器具
+  const me = await findUser(openid);
+  const u = me.data && me.data[0];
+  if (u && roleScope(u.role) !== 'global') {
+    const orgs = (await listOrgs(500)).data || [];
+    const ids = allowedOrgIds(u, orgs, {});
+    if (ids !== null && !ids.includes('__unbound__') && !ids.includes(t.orgId)) {
+      return fail('无权领用其他组织器具', 403);
+    }
+  }
 
   // 资格校验：合格且在有效期内
   if (t.status !== 'qualified') return fail('器具不合格，禁止领用');

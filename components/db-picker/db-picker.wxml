@@ -1,0 +1,65 @@
+<!-- components/db-picker/db-picker.wxml -->
+<!-- 通用下拉选择组件：支持 selector / date / search 三种模式 -->
+
+<!-- selector 模式：标准 picker -->
+<block wx:if="{{mode === 'selector'}}">
+  <picker
+    mode="selector"
+    range="{{range}}"
+    range-key="label"
+    value="{{selIndex}}"
+    disabled="{{disabled}}"
+    bindchange="onPickerChange"
+  >
+    <view class="db-picker-field {{disabled ? 'is-disabled' : ''}}">
+      <text class="db-picker-text">{{selIndex >= 0 ? range[selIndex].label : placeholder}}</text>
+      <text class="db-picker-arrow">▸</text>
+    </view>
+  </picker>
+</block>
+
+<!-- date 模式：日期选择器 -->
+<block wx:elif="{{mode === 'date'}}">
+  <picker
+    mode="date"
+    value="{{value || ''}}"
+    start="{{start}}"
+    end="{{end}}"
+    disabled="{{disabled}}"
+    bindchange="onDateChange"
+  >
+    <view class="db-picker-field {{disabled ? 'is-disabled' : ''}}">
+      <text class="db-picker-text">{{value || placeholder}}</text>
+      <text class="db-picker-arrow">📅</text>
+    </view>
+  </picker>
+</block>
+
+<!-- search 模式：搜索联想 -->
+<block wx:elif="{{mode === 'search'}}">
+  <view class="db-picker-search">
+    <input
+      class="db-picker-input"
+      type="text"
+      value="{{keyword}}"
+      placeholder="{{placeholder}}"
+      disabled="{{disabled}}"
+      bindinput="onSearchInput"
+      bindfocus="onSearchFocus"
+      bindblur="onSearchBlur"
+    />
+    <text wx:if="{{keyword && !disabled}}" class="db-picker-clear" bindtap="onClear">✕</text>
+    <view wx:if="{{showDropdown && searchResults.length}}" class="db-picker-dropdown">
+      <view
+        wx:for="{{searchResults}}"
+        wx:key="index"
+        class="db-picker-option"
+        data-idx="{{index}}"
+        bindtap="onSearchTap"
+      >
+        <view class="db-picker-option-main">{{item[labelKey] || item[valueKey]}}</view>
+        <view wx:if="{{descKey && item[descKey]}}" class="db-picker-option-desc">{{item[descKey]}}</view>
+      </view>
+    </view>
+  </view>
+</block>

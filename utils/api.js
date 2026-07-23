@@ -106,6 +106,8 @@ const getPurchaseList = (params) => invoke(FN.purchase, 'list', params);
 const registerStore = (data) => invoke(FN.store, 'register', data);
 const inbound = (data) => invoke(FN.store, 'inbound', data).then((r) => { logOperation({ type: 'store', action: 'inbound', target: data && data.code }); return r; });
 const getInboundRecords = (params) => invoke(FN.store, 'records', params);
+// R14：库房列表（供器具录入页选择存放库房）
+const getStoreList = (params) => invoke(FN.store, 'list', params);
 
 // ── 现场使用 M6 ───────────────────────────────────────────────────────
 const getSpotCheckTask = () => invoke(FN.site, 'checkTask');
@@ -119,6 +121,10 @@ const getTrainingCourses = () => invoke(FN.training, 'courses');
 const assignTraining = (data) => invoke(FN.training, 'assign', data);
 const signInTraining = (data) => invoke(FN.training, 'signIn', data);
 const getMyTraining = () => invoke(FN.training, 'myRecords');
+// R25 培训增强：确认参训 / 标记完成 / 评价打分
+const confirmTraining = (id) => invoke(FN.training, 'confirm', { id });
+const completeTraining = (id, data) => invoke(FN.training, 'complete', { id, ...data });
+const evaluateTraining = (id, data) => invoke(FN.training, 'evaluate', { id, ...data });
 
 // ── 监督检查隐患 M10 ──────────────────────────────────────────────────
 const getInspectionTasks = () => invoke(FN.check, 'tasks');
@@ -149,8 +155,30 @@ const exportReport = (params) => invoke(FN.stats, 'exportReport', params);
 const getHomeStatus = () => invoke(FN.stats, 'homeStatus');
 
 // ── 系统管理 M13 ──────────────────────────────────────────────────────
-const getOrgTree = () => invoke(FN.system, 'orgTree');
+// R06：组织树缓存失效机制——版本号不匹配或 forceRefresh 时强制拉取新树
+const getOrgTree = (forceRefresh = false) => {
+  const cached = (() => { try { return wx.getStorageSync('orgTree'); } catch (_) { return null; } })();
+  const cachedVer = (() => { try { return wx.getStorageSync('orgTreeVersion') || 0; } catch (_) { return 0; } })();
+  if (!forceRefresh && cached && cached.length) {
+    // 有缓存时先返回，后台静默校验版本号
+    invoke(FN.system, 'orgTree').then((r) => {
+      if (r && r.version != null && Number(r.version) !== Number(cachedVer)) {
+        wx.setStorageSync('orgTree', r.list || []);
+        wx.setStorageSync('orgTreeVersion', r.version);
+      }
+    }).catch(() => {});
+    return Promise.resolve(cached);
+  }
+  return invoke(FN.system, 'orgTree').then((r) => {
+    const list = (r && r.list) || r || [];
+    if (r && r.version != null) wx.setStorageSync('orgTreeVersion', r.version);
+    wx.setStorageSync('orgTree', list);
+    return list;
+  });
+};
 const manageOrg = (data) => invoke(FN.system, 'org', data);
+// R09：获取当前用户的组织编辑权限范围
+const getOrgPerm = () => invoke(FN.system, 'orgPerm');
 const manageUser = (data) => invoke(FN.system, 'user', data).then((r) => {
   // 操作日志闭环（item 3）：仅对「增/改/删」用户这类权限变更动作留痕，列表查询不记
   if (data && ['add', 'update', 'delete'].includes(data.op)) {
@@ -260,11 +288,12 @@ module.exports = {
   // 采购
   createPurchase, approvePurchase, createAcceptance, getPurchaseList,
   // 库房
-  registerStore, inbound, getInboundRecords,
+  registerStore, inbound, getInboundRecords, getStoreList,
   // 现场
   getSpotCheckTask, submitSpotCheck, getOpGuide, recordBriefing, getDailyCheck,
   // 培训
   getTrainingCourses, assignTraining, signInTraining, getMyTraining,
+  confirmTraining, completeTraining, evaluateTraining,
   // 监督
   getInspectionTasks, submitInspection, reportHazard, assignHazard, trackHazard, closeHazard, getHazardList,
   getAssessmentList, submitAssessment,
@@ -273,7 +302,7 @@ module.exports = {
   // 统计
   getDashboard, getProjectDashboard, getSixStandard, getMyStats, getTrend, exportReport, getHomeStatus,
   // 系统
-  getOrgTree, manageOrg, manageUser, listUsers, getDict, createDict, updateDict, removeDict, manageCheckTemplate,
+  getOrgTree, manageOrg, getOrgPerm, manageUser, listUsers, getDict, createDict, updateDict, removeDict, manageCheckTemplate,
   getRateLimit, setRateLimit, getRateStats, getRetention, setRetention,
   // 条码
   generateBarcode, getBarcodeFile, batchInbound, batchSpotCheck, batchGenBarcode, genLabel,

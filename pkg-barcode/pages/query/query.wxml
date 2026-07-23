@@ -11,9 +11,22 @@
       <text class="name">{{result.name}}</text>
       <text class="tag {{result.valid ? 'ok' : 'no'}}">{{result.valid ? '合格有效' : '无效/禁用'}}</text>
     </view>
-    <text class="muted">编号：{{result.code}} · 状态：{{result.status}}</text>
-    <text class="muted">上次试验：{{result.lastTestDate}} · 有效截止：{{result.expireAt}}</text>
+
+    <!-- R17 详细信息 kv 列表 -->
+    <view class="kv-list">
+      <view class="kv"><text class="k">编号</text><text class="v">{{result.code}}</text></view>
+      <view class="kv"><text class="k">名称</text><text class="v">{{result.name}}</text></view>
+      <view class="kv"><text class="k">状态</text><text class="v">{{result.status}}</text></view>
+      <view class="kv" wx:if="{{result.keeper}}"><text class="k">保管人</text><text class="v">{{result.keeper}}</text></view>
+      <view class="kv" wx:if="{{result.warehouse}}"><text class="k">存放库房</text><text class="v">{{result.warehouse}}</text></view>
+      <view class="kv" wx:if="{{result.lastTestDate}}"><text class="k">上次试验</text><text class="v">{{result.lastTestDate}}</text></view>
+      <view class="kv" wx:if="{{result.expireAt}}"><text class="k">有效截止</text><text class="v">{{result.expireAt}}</text></view>
+    </view>
+
     <text wx:if="{{!result.valid}}" class="warn">⚠ 该器具试验标识异常或已禁用，请现场核实</text>
+
+    <!-- R17 查看档案 -->
+    <button size="mini" type="primary" bindtap="onGoArchive">查看档案</button>
   </view>
   <view wx:elif="{{code && result === null}}" class="muted card">未匹配到器具</view>
 </view>

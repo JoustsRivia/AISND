@@ -2,7 +2,7 @@
 // 业务逻辑层：只引用 ./helpers，绝不直接调用 cloud.database() / cloud.getWXContext()。
 // 所有平台专属能力都被 helpers 封装，迁移时本文件无需改动。
 const { getOpenid } = require('./helpers/user');
-const { findUser, addUser, updateUser, update, listUsers, remove } = require('./helpers/db');
+const { findUser, addUser, updateUser, update, listUsers, remove, listBy } = require('./helpers/db');
 
 // F2 安全修复：服务端角色白名单，禁止客户端伪造 role 提权。
 // 普通业务角色 + 专班负责人/项目部负责人/安监部管理人员 均允许在注册时自绑定；
@@ -52,6 +52,46 @@ async function updateProfile(payload) {
 const crypto = require('crypto');
 function hashPwd(p) { return p ? crypto.createHash('sha1').update('tms_' + p).digest('hex') : ''; }
 
+// R02 按组织树级别生成工号（与 system.generateEmployeeId 同源逻辑）
+// 规则：单位级→4位；项目部级→6位；班组级→8位。工号组织树内唯一。
+async function generateEmployeeId(orgId) {
+  const orgs = (await listBy('orgs', {}, 500)).data || [];
+  const byId = {};
+  orgs.forEach((o) => { byId[o._id] = o; });
+  const node = byId[orgId];
+  if (!node) return String(Date.now()).slice(-6);
+  let unit = node;
+  while (unit.parentId && byId[unit.parentId]) unit = byId[unit.parentId];
+  const unitList = orgs.filter((o) => o.level === 0 && !o.parentId);
+  const unitIdx = Math.max(0, unitList.findIndex((o) => o._id === unit._id)) + 1;
+  const unitSeq = String(unitIdx).padStart(2, '0');
+  let projIdx = 0;
+  if (node.level >= 1) {
+    let proj = node;
+    while (proj && proj.level > 1) proj = byId[proj.parentId];
+    if (proj) {
+      const sibs = orgs.filter((o) => o.level === 1 && o.parentId === unit._id);
+      projIdx = Math.max(0, sibs.findIndex((o) => o._id === proj._id)) + 1;
+    }
+  }
+  const projSeq = String(projIdx).padStart(2, '0');
+  let prefix;
+  if (node.level === 0) prefix = '';
+  else if (node.level === 1) prefix = unitSeq;
+  else prefix = unitSeq + projSeq;
+  const len = node.level === 0 ? 4 : (node.level === 1 ? 6 : 8);
+  const seqLen = len - prefix.length;
+  const allUsers = (await listBy('users', {}, 500)).data || [];
+  let max = 0;
+  const re = new RegExp('^' + prefix + '(\\d{' + seqLen + '})$');
+  for (const u of allUsers) {
+    if (!u.employeeId) continue;
+    const m = (u.employeeId || '').match(re);
+    if (m) max = Math.max(max, parseInt(m[1], 10) || 0);
+  }
+  return prefix + String(max + 1).padStart(seqLen, '0');
+}
+
 // 注册新用户（UI② 注册按钮）：写入角色/单位/机构/账号/密码到 users 集合
 // 与 bindAccount 共用白名单与服务端校验，避免客户端伪造提权角色。
 async function register(payload) {
@@ -64,6 +104,8 @@ async function register(payload) {
   // 用户名唯一性：排除当前身份自身，避免重复注册时误判
   const dup = await listUsers({ username });
   if (dup.data && dup.data.some((x) => x.openid !== openid)) return fail('用户名已存在', 409);
+  // R02：自动生成组织树内唯一工号
+  const employeeId = await generateEmployeeId(orgId);
   await updateUser(openid, {
     role,
     unitId: unitId || '',
@@ -71,6 +113,7 @@ async function register(payload) {
     username: username || '',
     nickname: nickname || '',
     password: hashPwd(password),
+    employeeId,
     bound: true,
     updatedAt: new Date(),
   });

@@ -3,9 +3,10 @@
 // 把「隔离层单一源」拷贝进每个云函数的 helpers/ 目录，使各函数自包含、可独立部署
 // （微信逐函数部署约束，跨函数 require 共享文件会在运行时失败）。
 //
-// 当前打包两份单一源：
-//   - shared/dbBase.js      → <fn>/helpers/dbBase.js    （数据能力隔离层）
-//   - shared/userBase.js    → <fn>/helpers/userBase.js  （鉴权助手隔离层）
+// 当前打包三份单一源：
+//   - shared/dbBase.js        → <fn>/helpers/dbBase.js        （数据能力隔离层）
+//   - shared/userBase.js      → <fn>/helpers/userBase.js      （鉴权助手隔离层）
+//   - shared/rateLimiter.js   → <fn>/helpers/rateLimiter.js  （限流中间件，R23）
 //
 // 用法：node scripts/bundle-db-base.js
 // 约定：本文件由 npm pretest 与 uploadCloudFunction.sh 自动调用，无需手动执行。
@@ -23,6 +24,7 @@ const CLOUD = path.join(ROOT, 'cloudfunctions');
 const SOURCES = [
   ['dbBase.js', 'dbBase.js'],
   ['userBase.js', 'userBase.js'],
+  ['rateLimiter.js', 'rateLimiter.js'],
 ];
 
 for (const [srcName, destName] of SOURCES) {
@@ -43,4 +45,4 @@ for (const fn of fs.readdirSync(CLOUD).sort()) {
     n++;
   }
 }
-console.log(`✅ 已把隔离层单一源（dbBase.js + userBase.js）打包进各云函数 helpers/，共 ${n} 份副本（单一源 → 自包含部署）`);
+console.log(`✅ 已把隔离层单一源（dbBase.js + userBase.js + rateLimiter.js）打包进各云函数 helpers/，共 ${n} 份副本（单一源 → 自包含部署）`);
