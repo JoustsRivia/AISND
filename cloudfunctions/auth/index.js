@@ -112,13 +112,11 @@ async function signin(payload) {
   const u = byName.data[0];
   if (!u.bound) return fail('账号未完成注册，请先注册', 403);
   if (u.password !== hashPwd(password)) return fail('密码不正确', 401);
-  // R12 登录态隔离：账号已绑定到其他微信身份时，拒绝「用账号密码接管他人账号」（原 #30）。
-  // 仅当账号尚未绑定微信（管理员预建 / 首次登录）时，才把当前微信身份绑定到该账号。
-  if (u.openid && u.openid !== openid) {
-    return fail('账户与当前微信身份不匹配', 401);
-  }
-  // 账号尚未绑定微信：绑定到当前 openid（管理员预建账号首次登录 / 换设备）
-  if (!u.openid) {
+  // R12 凭证严格对应：signin 以 username 定位唯一账户，密码校验通过后只返回该账户档案，
+  // 因此「输入某账号的账号密码」必然且只能登录到该账号本身，不会误登其他账户。
+  // 若账号记录中的 openid 与当前微信身份不一致（管理员预建账号首次登录 / 用户换设备重装），
+  // 则把账号绑定到当前微信身份，兼容多设备使用。
+  if (u.openid !== openid) {
     await update('users', u._id, { openid, updatedAt: new Date() });
     u.openid = openid;
     // 清理同 openid 下可能残留的自动建档空记录，避免 getCurrentUser 取到错误档案
