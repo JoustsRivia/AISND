@@ -81,11 +81,12 @@ async function submit(payload) {
   }
   const j = await judge({ id, symptoms: symptoms || [] });
   const jd = j.data || {};
+  const applicantName = u ? `${u.username || u.nickname || ''}${u.employeeId ? '（' + u.employeeId + '）' : ''}` : '';
   const rec = await addScrap({
     toolId: id, code: res.data.code, name: res.data.name,
     reason: reason || '', photos: photos || [], symptoms: symptoms || [],
     mustScrap: jd.mustScrap, reasons: jd.reasons || [],
-    status: 'pending', applicant: openid, orgId: res.data.orgId, createdAt: new Date(),
+    status: 'pending', applicant: applicantName, applicantOpenid: openid, orgId: res.data.orgId, createdAt: new Date(),
   });
   await updateTool(id, { status: 'forbidden', updatedAt: new Date() });
   return ok({ scrapId: rec._id, mustScrap: jd.mustScrap, reasons: jd.reasons || [] });
@@ -129,7 +130,8 @@ async function disposal(payload) {
   });
   const toolRes = await findTool(rec.toolId);
   const t = toolRes.data || {};
-  const op = { type: 'scrap', ts: new Date(), note: '报废处置完成，已不可逆销毁' };
+  const opBy = g.u ? `${g.u.username || g.u.nickname || ''}${g.u.employeeId ? '（' + g.u.employeeId + '）' : ''}` : '';
+  const op = { type: 'scrap', ts: new Date(), by: opBy, note: '报废处置完成，已不可逆销毁' };
   await updateTool(rec.toolId, {
     status: 'scrapped',
     operations: [...(t.operations || []), op],

@@ -28,6 +28,7 @@
       <text>编号：{{code.code}}</text>
       <text>名称：{{code.name}}</text>
       <text>有效截止：{{code.expireAt || '—'}} · 存放：{{code.store || '—'}}</text>
+      <text>保管责任人：{{code.keeper || '—'}}</text>
     </view>
     <button wx:if="{{rendered}}" class="btn-outline" loading="{{saving}}" bindtap="onSave">保存标签图片</button>
   </view>
@@ -36,7 +37,8 @@
     <view class="title">打印标签预览</view>
     <view class="kv"><text>名称</text><text>{{label.name}}</text></view>
     <view class="kv"><text>编号</text><text>{{label.code}}</text></view>
-    <view class="kv"><text>存放</text><text>{{label.store || '—'}} · 保管：{{label.keeper || '—'}}</text></view>
+    <view class="kv"><text>存放</text><text>{{label.store || '—'}}</text></view>
+    <view class="kv"><text>保管责任人</text><text>{{label.keeper || '—'}}</text></view>
     <view class="kv"><text>有效期至</text><text>{{label.expireAt || '—'}}</text></view>
   </view>
 </view>

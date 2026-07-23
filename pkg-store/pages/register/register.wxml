@@ -32,9 +32,22 @@
     </view>
 
     <view class="row col"><text class="label">管理员</text>
-      <input class="ipt" placeholder="请输入库房管理员姓名" value="{{keeper}}" bindinput="bindKeeper" />
+      <user-picker class="ipt" placeholder="搜索或输入保管人姓名" bind:change="onKeeperChange" />
     </view>
   </view>
 
   <button type="primary" loading="{{submitting}}" bindtap="onSubmit">提交注册</button>
+
+  <!-- 已注册库房列表 -->
+  <view class="store-list" wx:if="{{storeList.length > 0}}">
+    <view class="store-header">已注册库房</view>
+    <view class="store-card" wx:for="{{storeList}}" wx:key="_id">
+      <view class="store-name">{{item.name}}</view>
+      <view class="store-meta" wx:if="{{item.zone && item.zone.length}}">分区：{{item.zone.join('、')}}</view>
+      <view class="store-meta" wx:if="{{item.keeper}}">管理员：{{item.keeper}}</view>
+    </view>
+  </view>
+  <view class="store-empty" wx:elif="{{storeList.length === 0 && !submitting}}">
+    <text>暂无已注册库房</text>
+  </view>
 </view>

@@ -31,6 +31,9 @@ Page({
     stats: [],
     hasUnread: false,
     loading: true,
+    // #14 批量管理
+    batchMode: false,
+    checkedIds: [],
   },
 
   async onLoad() {
@@ -136,6 +139,65 @@ Page({
       tmplIds: [SUBSCRIBE_TMPL_ID],
       success: async () => { await doRecord(); wx.showToast({ title: '订阅成功', icon: 'success' }); },
       fail: () => wx.showToast({ title: '已取消订阅', icon: 'none' }),
+    });
+  },
+
+  // #14 批量管理：进入/退出批量模式
+  onToggleBatchMode() {
+    this.setData({ batchMode: !this.data.batchMode, checkedIds: [] });
+  },
+
+  // 勾选/取消勾选单条消息
+  onCheckMsg(e) {
+    const id = e.currentTarget.dataset.id;
+    const checked = this.data.checkedIds.slice();
+    const idx = checked.indexOf(id);
+    if (idx >= 0) { checked.splice(idx, 1); } else { checked.push(id); }
+    this.setData({ checkedIds: checked });
+  },
+
+  // 全选/取消全选当前可见消息
+  onCheckAll() {
+    const { list, checkedIds } = this.data;
+    if (checkedIds.length === list.length) {
+      this.setData({ checkedIds: [] });
+    } else {
+      this.setData({ checkedIds: list.map((m) => m._id) });
+    }
+  },
+
+  // 批量标记已读
+  async onBatchRead() {
+    const ids = this.data.checkedIds;
+    if (!ids.length) { wx.showToast({ title: '请先勾选消息', icon: 'none' }); return; }
+    wx.showLoading({ title: '标记中' });
+    await Promise.all(ids.map((id) => api.readWarning(id).catch(() => {})));
+    wx.hideLoading();
+    wx.showToast({ title: `已标记 ${ids.length} 条已读`, icon: 'success' });
+    // 更新本地已读状态
+    const raw = this.data.raw.map((m) => (ids.includes(m._id) ? { ...m, read: true } : m));
+    this.setData({ raw, batchMode: false, checkedIds: [] });
+    this.applyFilter();
+  },
+
+  // 批量删除
+  async onBatchDelete() {
+    const ids = this.data.checkedIds;
+    if (!ids.length) { wx.showToast({ title: '请先勾选消息', icon: 'none' }); return; }
+    wx.showModal({
+      title: '确认删除', content: `确定删除 ${ids.length} 条消息？`,
+      success: async (res) => {
+        if (!res.confirm) return;
+        wx.showLoading({ title: '删除中' });
+        const results = await Promise.all(ids.map((id) => api.deleteWarning(id).catch(() => null)));
+        wx.hideLoading();
+        const ok = results.filter((r) => r !== null).length;
+        wx.showToast({ title: `已删除 ${ok} 条`, icon: 'success' });
+        // 从本地移除
+        const raw = this.data.raw.filter((m) => !ids.includes(m._id));
+        this.setData({ raw, batchMode: false, checkedIds: [] });
+        this.applyFilter();
+      },
     });
   },
 });

@@ -1,0 +1,41 @@
+<!-- components/user-picker/user-picker.wxml -->
+<view class="user-picker">
+  <view class="up-input-wrap">
+    <input
+      class="up-input"
+      value="{{keyword}}"
+      placeholder="{{placeholder}}"
+      bindinput="onInput"
+      bindconfirm="onConfirm"
+      bindfocus="onFocus"
+      confirm-type="search"
+    />
+    <view class="up-clear" wx:if="{{keyword}}" bindtap="onClear">
+      <text class="up-clear-icon">✕</text>
+    </view>
+  </view>
+
+  <!-- 联想结果下拉列表 -->
+  <view class="up-dropdown" wx:if="{{showCandidates && candidates.length > 0}}">
+    <view
+      class="up-item"
+      wx:for="{{candidates}}"
+      wx:key="_id"
+      data-index="{{index}}"
+      bindtap="onSelect"
+    >
+      <view class="up-item-name">{{item.nickname || item.username}}</view>
+      <view class="up-item-id">{{item.employeeId || ''}}</view>
+    </view>
+  </view>
+
+  <!-- 无结果提示 -->
+  <view class="up-no-result" wx:if="{{showCandidates && candidates.length === 0 && keyword}}">
+    <text class="up-no-result-text">未找到匹配用户，可手动输入确认</text>
+  </view>
+
+  <!-- 手动输入标记 -->
+  <view class="up-manual" wx:if="{{isManual && keyword}}">
+    <text class="up-manual-text">手动输入：{{keyword}}</text>
+  </view>
+</view>

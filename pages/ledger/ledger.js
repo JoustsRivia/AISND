@@ -34,6 +34,7 @@ Page({
     stats: [],
     tabs: STATUS_TABS,
     activeTab: '',
+    filterStatus: '', // 统计卡片当前高亮的状态
     chips: TOOL_CATEGORIES.map((c) => ({ key: c.code, label: c.name })),
     activeChips: [],
     keyword: '',
@@ -94,12 +95,12 @@ Page({
     if (s) {
       this.setData({
         stats: [
-          { label: '总数', value: s.total, color: 'var(--c-primary)' },
-          { label: '合格', value: s.qualified, color: 'var(--c-success)' },
-          { label: '待检', value: s.pendingTest, color: 'var(--c-warning)' },
-          { label: '领用', value: s.inUse, color: 'var(--c-info)' },
-          { label: '维修', value: s.maintaining, color: 'var(--c-primary)' },
-          { label: '报废', value: s.scrapped, color: 'var(--c-text-weak)' },
+          { label: '总数', value: s.total, color: 'var(--c-primary)', statusKey: '' },
+          { label: '合格', value: s.qualified, color: 'var(--c-success)', statusKey: 'qualified' },
+          { label: '待检', value: s.pendingTest, color: 'var(--c-warning)', statusKey: 'pending_test' },
+          { label: '领用', value: s.inUse, color: 'var(--c-info)', statusKey: 'in_use' },
+          { label: '维修', value: s.maintaining, color: 'var(--c-primary)', statusKey: 'maintaining' },
+          { label: '报废', value: s.scrapped, color: 'var(--c-text-weak)', statusKey: 'scrapped' },
         ],
       });
     }
@@ -228,7 +229,14 @@ Page({
   },
 
   onTab(e) {
-    this.setData({ activeTab: e.detail.key });
+    this.setData({ activeTab: e.detail.key, filterStatus: e.detail.key });
+    this.reload();
+  },
+
+  // #12 台账概况点击状态筛选
+  onFilter(e) {
+    const status = e.currentTarget.dataset.status;
+    this.setData({ activeTab: status, filterStatus: status });
     this.reload();
   },
 

@@ -143,6 +143,7 @@ const readWarning = (id) => invoke(FN.warning, 'read', { id });
 const readAllWarnings = () => invoke(FN.warning, 'readAll');
 const subscribeWarning = () => invoke(FN.warning, 'subscribe');
 const generateWarnings = () => invoke(FN.warning, 'generate');
+const deleteWarning = (id) => invoke(FN.warning, 'delete', { id });
 
 // ── 统计分析 M12 ──────────────────────────────────────────────────────
 const getDashboard = () => invoke(FN.stats, 'dashboard');
@@ -298,7 +299,7 @@ module.exports = {
   getInspectionTasks, submitInspection, reportHazard, assignHazard, trackHazard, closeHazard, getHazardList,
   getAssessmentList, submitAssessment,
   // 预警
-  getWarnings, readWarning, readAllWarnings, subscribeWarning, generateWarnings,
+  getWarnings, readWarning, readAllWarnings, subscribeWarning, generateWarnings, deleteWarning,
   // 统计
   getDashboard, getProjectDashboard, getSixStandard, getMyStats, getTrend, exportReport, getHomeStatus,
   // 系统

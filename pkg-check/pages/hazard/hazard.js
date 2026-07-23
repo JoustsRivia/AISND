@@ -124,8 +124,8 @@ Page({
 
   async onTapHazard(e) {
     const item = e.currentTarget.dataset.item;
-    const r = await wx.showActionSheet({ itemList: ['指派整改人', '跟踪进度', '闭环隐患', '取消'] }).catch(() => null);
-    if (!r || r.tapIndex === 3) return;
+    const r = await wx.showActionSheet({ itemList: ['指派整改人', '跟踪进度', '闭环隐患'] }).catch(() => null);
+    if (!r) return;
     try { await network.requireOnline(); } catch (err) { return; }
     if (r.tapIndex === 0) {
       await this.onAssign(item);

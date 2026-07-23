@@ -8,9 +8,10 @@
   border: 1rpx dashed var(--c-divider); border-radius: var(--r-md);
 }
 
-/* R04 密码显隐切换 */
-.pwd-field { position: relative; }
-.pwd-eye { position: absolute; right: 4rpx; top: 50%; transform: translateY(-50%); font-size: 36rpx; padding: 8rpx; z-index: 2; }
+/* R04 密码显隐切换 —— flex 同行对齐 */
+.pwd-field { display: flex; align-items: center; }
+.pwd-input-wrap { flex: 1; min-width: 0; }
+.pwd-eye { font-size: 36rpx; padding: 8rpx 12rpx; flex-shrink: 0; }
 
 /* 登录/注册分段切换 */
 .seg { display: flex; background: var(--c-bg); border-radius: var(--r-pill); padding: 6rpx; margin-bottom: var(--sp-3); }

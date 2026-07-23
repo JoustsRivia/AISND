@@ -32,7 +32,16 @@
 
 <filter-bar tabs="{{tabs}}" activeTab="{{activeTab}}" chips="{{chips}}" activeChips="{{activeChips}}" bind:tab="onTab" bind:chip="onChip" />
 
-<stats-card wx:if="{{stats.length}}" items="{{stats}}" columns="3" title="台账概况" />
+<!-- #12 台账概况点击状态筛选：内联实现以支持点击交互 -->
+<view class="scard" wx:if="{{stats.length}}">
+  <text class="title">台账概况</text>
+  <view class="grid">
+    <view wx:for="{{stats}}" wx:key="label" class="cell {{filterStatus === item.statusKey ? 'active' : ''}}" data-status="{{item.statusKey}}" bindtap="onFilter" style="width: 33.33%;">
+      <text class="num" style="color: {{item.color || 'var(--c-primary)'}};">{{item.value}}</text>
+      <text class="lbl">{{item.label}}</text>
+    </view>
+  </view>
+</view>
 
 <view wx:if="{{list.length}}" class="list">
   <tool-card wx:for="{{list}}" wx:key="_id" tool="{{item}}" bind:tap="onTapItem" />

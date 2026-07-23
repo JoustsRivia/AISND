@@ -20,7 +20,7 @@
 
       <form-field label="用户名" value="{{username}}" placeholder="请输入用户名" bind:input="onUserInput" />
       <view class="pwd-field">
-        <form-field label="密码" password="{{!showPwd}}" value="{{password}}" placeholder="请输入密码" bind:input="onPwdInput" style="padding-right:64rpx" />
+        <view class="pwd-input-wrap"><form-field label="密码" password="{{!showPwd}}" value="{{password}}" placeholder="请输入密码" bind:input="onPwdInput" /></view>
         <view class="pwd-eye" catchtap="togglePwd">{{showPwd ? '🙈' : '👁'}}</view>
       </view>
       <form-field wx:if="{{mode==='register'}}" label="昵称" value="{{nickname}}" placeholder="选填，默认同用户名" bind:input="onNickInput" />

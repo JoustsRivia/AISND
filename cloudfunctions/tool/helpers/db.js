@@ -16,6 +16,7 @@ const listUsers = (filter = {}) => collection('users').where(filter).get();
 const findTool = (id) => collection('tools').doc(id).get();
 const addTool = (data) => collection('tools').add({ data });
 const updateTool = (id, data) => collection('tools').doc(id).update({ data });
+const removeTool = (id) => collection('tools').doc(id).remove();
 const listTools = (filter = {}, size = 50, skip = 0) => collection('tools').where(filter).limit(size).skip(skip).get();
 const countTools = (filter = {}) => collection('tools').where(filter).count();
 
@@ -41,7 +42,7 @@ const listOrgs = (size = 200) => collection('orgs').limit(size).get();
 module.exports = {
   collection, _, regExp, listOrgs,
   findUser, addUser, updateUser, listUsers,
-  findTool, addTool, updateTool, listTools, countTools,
+  findTool, addTool, updateTool, removeTool, listTools, countTools,
   addBorrow, listBorrow,
   addScrap, updateScrap, listScrap,
   getById, add, update, listBy,

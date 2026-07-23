@@ -11,7 +11,7 @@
 
       <form-field label="用户名" value="{{username}}" placeholder="请输入用户名" bind:input="onUserInput" />
       <view class="pwd-field">
-        <form-field label="密码" password="{{!showPwd}}" value="{{password}}" placeholder="请输入密码（≥8位，含大小写/数字/符号更佳）" bind:input="onPwdInput" style="padding-right:64rpx" />
+        <view class="pwd-input-wrap"><form-field label="密码" password="{{!showPwd}}" value="{{password}}" placeholder="请输入密码（≥8位，含大小写/数字/符号更佳）" bind:input="onPwdInput" /></view>
         <view class="pwd-eye" catchtap="togglePwd">{{showPwd ? '🙈' : '👁'}}</view>
       </view>
       <view class="pwd-strength" wx:if="{{password}}">

@@ -3,6 +3,7 @@ const api = require('../../../utils/api');
 const network = require('../../../utils/network');
 const auth = require('../../../utils/auth');
 const { ROLES } = require('../../../utils/constants');
+const { buildFlow } = require('../../../utils/flow');
 
 // 强制报废 7 项判定（与 cloudfunctions/scrap/index.js SCRAP_RULES 对应）
 const RULES = [
@@ -23,6 +24,7 @@ Page({
     canApprove: false,
     // R16 搜索选择器
     keyword: '', searchResults: [], selectedTool: null,
+    scrapFlow: null, // 报废流程进度（用于 flow-steps）
   },
 
   async onLoad() {
@@ -40,7 +42,7 @@ Page({
   onGo(e) { wx.navigateTo({ url: e.currentTarget.dataset.url }); },
 
   onPick(e) {
-    this.setData({ idx: +e.detail.value, symptoms: [], judge: null, selectedTool: null });
+    this.setData({ idx: +e.detail.value, symptoms: [], judge: null, selectedTool: null, scrapFlow: null });
     this.runJudge();
   },
 
@@ -69,6 +71,7 @@ Page({
           if (t && t.toolId) {
             this.setData({ selectedTool: t, keyword: t.code || '', searchResults: [], symptoms: [], judge: null });
             wx.showToast({ title: '已匹配器具', icon: 'success' });
+            this.updateScrapFlow();
           } else {
             wx.vibrateShort({ type: 'heavy' });
             wx.showModal({ title: '未识别器具', content: '扫码内容：' + code + '，未匹配到器具档案。', showCancel: false });
@@ -88,11 +91,41 @@ Page({
     const t = this.data.searchResults[e.currentTarget.dataset.i];
     if (!t) return;
     this.setData({ selectedTool: t, keyword: (t.code || '') + ' ' + (t.name || ''), searchResults: [], symptoms: [], judge: null });
+    this.updateScrapFlow();
+  },
+
+  // 计算报废流程进度（从 selectedTool.status 映射到 scrap 流程阶段）
+  updateScrapFlow() {
+    const t = this.data.selectedTool;
+    if (!t) { this.setData({ scrapFlow: null }); return; }
+    let scrapStatus = null;
+    if (t.status === 'forbidden') scrapStatus = 'pending';
+    else if (t.status === 'scrapped') scrapStatus = 'approved';
+    else if (t.status === 'qualified') scrapStatus = 'rejected';
+    this.setData({ scrapFlow: scrapStatus ? buildFlow('scrap', scrapStatus) : null });
+    // 异步补充：若 tool.status 为 'scrapped'，尝试拉取全状态记录以区分 approved/disposed
+    if (t.status === 'scrapped' && t._id) {
+      api.getScrapList({ status: 'approved' }).then((records) => {
+        const list = Array.isArray(records) ? records : (records && records.list) || [];
+        const pendingRecords = list.filter((r) => r.toolId === t._id);
+        if (pendingRecords.length) {
+          // 还在 approved 列表 → 确认 approved
+        } else {
+          // 不在 approved 列表 → 可能已 disposed，尝试拉取 disposed
+          api.getScrapList({ status: 'disposed' }).then((disposedRecords) => {
+            const dlist = Array.isArray(disposedRecords) ? disposedRecords : (disposedRecords && disposedRecords.list) || [];
+            if (dlist.some((r) => r.toolId === t._id)) {
+              this.setData({ scrapFlow: buildFlow('scrap', 'disposed') });
+            }
+          }).catch(() => {});
+        }
+      }).catch(() => {});
+    }
   },
 
   // 清除已选中器具
   onClearSelected() {
-    this.setData({ selectedTool: null, keyword: '', searchResults: [] });
+    this.setData({ selectedTool: null, keyword: '', searchResults: [], scrapFlow: null });
   },
 
   bindReason(e) { this.setData({ reason: e.detail.value }); },

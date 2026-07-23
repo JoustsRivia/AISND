@@ -46,7 +46,8 @@ async function borrow(payload) {
   if (!(await hasValidCert(openid, t.category))) return fail('缺少有效特种作业证件，禁止领用');
 
   // 状态流转 + 操作记录
-  const op = { type: 'borrow', ts: new Date(), by: openid, note: '领用即确认"谁领用、谁保管、谁负责"' };
+  const operatorName = u ? `${u.username || u.nickname || ''}${u.employeeId ? '（' + u.employeeId + '）' : ''}` : '';
+  const op = { type: 'borrow', ts: new Date(), by: operatorName, byOpenid: openid, note: '领用即确认"谁领用、谁保管、谁负责"' };
   const patch = {
     status: 'in_use', borrower: openid,
     operations: [...(t.operations || []), op],
@@ -67,7 +68,10 @@ async function returnTool(payload) {
   const t = res.data;
 
   const damaged = appearance === 'damaged';
-  const op = { type: 'return', ts: new Date(), by: openid, appearance };
+  const me = await findUser(openid);
+  const u = me.data && me.data[0];
+  const operatorName = u ? `${u.username || u.nickname || ''}${u.employeeId ? '（' + u.employeeId + '）' : ''}` : '';
+  const op = { type: 'return', ts: new Date(), by: operatorName, byOpenid: openid, appearance };
   const patch = {
     status: damaged ? 'maintaining' : 'qualified', // 损坏 → 触发报修
     borrower: '',

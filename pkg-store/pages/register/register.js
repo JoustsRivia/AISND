@@ -7,6 +7,7 @@ Page({
   data: {
     name: '',
     keeper: '',
+    keeperOpenid: '',
     submitting: false,
     // 组织树
     orgTree: [],
@@ -17,6 +18,8 @@ Page({
     orgId: '',          // 最终提交的 orgId（项目部 _id，或单位 _id）
     // 分区动态数组
     zones: [''],
+    // 已注册库房列表
+    storeList: [],
   },
 
   async onLoad() {
@@ -27,10 +30,25 @@ Page({
     } catch (e) {
       this.setData({ orgTree: [], units: [] });
     }
+    this.loadStoreList();
+  },
+
+  async loadStoreList() {
+    try {
+      const storeList = await api.getStoreList().catch(() => []);
+      this.setData({ storeList });
+    } catch (e) {
+      // 静默失败
+    }
   },
 
   bindName(e) { this.setData({ name: e.detail.value }); },
-  bindKeeper(e) { this.setData({ keeper: e.detail.value }); },
+  onKeeperChange(e) {
+    this.setData({
+      keeper: e.detail.displayName || '',
+      keeperOpenid: e.detail.openid || '',
+    });
+  },
 
   // 选择单位：刷新该单位下的项目部（level===1 直属子节点）
   onUnitPick(e) {
@@ -81,16 +99,17 @@ Page({
 
   async onSubmit() {
     try { await network.requireOnline(); } catch (e) { return; }
-    const { name, orgId, keeper, zones } = this.data;
+    const { name, orgId, keeper, keeperOpenid, zones } = this.data;
     if (!name) { wx.showToast({ title: '请填写库房名称', icon: 'none' }); return; }
     if (!orgId) { wx.showToast({ title: '请选择所属组织', icon: 'none' }); return; }
     if (!keeper) { wx.showToast({ title: '请填写管理员', icon: 'none' }); return; }
     const zoneList = (zones || []).map((z) => (z || '').trim()).filter(Boolean);
     this.setData({ submitting: true });
     try {
-      await api.registerStore({ name, orgId, zone: zoneList, keeper });
+      await api.registerStore({ name, orgId, zone: zoneList, keeper, keeperOpenid });
       wx.showToast({ title: '注册成功', icon: 'success' });
-      setTimeout(() => wx.navigateBack(), 800);
+      this.setData({ name: '', keeper: '', keeperOpenid: '', zones: [''] });
+      this.loadStoreList();
     } catch (err) {
       wx.showToast({ title: '注册失败', icon: 'none' });
     } finally {

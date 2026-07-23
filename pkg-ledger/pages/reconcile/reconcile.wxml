@@ -7,13 +7,14 @@
 
   <!-- 任务页 -->
   <block wx:if="{{tab==='task'}}">
-    <button class="add" bindtap="onCreate">＋ 新建月度账物核对</button>
+    <button class="add" bindtap="onShowCreateForm">＋ 新建核对任务</button>
     <view wx:if="{{!loading && tasks.length===0}}" class="empty">暂无核对任务</view>
     <view wx:for="{{tasks}}" wx:key="_id" class="card" data-id="{{item._id}}" bindtap="onOpenTask">
       <view class="hd">
         <text class="month">{{item.month}}</text>
         <text class="pill {{item._statusCls}}">{{item._status}}</text>
       </view>
+      <view wx:if="{{item.storeName || item.category}}" class="row"><text class="k">范围</text><text class="v">{{item.storeName || '全部仓库'}} · {{item.category || '全部类别'}}</text></view>
       <view class="row"><text class="k">器具总数</text><text class="v">{{item.total}}</text></view>
       <view class="row"><text class="k">差异项</text><text class="v bad">{{item.diff}}</text></view>
     </view>
@@ -66,4 +67,36 @@
       </view>
     </view>
   </view>
-</view>
+
+  <!-- #15 新建核对任务表单弹层 -->
+  <view wx:if="{{showCreateForm}}" class="mask" bindtap="onHideCreateForm">
+    <view class="sheet" catchtap="">
+      <view class="sheet-hd">
+        <text>新建核对任务</text>
+      </view>
+      <view class="form-body">
+        <view class="form-row">
+          <text class="form-label">目标仓库</text>
+          <picker mode="selector" range="{{storeList}}" range-key="name" value="{{storeIndex}}" bindchange="onStoreChange">
+            <view class="form-pick {{storeList.length ? '' : 'disabled'}}">
+              {{storeList.length ? storeList[storeIndex].name : '无仓库'}} ▾
+            </view>
+          </picker>
+        </view>
+        <view class="form-row">
+          <text class="form-label">器具类别</text>
+          <picker mode="selector" range="{{categories}}" range-key="name" value="{{categoryIndex}}" bindchange="onCategoryChange">
+            <view class="form-pick">{{categories[categoryIndex].name}} ▾</view>
+          </picker>
+        </view>
+        <view class="form-row">
+          <text class="form-label">任务说明</text>
+          <textarea class="form-ta" placeholder="选填，如：2024年半年度盘库" value="{{note}}" bindinput="onNoteInput" maxlength="200" />
+        </view>
+      </view>
+      <view class="sheet-btns">
+        <button size="mini" bindtap="onHideCreateForm">取消</button>
+        <button type="primary" size="mini" bindtap="onSubmitTask">提交</button>
+      </view>
+    </view>
+  </view>

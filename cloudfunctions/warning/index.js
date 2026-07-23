@@ -76,6 +76,14 @@ async function generate() {
       if (!t.expireAt) continue;
       const exp = new Date(t.expireAt).getTime();
       if (exp < now) {
+        // R13 超期器具自动标记为待检：将 qualified 状态更新为 pending_test
+        if (t.status === 'qualified') {
+          try {
+            await db.update('tools', t._id, { status: 'pending_test', updatedAt: new Date() });
+          } catch (e) {
+            console.error('[warning] auto-mark pending_test failed', t._id, e);
+          }
+        }
         await push({ level: 'urgent', type: 'test_overdue', refType: 'test', refId: t._id, toolId: t._id,
           toolCode: t.code || '', keeperName: keeperNameOf[t.borrower] || keeperNameOf[t.keeper] || '',
           title: '试验已超期', content: `${t.name}（${t.code}）试验有效期已过，禁止领用并应逐级告警` }, t.orgId);
@@ -116,6 +124,26 @@ async function generate() {
   return ok({ generated: out.length });
 }
 
+// 删除预警（仅管理员或预警所属用户可删除）
+async function del(payload) {
+  const { id } = payload;
+  const r = await db.getById('warnings', id);
+  if (!r.data) return fail('消息不存在', 404);
+  // 权限校验：管理员可删任意；普通用户仅可删本组织内预警
+  const me = await db.getCurrentUser(getOpenid());
+  if (!me || me.status === 'disabled') return fail('账号不可用', 403);
+  const isAdmin = ['lead', 'supervisor', 'admin'].includes(me.role);
+  if (!isAdmin) {
+    const orgs = (await db.listOrgs(500)).data || [];
+    const allowed = db.allowedOrgIds(me, orgs, {});
+    if (allowed !== null && !allowed.includes('__unbound__') && !allowed.includes(r.data.orgId)) {
+      return fail('无权删除该预警', 403);
+    }
+  }
+  await coll('warnings').doc(id).remove();
+  return ok({ id });
+}
+
 exports.main = async (event) => {
   const { action, payload = {} } = event;
   try {
@@ -125,6 +153,7 @@ exports.main = async (event) => {
       case 'readAll': return readAll(payload);
       case 'subscribe': return subscribe(payload);
       case 'generate': return generate(payload);
+      case 'delete': return del(payload);
       default: return fail('未知 action: ' + action);
     }
   } catch (e) {

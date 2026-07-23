@@ -56,7 +56,7 @@ async function dashboard(payload = {}) {
   ]);
   const growth = {
     total: total.total,
-    qualifiedRate: total.total ? Math.round((qualified.total / total.total) * 100) : 0,
+    qualifiedRate: (total.total - scrapped.total) > 0 ? Math.round((qualified.total / (total.total - scrapped.total)) * 100) : 0,
     attention: expiring.total + warns.total,
   };
   return ok({
@@ -71,17 +71,18 @@ async function dashboard(payload = {}) {
 async function myStats() {
   const openid = ensureLogin();
   const scope = await db.scopeWhere({});
-  const [t, q, pending, warns, checks] = await Promise.all([
+  const [t, q, pending, warns, checks, scrapped] = await Promise.all([
     db.scopedCount('tools', scope),
     db.scopedCount('tools', { ...scope, status: 'qualified' }),
     db.scopedCount('tools', { ...scope, status: 'pending_test' }),
     db.scopedCount('warnings', { read: false, ...scope }),
     db.countBy('spot_checks', { operator: openid }),
+    db.scopedCount('tools', { ...scope, status: 'scrapped' }),
   ]);
   return ok({
     todo: warns.total + pending.total,
     checkCount: checks.total,
-    qualifiedRate: t.total ? Math.round((q.total / t.total) * 100) : 0,
+    qualifiedRate: (t.total - scrapped.total) > 0 ? Math.round((q.total / (t.total - scrapped.total)) * 100) : 0,
   });
 }
 
@@ -110,7 +111,7 @@ async function sixStandard() {
   const scrapRate = scrapped.total ? pct(disposed.total, scrapped.total) : 100;
   return ok({
     dims: [
-      { key: 'test',   name: '器具检测合格率',   done: q.total,  total: t.total, rate: pct(q.total, t.total) },
+      { key: 'test',   name: '器具检测合格率',   done: q.total,  total: t.total - scrapped.total, rate: pct(q.total, t.total - scrapped.total) },
       { key: 'spot',   name: '班前点检执行率', done: c.total,  total: t.total, rate: pct(c.total, t.total) },
       { key: 'hazard', name: '隐患整改闭环率', done: hc.total, total: h.total, rate: pct(hc.total, h.total) },
       { key: 'cert',   name: '关键岗位持证率', done: cer.total, total: u.total, rate: pct(cer.total, u.total) },

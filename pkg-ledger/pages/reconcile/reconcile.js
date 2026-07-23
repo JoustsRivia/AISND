@@ -1,6 +1,7 @@
 // pkg-ledger/pages/reconcile/reconcile.js —— M1.4 账物核对
 const api = require('../../../utils/api');
 const network = require('../../../utils/network');
+const { TOOL_CATEGORIES } = require('../../../utils/constants');
 
 const RESULT = {
   pending: { text: '待核对', cls: 'gray' },
@@ -22,9 +23,18 @@ Page({
     tasks: [], diffs: [], loading: true,
     taskDetail: null,
     RESULT, RESULT_KEYS,
+    // #15 新建核对任务表单
+    showCreateForm: false,
+    storeList: [],
+    storeIndex: 0,
+    categories: [{ code: '', name: '全部' }].concat(TOOL_CATEGORIES.map((c) => ({ code: c.code, name: c.name }))),
+    categoryIndex: 0,
+    note: '',
   },
 
-  async onLoad() { await this.loadTasks(); },
+  async onLoad() {
+    await Promise.all([this.loadTasks(), this.loadStores()]);
+  },
   async onPullDownRefresh() { await this.refresh(); wx.stopPullDownRefresh(); },
 
   async refresh() {
@@ -56,12 +66,53 @@ Page({
     this.setData({ diffs: mapped, loading: false });
   },
 
-  async onCreate() {
+  // #15 加载库房列表供表单选择
+  async loadStores() {
+    const list = await api.getStoreList().catch(() => []);
+    const storeList = [{ _id: '', name: '全部仓库' }].concat((list || []).map((s) => ({ _id: s._id, name: s.name })));
+    this.setData({ storeList });
+  },
+
+  // #15 显示新建任务表单
+  onShowCreateForm() {
+    this.setData({ showCreateForm: true, storeIndex: 0, categoryIndex: 0, note: '' });
+  },
+
+  // 关闭表单
+  onHideCreateForm() {
+    this.setData({ showCreateForm: false });
+  },
+
+  onStoreChange(e) {
+    this.setData({ storeIndex: +e.detail.value });
+  },
+
+  onCategoryChange(e) {
+    this.setData({ categoryIndex: +e.detail.value });
+  },
+
+  onNoteInput(e) {
+    this.setData({ note: e.detail.value });
+  },
+
+  // #15 提交新建任务
+  async onSubmitTask() {
     try { await network.requireOnline(); } catch (err) { return; }
+    const { storeList, storeIndex, categories, categoryIndex, note } = this.data;
+    const store = storeList[storeIndex];
+    const category = categories[categoryIndex];
+    if (!store || !category) { wx.showToast({ title: '请选择仓库和类别', icon: 'none' }); return; }
     wx.showLoading({ title: '生成中' });
     try {
-      await api.createReconcileTask({ month: thisMonth() });
-      wx.showToast({ title: '已生成月度核对', icon: 'success' });
+      await api.createReconcileTask({
+        month: thisMonth(),
+        storeId: store._id || '',
+        storeName: store.name || '',
+        category: category.code || '',
+        note: note || '',
+      });
+      wx.showToast({ title: '已生成核对任务', icon: 'success' });
+      this.setData({ showCreateForm: false });
       await this.loadTasks();
     } catch (err) {
       wx.showToast({ title: err.message || '生成失败', icon: 'none' });

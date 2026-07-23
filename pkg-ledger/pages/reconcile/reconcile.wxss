@@ -34,3 +34,19 @@
 .note { font-size: 24rpx; color: #8A9099; }
 .sheet-btns { display: flex; gap: 24rpx; margin-top: 16rpx; }
 .sheet-btns button { flex: 1; }
+
+/* #15 新建任务表单 */
+.form-body { padding: 8rpx 0 16rpx; }
+.form-row { margin-bottom: 24rpx; }
+.form-label { display: block; font-size: 26rpx; color: #6b7280; margin-bottom: 10rpx; }
+.form-pick {
+  height: 76rpx; line-height: 76rpx;
+  padding: 0 24rpx; background: #f7f8fa; border-radius: 12rpx;
+  font-size: 28rpx; color: #1f2329;
+}
+.form-pick.disabled { color: #c0c4cc; }
+.form-ta {
+  width: 100%; height: 140rpx; padding: 16rpx 24rpx;
+  background: #f7f8fa; border-radius: 12rpx;
+  font-size: 28rpx; box-sizing: border-box;
+}

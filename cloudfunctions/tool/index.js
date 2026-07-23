@@ -2,7 +2,7 @@
 // 业务逻辑层（M1 台账/档案/租赁/条码）：只引用 ./helpers，绝不直接 cloud.database()/getWXContext()。
 const { getOpenid } = require('./helpers/user');
 const {
-  findUser, addTool, updateTool, findTool, listTools, countTools, listOrgs, regExp, _, getCurrentUser,
+  findUser, addTool, updateTool, removeTool, findTool, listTools, countTools, listOrgs, regExp, _, getCurrentUser,
   allowedOrgIds, listBy,
 } = require('./helpers/db');
 
@@ -113,17 +113,21 @@ async function list(payload = {}) {
   return ok({ list: res.data || [], total: total.total, page: Number(page), size: Number(size) });
 }
 
-// R18 履历操作人姓名：把 operations 的 by(openid) 解析为可读 operatorName，
-// 便于前端「履历时间线」直接展示操作人姓名（非 openid）。testRecords 的 operator 已是姓名，原样透传。
+// R18 履历操作人姓名：优先使用 write 时已写入的 operatorName（由 borrow/return 同步写入），
+// 若无则回退到通过 byOpenid / by(openid) 查 users 表映射（兼容历史数据）。
 async function enrichOperatorNames(t) {
   const ops = (t && t.operations) || [];
-  const ids = [...new Set(ops.map((o) => o.by).filter(Boolean))];
+  // 过滤出需要回退查询的操作记录（无 operatorName）
+  const needLookup = ops.filter((o) => !o.operatorName);
+  if (!needLookup.length) return;
+  // 收集需要查询的 openid：优先 byOpenid，回退 by（历史数据存 openid）
+  const ids = [...new Set(needLookup.map((o) => o.byOpenid || o.by).filter(Boolean))];
   if (!ids.length) return;
-  // 拉取关联用户（早期规模小，整表读取后内存映射；后续可换 $in 查询优化）
+  // 拉取关联用户
   const users = (await listBy('users', {}, 200)).data || [];
   const nameOf = {};
   users.forEach((u) => { nameOf[u.openid] = u.nickname || u.username || ''; });
-  ops.forEach((o) => { o.operatorName = nameOf[o.by] || ''; });
+  needLookup.forEach((o) => { o.operatorName = nameOf[o.byOpenid || o.by] || ''; });
 }
 
 // 器具详情（一物一档：内嵌 operations / testRecords）
@@ -172,6 +176,7 @@ async function create(payload) {
   if (dateErr) return fail(dateErr, 400);
   // R15 器具编号自动生成：未传 code 时按类别自增（GL-{YY}-{缩写}-{0001}）
   const code = payload.code || await generateToolCode(payload.category);
+  const createdByName = u ? `${u.username || u.nickname || ''}${u.employeeId ? '（' + u.employeeId + '）' : ''}` : '';
   const doc = {
     code,
     name: payload.name,
@@ -194,7 +199,8 @@ async function create(payload) {
     orgId,
     operations: [],
     testRecords: [],
-    createdBy: openid,
+    createdBy: createdByName,
+    createdByOpenid: openid,
     createdAt: new Date(),
   };
   const added = await addTool(doc);
@@ -262,7 +268,8 @@ async function importTools(payload) {
       orgId,
       operations: [],
       testRecords: [],
-      createdBy: getOpenid(),
+      createdBy: u ? `${u.username || u.nickname || ''}${u.employeeId ? '（' + u.employeeId + '）' : ''}` : '',
+      createdByOpenid: getOpenid(),
       createdAt: new Date(),
     };
     const a = await addTool(doc);
@@ -321,7 +328,7 @@ async function genBarcode(payload) {
   if (!res.data) return fail('器具不存在', 404);
   const t = res.data;
   const qr = (t.code || '').replace(/-/g, '');
-  return ok({ code: t.code, qr, name: t.name, expireAt: t.expireAt, store: t.store });
+  return ok({ code: t.code, qr, name: t.name, expireAt: t.expireAt, store: t.store, keeper: t.keeper });
 }
 
 // 条码打印文件元数据（M14.1.2，PDF/标签生成由前端完成）
@@ -349,6 +356,31 @@ async function batchGen(payload) {
   return ok({ count: list.length, list });
 }
 
+// 器具删除：仅 admin/lead/supervisor 可删除；非管理员只能删除自身绑定机构的器具
+// 已领用中(in_use)的器具禁止删除
+async function del(payload) {
+  const openid = getOpenid();
+  const { id } = payload;
+  const res = await findTool(id);
+  if (!res.data) return fail('器具不存在', 404);
+  const t = res.data;
+
+  // 鉴权：仅 admin/lead/supervisor 可删除
+  const me = await getCurrentUser(openid);
+  if (!me || me.status === 'disabled') return fail('账号不可用', 403);
+  const isAdmin = me.role === 'admin' || me.role === 'lead' || me.role === 'supervisor';
+
+  // 非管理员只能删除自身绑定机构的器具
+  if (!isAdmin && t.orgId !== me.orgId) return fail('无权删除其他机构器具', 403);
+
+  // 删除前校验：已领用中禁止删除
+  if (t.status === 'in_use') return fail('请先归还');
+
+  // 删除操作：从 tools 表 remove
+  await removeTool(id);
+  return ok({ _id: id });
+}
+
 exports.main = async (event) => {
   const { action, payload = {} } = event;
   try {
@@ -365,6 +397,7 @@ exports.main = async (event) => {
       case 'genBarcode': return genBarcode(payload);
       case 'barcodeFile': return barcodeFile(payload);
       case 'batchGen': return batchGen(payload);
+      case 'delete': return del(payload);
       default: return fail('未知 action: ' + action);
     }
   } catch (e) {

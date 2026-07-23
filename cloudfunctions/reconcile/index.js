@@ -20,34 +20,64 @@ function thisMonth() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
 
-// 生成月度账物核对任务：抓取台账快照，预置逐项待核对
+// 生成账物核对任务：按仓库+类别筛选台账，预置逐项待核对
 async function createTask(payload = {}) {
   const g = await requireMgmt();
   if (g.err) return g.err;
   const month = (payload.month || thisMonth()).slice(0, 7);
-  // 避免同一月份重复建任务
-  const exist = await db.listBy('reconcile_tasks', { month }, 1);
-  if (exist.data && exist.data.length) return fail('该月份已存在核对任务', 409);
+  const { storeId, storeName, category, note } = payload;
 
-  const tools = await db.listAll('tools', {});
-  const items = (tools || []).map((t) => ({
+  // 校验：如果指定了 storeId，验证该仓库存在
+  if (storeId) {
+    const storeCheck = await db.getById('stores', storeId);
+    if (!storeCheck.data) return fail('仓库不存在', 400);
+  }
+  // 校验：如果指定了 category，验证是合法类别
+  if (category) {
+    const VALID_CATEGORIES = ['insulation', 'motor', 'manual', 'lifting', 'height', 'measure', 'temp_power', 'lease'];
+    if (!VALID_CATEGORIES.includes(category)) return fail('器具类别不合法', 400);
+  }
+
+  // 避免同一月份+同一仓库+同一类别重复建任务
+  const existFilter = { month };
+  if (storeId) existFilter.storeId = storeId;
+  if (category) existFilter.category = category;
+  const exist = await db.listBy('reconcile_tasks', existFilter, 1);
+  if (exist.data && exist.data.length) return fail('该年月/仓库/类别已存在核对任务', 409);
+
+  // 按仓库+类别筛选台账器具
+  const tools = await db.listBy('tools', storeId ? { store: storeName } : {}, 500);
+  let items = (tools.data || []).map((t) => ({
     toolId: t._id,
     code: t.code || '',
     name: t.name || '',
     category: t.category || '',
     status: t.status || '',
-    // S4/P1：tools.store 为字符串（库位），直接取值；兜底 storeName
     store: t.store || t.storeName || '',
     keeper: t.keeper || '',
-    result: 'pending',   // pending | match | loss | surplus | abnormal
+    result: 'pending',
     note: '',
   }));
+
+  // 按 storeName 二次匹配（tools.store 为字符串库位，兼容无 storeId 的情形）
+  if (storeName) {
+    items = items.filter((it) => it.store === storeName);
+  }
+  // 按 category 二次过滤
+  if (category) {
+    items = items.filter((it) => it.category === category);
+  }
+
+  if (!items.length) return fail('该筛选条件下无匹配器具', 400);
+
   const doc = {
     month, orgId: g.u.orgId || '', creator: getOpenid(),
     createdAt: now(), status: 'pending', total: items.length, items,
+    storeId: storeId || '', storeName: storeName || '',
+    category: category || '', note: note || '',
   };
   const added = await db.add('reconcile_tasks', doc);
-  return ok({ _id: added._id, ...doc });
+  return ok({ _id: added._id, items, total: items.length, month, storeName, category });
 }
 
 // 任务列表（按组织子树收窄）
@@ -59,6 +89,7 @@ async function list(payload = {}) {
   const res = await db.scopedList('reconcile_tasks', filter, { orgId, size: 50 });
   const data = (res.data || []).map((t) => ({
     _id: t._id, month: t.month, status: t.status, total: t.total,
+    storeName: t.storeName || '', category: t.category || '',
     diff: (t.items || []).filter((i) => i.result && i.result !== 'pending' && i.result !== 'match').length,
     createdAt: t.createdAt,
   }));

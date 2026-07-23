@@ -1,4 +1,6 @@
 {
-  "usingComponents": {},
+  "usingComponents": {
+    "flow-steps": "/components/flow-steps/flow-steps"
+  },
   "navigationBarTitleText": "报废申请"
 }

@@ -55,7 +55,8 @@ async function listHazard(payload = {}) {
 async function reportHazard(payload) {
   const openid = getOpenid();
   const me = await db.getCurrentUser(openid);
-  const doc = { ...payload, reporter: openid, orgId: (me && me.orgId) || '', status: 'open', createdAt: now() };
+  const reporterName = me ? `${me.username || me.nickname || ''}${me.employeeId ? '（' + me.employeeId + '）' : ''}` : '';
+  const doc = { ...payload, reporter: reporterName, reporterOpenid: openid, orgId: (me && me.orgId) || '', status: 'open', createdAt: now() };
   const added = await db.add('hazards', doc);
   // R19 点检异常同步更新器具状态：若该隐患关联器具（toolId），将其状态置为维修中（maintaining）；
   // 通用隐患（无 toolId，如环境类）不改动器具状态。

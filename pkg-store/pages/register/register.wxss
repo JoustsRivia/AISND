@@ -16,3 +16,11 @@
 .add-zone { margin-top: 16rpx; font-size: 26rpx; color: var(--c-primary); }
 
 .register button { margin-top: 40rpx; background: var(--c-primary); }
+
+/* 已注册库房列表 */
+.store-list { margin-top: 48rpx; padding: 0 32rpx; }
+.store-header { font-size: 28rpx; font-weight: 700; color: var(--c-text); margin-bottom: 20rpx; padding-left: 8rpx; border-left: 6rpx solid var(--c-primary); }
+.store-card { background: var(--c-card); border-radius: var(--r-md); padding: 24rpx; margin-bottom: 16rpx; box-shadow: var(--sh-card); }
+.store-name { font-size: 30rpx; font-weight: 600; color: var(--c-text); margin-bottom: 8rpx; }
+.store-meta { font-size: 24rpx; color: var(--c-text-sub); line-height: 1.6; }
+.store-empty { margin-top: 48rpx; text-align: center; font-size: 26rpx; color: var(--c-text-weak); padding: 48rpx 0; }

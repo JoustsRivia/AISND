@@ -35,6 +35,9 @@
       <text class="muted" bindtap="onClearSelected">清除</text>
     </view>
 
+    <!-- 报废流程进度（已提交/已审批/已处置） -->
+    <flow-steps wx:if="{{scrapFlow}}" title="报废流转进度" labels="{{scrapFlow.labels}}" current="{{scrapFlow.current}}" rejected="{{scrapFlow.rejected}}" />
+
     <!-- 候选 picker：禁用状态器具，作为备选 -->
     <view class="row"><text class="label">拟报废器具</text>
       <picker wx:if="{{candidates.length}}" mode="selector" range="{{candidates}}" range-key="name" value="{{idx}}" bindchange="onPick">
