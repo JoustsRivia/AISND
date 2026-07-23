@@ -14,7 +14,7 @@ const ROLE_OPTIONS = [
   { value: ROLES.ADMIN, name: '小程序管理员（最高权限）' },
 ];
 const KIND_OPTIONS = [
-  { value: 'unit', name: '所属单位（总/分包企业）' },
+  { value: 'unit', name: '所属单位' },
   { value: 'project', name: '项目部' },
   { value: 'team', name: '机构/班组' },
 ];
