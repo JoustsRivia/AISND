@@ -21,6 +21,17 @@ const ROLES = {
   ADMIN: 'admin',                     // 小程序管理员（拥有小程序全部数据管理权限）
 };
 
+// 角色展示顺序（单一源）：所有角色选择器（注册页 / 组织成员列表 / 筛选器）统一引用此顺序，
+// 避免出现各自硬编码导致顺序不一致。admin 为服务端指派、不在此列表中（注册页亦不展示）。
+const ROLE_ORDER = [
+  ROLES.WORKER,        // 普通作业人员
+  ROLES.GROUP_LEAD,    // 班组长/班组安全员
+  ROLES.SAFETY_OFFICER,// 项目部专职安全员
+  ROLES.PROJECT_LEAD,  // 项目部负责人
+  ROLES.SUPERVISOR,    // 安监部管理人员
+  ROLES.LEAD,          // 专班负责人
+];
+
 const TOOL_CATEGORIES = [
   { code: 'insulation', name: '绝缘安全工器具' },
   { code: 'motor', name: '手持电动机具' },
@@ -73,6 +84,6 @@ const HAZARD_LEVEL = { NORMAL: 'normal', SERIOUS: 'serious', MAJOR: 'major' };
 const WARNING_LEVEL = { NOTICE: 'notice', IMPORTANT: 'important', URGENT: 'urgent' };
 
 module.exports = {
-  TOOL_STATUS, ROLES, TOOL_CATEGORIES, DICT_TYPE, HAZARD_LEVEL, WARNING_LEVEL,
+  TOOL_STATUS, ROLES, ROLE_ORDER, TOOL_CATEGORIES, DICT_TYPE, HAZARD_LEVEL, WARNING_LEVEL,
   SPECIAL_EQUIP_CATEGORIES, CERT_TYPES, CERT_TO_CATEGORY, SUBSCRIBE_TMPL_ID,
 };

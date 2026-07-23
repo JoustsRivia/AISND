@@ -1,7 +1,7 @@
 <!-- pages/permission/permission.wxml —— 权限说明（数据范围 / 可用功能 / 审批链路） -->
 <view class="perm">
   <view class="hero">
-    <view class="brand-sub">SND 智慧安监系统</view>
+    <view class="brand-sub">善工智管</view>
     <view class="brand-title">{{roleName}}</view>
     <view class="brand-tip">以下为该角色的权限边界，越权操作将被服务端拦截</view>
   </view>

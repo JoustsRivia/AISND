@@ -29,6 +29,7 @@ Page({
     username: '',
     nickname: '',
     password: '',
+    showPwd: false,            // R04 密码明文/密文切换
     loading: false,
     // 密码强度可视化
     pwdStrength: 0,
@@ -69,6 +70,9 @@ Page({
       pwdColor: PWD_COLORS[s],
     });
   },
+
+  // R04 密码显隐切换
+  togglePwd() { this.setData({ showPwd: !this.data.showPwd }); },
 
   _enter(profile) {
     auth.setProfile(profile);

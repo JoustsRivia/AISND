@@ -9,7 +9,8 @@
         <text class="time">{{item.time}}</text>
       </view>
       <text wx:if="{{item.desc}}" class="desc">{{item.desc}}</text>
-      <text wx:if="{{item.operator}}" class="op">操作人：{{item.operator}}</text>
+      <text wx:if="{{item.operatorName}}" class="op">操作人：{{item.operatorName}}</text>
+      <text wx:elif="{{item.operator}}" class="op">操作人：{{item.operator}}</text>
     </view>
   </view>
 </view>

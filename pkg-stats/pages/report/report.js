@@ -26,7 +26,7 @@ Page({
   },
 
   onCopy() {
-    const lines = ['工器具安全管理 — 报表导出'];
+    const lines = ['善工智管 — 报表导出'];
     lines.push('器具总数：' + this.data.total);
     lines.push('—— 按状态 ——');
     this.data.byStatus.forEach((it) => lines.push(`${it.name}：${it.value}`));

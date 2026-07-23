@@ -7,6 +7,10 @@
 .pwd-fill { height: 100%; border-radius: 8rpx; transition: width .2s ease, background .2s ease; }
 .pwd-label { display: block; margin-top: 8rpx; font-size: 22rpx; }
 
+/* R04 密码显隐切换 */
+.pwd-field { position: relative; }
+.pwd-eye { position: absolute; right: 4rpx; top: 50%; transform: translateY(-50%); font-size: 36rpx; padding: 8rpx; z-index: 2; }
+
 /* 注册成功角色说明弹窗 */
 .modal-mask { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: flex; align-items: center; justify-content: center; z-index: 100; }
 .modal { width: 560rpx; background: var(--c-card); border-radius: var(--r-lg); padding: 48rpx 40rpx; box-shadow: var(--sh-card); }

@@ -21,7 +21,7 @@ Page({
     if (!this.data.label) return;
     const f = this.data.label;
     const lines = [
-      '工器具安全管理 — 器具标签',
+      '善工智管 — 器具标签',
       '名称：' + (f.name || ''),
       '编号：' + (f.code || ''),
       '类别：' + (f.category || ''),

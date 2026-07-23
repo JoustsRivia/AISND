@@ -91,7 +91,7 @@ Page({
     const key = e.detail.key;
     if (key === 'logout') return this.onLogout();
     if (key === 'permission') { wx.navigateTo({ url: '/pages/permission/permission' }); return; }
-    if (key === 'about') { wx.showModal({ title: '关于系统', content: '工器具安全管理小程序 V1.0\n助力电力工器具全生命周期安全管控。', showCancel: false }); return; }
+    if (key === 'about') { wx.showModal({ title: '关于系统', content: '善工智管 V1.0\n助力电力工器具全生命周期安全管控。', showCancel: false }); return; }
     if (key === 'system') { wx.navigateTo({ url: '/pkg-system/pages/org/org' }); return; }
     if (key === 'cert' || key === 'cert-expire') { wx.navigateTo({ url: '/pkg-cert/pages/list/list' }); return; }
     wx.showToast({ title: '该功能开发中', icon: 'none' });

@@ -372,7 +372,7 @@ page {
   page {
     --c-bg: #0F172A;  --c-card: #1E293B;  --c-surface: #172033;  --c-surface-2: #1E293B;
     --c-border: #334155;  --c-divider: #2A3A52;  --c-overlay: rgba(0, 0, 0, 0.55);
-    --c-text: #E5E7EB;  --c-text-sub: #CBD5E1;  --c-text-muted: #94A3B8;
+    --c-text: #E0E0E0;  --c-text-sub: #CBD5E1;  --c-text-muted: #94A3B8;
     --c-text-weak: #64748B;  --c-text-faint: #475569;
     --c-primary: #3B82F6;  --c-primary-2: #60A5FA;
     --c-primary-grad: linear-gradient(135deg, #1D4ED8 0%, #3B82F6 100%);
@@ -393,11 +393,15 @@ page {
     --sh-card-hover: 0 8rpx 28rpx rgba(0, 0, 0, 0.55);
     --sh-float: 0 10rpx 30rpx rgba(59, 130, 246, 0.30);
   }
+  /* #16 夜间模式文字兜底：暗色背景下强制浅色文字，修复纯黑文字不可见 */
+  view, text, scroll-view, button, input, textarea, label, navigator, rich-text, picker {
+    color: #E0E0E0 !important;
+  }
 }
 .theme-dark {
   --c-bg: #0F172A;  --c-card: #1E293B;  --c-surface: #172033;  --c-surface-2: #1E293B;
   --c-border: #334155;  --c-divider: #2A3A52;  --c-overlay: rgba(0, 0, 0, 0.55);
-  --c-text: #E5E7EB;  --c-text-sub: #CBD5E1;  --c-text-muted: #94A3B8;
+  --c-text: #E0E0E0;  --c-text-sub: #CBD5E1;  --c-text-muted: #94A3B8;
   --c-text-weak: #64748B;  --c-text-faint: #475569;
   --c-primary: #3B82F6;  --c-primary-2: #60A5FA;
   --c-primary-grad: linear-gradient(135deg, #1D4ED8 0%, #3B82F6 100%);
@@ -418,4 +422,10 @@ page {
   --sh-card-hover: 0 8rpx 28rpx rgba(0, 0, 0, 0.55);
   --sh-float: 0 10rpx 30rpx rgba(59, 130, 246, 0.30);
   min-height: 100vh;
+}
+/* #16 手动夜间模式（.theme-dark 容器）文字兜底：暗色背景下强制浅色文字 */
+.theme-dark view, .theme-dark text, .theme-dark scroll-view, .theme-dark button,
+.theme-dark input, .theme-dark textarea, .theme-dark label, .theme-dark navigator,
+.theme-dark rich-text, .theme-dark picker {
+  color: #E0E0E0 !important;
 }

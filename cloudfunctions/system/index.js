@@ -230,51 +230,6 @@ async function userManage(payload) {
   return fail('未知 op: ' + op);
 }
 
-// ── 种子管理员账号（仅需首次，无需已登录）─────────────────────────────
-// 创建/绑定当前微信身份为「小程序管理员(admin)」，拥有小程序全部数据管理权限（最高权限）。
-// 幂等保护：若已存在 admin，则拒绝重复播种。
-// ★ 安全：凭证仅由后端持有。优先读取环境变量（部署时可覆盖，避免口令进入源码/小程序包），
-//   缺省回退到内置默认值，保证未配置环境时行为不变。前端不再硬编码任何口令。
-const SEED_USERNAME = process.env.SEED_ADMIN_USERNAME || 'Jousts';
-const SEED_PASSWORD = process.env.SEED_ADMIN_PASSWORD || 'qwer1234';
-// 是否落回内置默认凭证：仅当两项环境变量均未配置时为真（用于安全告警，不触发任何行为变更）
-const USING_DEFAULT_CREDS = !process.env.SEED_ADMIN_USERNAME && !process.env.SEED_ADMIN_PASSWORD;
-async function seedAdmin(payload = {}) {
-  const openid = getOpenid();
-  const username = (payload.username || SEED_USERNAME).trim();
-  const password = payload.password || SEED_PASSWORD;
-  // 安全可观测性：使用内置默认凭证时输出告警，提示运维在部署环境配置强口令，
-  // 但保留回退值以避免「未配置环境变量即无法播种/空口令锁死」的可用性事故。
-  if (USING_DEFAULT_CREDS && !payload.password) {
-    console.warn('[system.seedAdmin] 正在使用内置默认管理员凭证（SEED_ADMIN_USERNAME / SEED_ADMIN_PASSWORD 均未配置）。'
-      + '生产部署前请于云函数环境变量设置强口令，避免默认口令留存源码。');
-  }
-  await db.ensureCollection('users');
-  // 已存在任一管理员(admin)则拒绝
-  const admins = await db.listBy('users', {}, 200);
-  const hasAdmin = admins.data && admins.data.some((u) => u.role === 'admin');
-  if (hasAdmin) return fail('管理员账号已存在，请直接使用账号登录', 409);
-  const me = await db.getCurrentUser(openid);
-  const doc = {
-    username,
-    nickname: username,
-    password: hashPwd(password),
-    role: 'admin',
-    unitId: '',
-    orgId: '',
-    bound: true,
-    status: 'active',
-    updatedAt: now(),
-  };
-  if (me) {
-    await db.update('users', me._id, { ...doc, openid });
-  } else {
-    await db.add('users', { ...doc, openid, createdAt: now() });
-  }
-  // 凭证一次性回传前端展示（前端不留存、不硬编码），便于管理员首次登录后妥善保存
-  return ok({ username, password, role: 'admin' });
-}
-
 // ── 字典：增删改查（管理员）──────────────────────────────────────────
 // 以 type + key 唯一标识一个字典项，写入 dicts 集合。
 // 仅小程序管理员(admin)可维护字典，避免业务角色误改基础数据（S1 越权收口）。
@@ -529,7 +484,6 @@ exports.main = async (event) => {
       case 'orgTree': return orgTree(payload);
       case 'org': return orgManage(payload);
       case 'user': return userManage(payload);
-      case 'seedAdmin': return seedAdmin(payload);
       case 'dict': return dict(payload);
       case 'checkTemplate': return checkTemplate(payload);
       case 'log': return log(payload);

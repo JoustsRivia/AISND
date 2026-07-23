@@ -4,9 +4,18 @@
 //   - ROLE_INFO：每个角色的结构化权限说明（数据范围 / 可用功能 / 审批链路），注册成功弹窗与权限页共用
 //   - buildUnits(tree)：把扁平组织树转换为「单位 + 其下级机构/班组（带路径）」结构，
 //     供单位 / 机构两级 picker 使用（注册、登录页逻辑完全一致，统一此处）。
-const { ROLES } = require('./constants');
+const { ROLES, ROLE_ORDER } = require('./constants');
 
-const ROLES_BINDABLE = [
+// 按 ROLE_ORDER（utils/constants.js 单一源）规范角色顺序；未在顺序表中的角色（如 lease_admin）
+// 排在末尾，保证「注册页 / 组织成员列表 / 筛选器」等所有角色选择器顺序一致。
+function orderRoles(list) {
+  const rank = (v) => { const i = ROLE_ORDER.indexOf(v); return i === -1 ? 999 : i; };
+  return [...list].sort((a, b) => rank(a.value) - rank(b.value));
+}
+
+// 可自助绑定角色（与 cloudfunctions/auth SELF_BINDABLE_ROLES 服务端白名单一致，不含 admin）。
+// 顺序由 ROLE_ORDER 统一驱动，避免各角色选择器顺序漂移。
+const ROLES_BINDABLE = orderRoles([
   { value: ROLES.WORKER, name: '普通作业人员', desc: '仅可查看本班组工器具' },
   { value: ROLES.GROUP_LEAD, name: '班组长/班组安全员', desc: '仅可查看本班组工器具' },
   { value: ROLES.SAFETY_OFFICER, name: '项目部专职安全员', desc: '可管辖整个项目部台账' },
@@ -14,7 +23,7 @@ const ROLES_BINDABLE = [
   { value: ROLES.LEAD, name: '专班负责人', desc: '全局台账与全部管理权限' },
   { value: ROLES.PROJECT_LEAD, name: '项目部负责人', desc: '可管辖整个项目部台账' },
   { value: ROLES.SUPERVISOR, name: '安监部管理人员', desc: '安监督查与系统管理' },
-];
+]);
 
 // 角色 → 结构化权限说明（迭代 Item 6）：注册成功弹窗三段式 + 权限页常驻查看
 const ROLE_INFO = {

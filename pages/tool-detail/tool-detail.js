@@ -34,7 +34,7 @@ Page({
       title: '周期试验',
       desc: r.result || '',
       status: r.result === '合格' ? 'success' : 'warning',
-      operator: r.operator || '',
+      operatorName: r.operator || '', // 试验操作人（已是姓名）
     }));
     (t.operations || []).forEach((o) => timeline.push({
       time: o.ts || o.time || '',
@@ -42,7 +42,7 @@ Page({
       title: o.action || o.title || '状态变更',
       desc: o.desc || '',
       status: 'normal',
-      operator: o.operator || '',
+      operatorName: o.operatorName || '', // R18 后端富化的操作人姓名（来自 by openid）
     }));
     timeline.sort((a, b) => (b.time || '').localeCompare(a.time || ''));
 

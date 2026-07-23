@@ -26,6 +26,6 @@
 
   <menu-list wx:if="{{groups.length}}" groups="{{groups}}" bind:select="onSelect" />
 
-  <view class="ver">工器具安全管理 · V1.0</view>
+  <view class="ver">善工智管 · V1.0</view>
   <view class="safe-bottom"></view>
 </view>

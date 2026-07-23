@@ -67,8 +67,23 @@ test('auth.signin: 密码错误拒绝（401）', async () => {
   assert.strictEqual(r.code, 401);
 });
 
-test('auth.signin: 凭证正确返回用户档案', async () => {
-  mock.__store.users = [{ _id: 'u1', openid: 'x', username: 'bob', password: hashPwd('right'), bound: true, role: 'worker' }];
+test('auth.signin: 凭证正确且账号未绑定微信 → 首次登录绑定当前身份并返回档案', async () => {
+  mock.__store.users = [{ _id: 'u1', openid: '', username: 'bob', password: hashPwd('right'), bound: true, role: 'worker' }];
+  const r = await auth.main({ action: 'signin', payload: { username: 'bob', password: 'right' } });
+  assert.strictEqual(r.code, 0);
+  assert.strictEqual(r.data.username, 'bob');
+  assert.strictEqual(r.data.openid, 'test_openid'); // 已绑定到当前微信身份
+});
+
+test('auth.signin: 账号已绑定其他微信身份 → 拒绝（401，防越权接管）', async () => {
+  mock.__store.users = [{ _id: 'u1', openid: 'other_wechat', username: 'bob', password: hashPwd('right'), bound: true, role: 'worker' }];
+  const r = await auth.main({ action: 'signin', payload: { username: 'bob', password: 'right' } });
+  assert.strictEqual(r.code, 401);
+  assert.match(r.message, /不匹配|身份/);
+});
+
+test('auth.signin: 同一微信身份可正常登录自己的账号', async () => {
+  mock.__store.users = [{ _id: 'u1', openid: 'test_openid', username: 'bob', password: hashPwd('right'), bound: true, role: 'worker' }];
   const r = await auth.main({ action: 'signin', payload: { username: 'bob', password: 'right' } });
   assert.strictEqual(r.code, 0);
   assert.strictEqual(r.data.username, 'bob');

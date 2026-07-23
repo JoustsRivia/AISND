@@ -1,8 +1,8 @@
 <!-- pages/login/login.wxml —— 登录页（hero 渐变头 + 上浮卡片，与主 tab 视觉统一） -->
 <view class="login">
   <view class="hero login-hero">
-    <view class="brand-sub">SND 智慧安监系统</view>
-    <view class="brand-title">工器具安全管理平台</view>
+    <view class="brand-sub">工器具安全管理平台</view>
+    <view class="brand-title">善工智管</view>
   </view>
 
   <view class="form-wrap">
@@ -19,17 +19,18 @@
       </block>
 
       <form-field label="用户名" value="{{username}}" placeholder="请输入用户名" bind:input="onUserInput" />
-      <form-field label="密码" password="{{true}}" value="{{password}}" placeholder="请输入密码" bind:input="onPwdInput" />
+      <view class="pwd-field">
+        <form-field label="密码" password="{{!showPwd}}" value="{{password}}" placeholder="请输入密码" bind:input="onPwdInput" style="padding-right:64rpx" />
+        <view class="pwd-eye" catchtap="togglePwd">{{showPwd ? '🙈' : '👁'}}</view>
+      </view>
       <form-field wx:if="{{mode==='register'}}" label="昵称" value="{{nickname}}" placeholder="选填，默认同用户名" bind:input="onNickInput" />
 
       <button wx:if="{{mode==='login'}}" type="primary" loading="{{loading}}" bindtap="onLogin">登 录</button>
       <button wx:else type="primary" loading="{{loading}}" bindtap="onRegister">注册并登录</button>
 
-      <view class="note">🔒 小程序管理员由系统初始化分配；其余角色（含专班负责人 / 项目部负责人 / 安监部管理人员）均可自助注册</view>
+      <view class="note">🔒 小程序管理员由系统后台指派；其余角色（含专班负责人 / 项目部负责人 / 安监部管理人员）均可自助注册</view>
       <view wx:if="{{mode==='login'}}" class="forgot" bindtap="onForgot">忘记密码？<text class="link">立即找回</text></view>
       <view class="forgot" bindtap="goRegister">没有账号？<text class="link">去注册</text></view>
-
-      <view class="seed" bindtap="onSeedAdmin">⚙ 初始化管理员账号（仅首次）</view>
     </view>
   </view>
 </view>

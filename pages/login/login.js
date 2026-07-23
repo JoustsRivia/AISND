@@ -15,6 +15,7 @@ Page({
     username: '',
     nickname: '',
     password: '',
+    showPwd: false,            // R04 密码明文/密文切换
     loading: false,
   },
 
@@ -39,6 +40,9 @@ Page({
   onUserInput(e) { this.setData({ username: e.detail.value }); },
   onNickInput(e) { this.setData({ nickname: e.detail.value }); },
   onPwdInput(e) { this.setData({ password: e.detail.value }); },
+
+  // R04 密码显隐切换
+  togglePwd() { this.setData({ showPwd: !this.data.showPwd }); },
 
   _enter(profile) {
     auth.setProfile(profile);
@@ -100,30 +104,4 @@ Page({
 
   // 跳转独立注册页（pages/register，复用 api.register 零改动后端）
   goRegister() { wx.navigateTo({ url: '/pages/register/register' }); },
-
-  // 初始化管理员账号（仅首次）：将当前微信身份设为小程序管理员(admin)。
-  // 凭证由后端 seed 逻辑持有，成功后从服务端返回中一次性展示，绝不写死在前端源码。
-  async onSeedAdmin() {
-    const ok = await new Promise((resolve) => wx.showModal({
-      title: '初始化管理员账号',
-      content: '将把当前微信身份设为小程序管理员（最高权限）。仅首次可用，已存在管理员时将跳过。',
-      success: (r) => resolve(r.confirm),
-    }));
-    if (!ok) return;
-    this.setData({ loading: true });
-    try {
-      const res = await api.seedAdmin();
-      const uname = (res && res.username) || '';
-      const pwd = (res && res.password) || '';
-      wx.showModal({
-        title: '管理员已初始化',
-        content: `账号：${uname}\n初始密码：${pwd}\n请妥善保存，并尽快在系统管理后台修改。`,
-        showCancel: false,
-      });
-    } catch (err) {
-      wx.showToast({ title: err.message || '初始化失败', icon: 'none' });
-    } finally {
-      this.setData({ loading: false });
-    }
-  },
 });

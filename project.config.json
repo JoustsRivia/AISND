@@ -1,7 +1,7 @@
 {
   "miniprogramRoot": "./",
   "cloudfunctionRoot": "cloudfunctions/",
-  "projectname": "工器具安全管理小程序",
+  "projectname": "善工智管",
   "description": "工器具全生命周期安全管理（云开发，预留迁移自有服务器）",
   "appid": "wx8380215a68af40b5",
   "setting": {

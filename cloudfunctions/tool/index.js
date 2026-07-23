@@ -3,16 +3,18 @@
 const { getOpenid } = require('./helpers/user');
 const {
   findUser, addTool, updateTool, findTool, listTools, countTools, listOrgs, regExp, _, getCurrentUser,
-  allowedOrgIds,
+  allowedOrgIds, listBy,
 } = require('./helpers/db');
 
 const ok = (data) => ({ code: 0, data });
 const fail = (message, code = 1) => ({ code, message });
 
-// 类别前缀（与 utils/constants.js TOOL_CATEGORIES 对应）
-const CODE_PREFIX = {
-  insulation: 'JY', motor: 'DD', manual: 'SG', lifting: 'ZL',
-  height: 'AQ', measure: 'YB', temp_power: 'PD', lease: 'ZL',
+// R15 器具编号自动生成：GL-{年度末两位}-{类别缩写}-{4位流水}，如 GL-26-GJ-0001
+// 类别缩写映射（与 utils/constants.js TOOL_CATEGORIES 对应）：
+//   工具 GJ / 设备 SB / 仪器 YQ / 仪表 YB / 其他 QT
+const CAT_ABBR = {
+  insulation: 'YQ', motor: 'SB', manual: 'GJ', lifting: 'SB',
+  height: 'GJ', measure: 'YB', temp_power: 'SB', lease: 'SB',
 };
 // 高危专项类别：绝缘 / 高空 / 起重承压
 const HIGH_RISK_CATS = ['insulation', 'height', 'lifting'];
@@ -43,9 +45,40 @@ function derive(t) {
   return { ...t, expired: isExpired(t), categoryName: CAT_NAME[t.category] };
 }
 
-function genCode(category, seq) {
-  const p = CODE_PREFIX[category] || 'QT';
-  return `${p}-${new Date().getFullYear()}-${String(seq).padStart(4, '0')}`;
+// 类别缩写（未知类别回退「其他 QT」）
+function catAbbr(category) { return CAT_ABBR[category] || 'QT'; }
+
+// 正则转义（用于按 code 前缀统计/查重）
+function escapeRegExp(s) { return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+
+// 某类别下当前最大流水号（基于现有 code 前缀），保证同类自增且不重复
+async function nextSeq(category) {
+  const yy = String(new Date().getFullYear()).slice(-2);
+  const prefix = `GL-${yy}-${catAbbr(category)}-`;
+  const re = new RegExp('^' + escapeRegExp(prefix) + '(\\d{4})$');
+  const res = await listTools({ code: regExp('^' + escapeRegExp(prefix)) }, 200, 0);
+  let max = 0;
+  for (const t of (res.data || [])) {
+    const m = (t.code || '').match(re);
+    if (m) max = Math.max(max, parseInt(m[1], 10) || 0);
+  }
+  return max + 1;
+}
+
+// R15 生成器具编号：GL-{YY}-{类别缩写}-{4位流水}；流水号在同类别下自增，从 0001 起。
+// 防并发碰撞：若生成码已存在则顺延至下一个空闲号。
+async function generateToolCode(category) {
+  const yy = String(new Date().getFullYear()).slice(-2);
+  const abbr = catAbbr(category);
+  let seq = await nextSeq(category);
+  // 防碰撞顺延
+  for (let guard = 0; guard < 9999; guard++) {
+    const code = `GL-${yy}-${abbr}-${String(seq).padStart(4, '0')}`;
+    const exist = await listTools({ code }, 1, 0);
+    if (!exist.data || !exist.data.length) return code;
+    seq++;
+  }
+  return `GL-${yy}-${abbr}-${String(seq).padStart(4, '0')}`;
 }
 
 // 数据范围过滤（S2 / 问题4 RBAC）：
@@ -80,11 +113,25 @@ async function list(payload = {}) {
   return ok({ list: res.data || [], total: total.total, page: Number(page), size: Number(size) });
 }
 
+// R18 履历操作人姓名：把 operations 的 by(openid) 解析为可读 operatorName，
+// 便于前端「履历时间线」直接展示操作人姓名（非 openid）。testRecords 的 operator 已是姓名，原样透传。
+async function enrichOperatorNames(t) {
+  const ops = (t && t.operations) || [];
+  const ids = [...new Set(ops.map((o) => o.by).filter(Boolean))];
+  if (!ids.length) return;
+  // 拉取关联用户（早期规模小，整表读取后内存映射；后续可换 $in 查询优化）
+  const users = (await listBy('users', {}, 200)).data || [];
+  const nameOf = {};
+  users.forEach((u) => { nameOf[u.openid] = u.nickname || u.username || ''; });
+  ops.forEach((o) => { o.operatorName = nameOf[o.by] || ''; });
+}
+
 // 器具详情（一物一档：内嵌 operations / testRecords）
 async function detail(payload) {
   const { id } = payload;
   const res = await findTool(id);
   if (!res.data) return fail('器具不存在', 404);
+  await enrichOperatorNames(res.data); // R18：履历操作人姓名富化
   return ok(derive(res.data)); // S2/P0：派生 expired + categoryName
 }
 
@@ -98,9 +145,8 @@ async function create(payload) {
   if (payload.orgId && payload.orgId !== u.orgId && !isAdmin) return fail('无权为其他机构建档', 403);
   const orgId = (isAdmin && payload.orgId) ? payload.orgId : (u.orgId || '');
   if (!orgId) return fail('未绑定机构，无法建档', 403);
-  // S5 修复：原 Date.now()%10000 同秒会撞码，违反"一物一码"。改用「时间基+随机后缀」。
-  const seq = (Date.now().toString(36) + Math.floor(Math.random() * 1296).toString(36)).slice(-8);
-  const code = genCode(payload.category, seq);
+  // R15 器具编号自动生成：未传 code 时按类别自增（GL-{YY}-{缩写}-{0001}）
+  const code = payload.code || await generateToolCode(payload.category);
   const doc = {
     code,
     name: payload.name,
@@ -167,9 +213,8 @@ async function importTools(payload) {
   const added = [];
   for (const r of rows) {
     if (!r || !r.name) continue; // 名称必填，跳过空行
-    const seq = (Date.now().toString(36) + Math.floor(Math.random() * 1296).toString(36)).slice(-8);
     const doc = {
-      code: genCode(r.category || 'manual', seq),
+      code: r.code || await generateToolCode(r.category || 'manual'),
       name: r.name,
       category: r.category || 'manual',
       spec: r.spec || '',

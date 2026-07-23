@@ -159,7 +159,6 @@ const manageUser = (data) => invoke(FN.system, 'user', data).then((r) => {
   return r;
 });
 const listUsers = () => invoke(FN.system, 'user', { op: 'list' });
-const seedAdmin = (data = {}) => invoke(FN.system, 'seedAdmin', data);
 const getDict = (type) => invoke(FN.system, 'dict', { type });
 // 字典增删改（M13.2）：服务端 requireAdmin 鉴权，按 type+key 写入 dicts 集合
 const createDict = (data) => invoke(FN.system, 'dict', { op: 'create', data });
@@ -274,7 +273,7 @@ module.exports = {
   // 统计
   getDashboard, getProjectDashboard, getSixStandard, getMyStats, getTrend, exportReport, getHomeStatus,
   // 系统
-  getOrgTree, manageOrg, manageUser, listUsers, seedAdmin, getDict, createDict, updateDict, removeDict, manageCheckTemplate,
+  getOrgTree, manageOrg, manageUser, listUsers, getDict, createDict, updateDict, removeDict, manageCheckTemplate,
   getRateLimit, setRateLimit, getRateStats, getRetention, setRetention,
   // 条码
   generateBarcode, getBarcodeFile, batchInbound, batchSpotCheck, batchGenBarcode, genLabel,
