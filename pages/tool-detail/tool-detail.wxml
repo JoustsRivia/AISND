@@ -17,7 +17,7 @@
   </view>
 
   <view class="card info">
-    <view class="row"><text class="k">保管责任人</text><text class="v">{{tool.keeper || '—'}}</text></view>
+    <view class="row"><text class="k">保管责任人</text><text class="v">{{tool.keeperDisplay || tool.keeper || '—'}}</text></view>
     <view class="row"><text class="k">存放库房</text><text class="v">{{tool.store || '—'}}</text></view>
     <view class="row"><text class="k">有效截止</text><text class="v {{tool.expired ? 'danger' : ''}}">{{tool.expireAt || '—'}}</text></view>
     <view class="row"><text class="k">规格型号</text><text class="v">{{tool.spec || '—'}}</text></view>

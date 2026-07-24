@@ -2,7 +2,7 @@
 // R13：日期选择器 + 约束校验 + expireAt 联动计算；R14：库房从 stores 表加载
 const api = require('../../../utils/api');
 const network = require('../../../utils/network');
-const { TOOL_CATEGORIES } = require('../../../utils/constants');
+const { TOOL_CATEGORIES, TOOL_SOURCES } = require('../../../utils/constants');
 const { validateDateConstraints, calcExpireAt } = require('../../../utils/tool-schema');
 
 Page({
@@ -10,13 +10,13 @@ Page({
     id: '', editMode: false,
     categories: TOOL_CATEGORIES,
     catIndex: 0,
-    sources: [{ value: 'self', name: '自购' }, { value: 'lease', name: '租赁' }],
+    sources: TOOL_SOURCES,
     sourceIndex: 0,
     stores: [],           // R14：库房列表
     storeIndex: -1,      // R14：当前选中库房
     form: {
       name: '', spec: '', factoryNo: '', purchaseDate: '',
-      testPeriod: 6, lastTestDate: '', expireAt: '', store: '', keeper: '', source: 'self',
+      testPeriod: 6, lastTestDate: '', expireAt: '', store: '', keeper: '', keeperDisplay: '', source: 'self',
       leaseUnit: '', certNo: '', operator: '', operatorCert: '', // M1.3.7 租赁字段
       attachments: [], // M1.3.5 附件（合同/合格证/试验报告）
     },
@@ -42,7 +42,7 @@ Page({
     const t = await api.getToolDetail(id).catch(() => null);
     if (!t) return;
     const catIndex = Math.max(0, this.data.categories.findIndex((c) => c.code === t.category));
-    const sourceIndex = t.source === 'lease' ? 1 : 0;
+    const sourceIndex = Math.max(0, this.data.sources.findIndex((s) => s.value === (t.source || 'self')));
     const storeIndex = Math.max(-1, this.data.stores.findIndex((s) => s.name === t.store));
     this.setData({
       catIndex, sourceIndex, storeIndex,
@@ -50,7 +50,7 @@ Page({
         name: t.name || '', spec: t.spec || '', factoryNo: t.factoryNo || '',
         purchaseDate: t.purchaseDate || '', testPeriod: t.testPeriod || 6,
         lastTestDate: t.lastTestDate || '', expireAt: t.expireAt || '',
-        store: t.store || '', keeper: t.keeper || '', source: t.source || 'self',
+        store: t.store || '', keeper: t.keeper || '', keeperDisplay: t.keeperDisplay || t.keeper || '', source: t.source || 'self',
         leaseUnit: t.leaseUnit || '', certNo: t.certNo || '', operator: t.operator || '', operatorCert: t.operatorCert || '',
         attachments: t.attachments || [],
       },
@@ -88,8 +88,19 @@ Page({
     const store = this.data.stores[idx];
     if (!store) return;
     const patch = { storeIndex: idx, ['form.store']: store.name };
-    if (store.keeper) patch['form.keeper'] = store.keeper;
+    if (store.keeper) {
+      patch['form.keeper'] = store.keeper;
+      patch['form.keeperDisplay'] = store.keeperDisplay || store.keeper;
+    }
     this.setData(patch);
+  },
+
+  // user-picker 选择变更：存储 openid 和可读展示名
+  onKeeperChange(e) {
+    this.setData({
+      ['form.keeper']: e.detail.openid || e.detail.username || '',
+      ['form.keeperDisplay']: e.detail.displayName || '',
+    });
   },
 
   // M1.3.5 附件上传（采购合同/合格证/型式试验报告）

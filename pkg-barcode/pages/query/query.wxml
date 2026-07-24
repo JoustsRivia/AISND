@@ -17,7 +17,7 @@
       <view class="kv"><text class="k">编号</text><text class="v">{{result.code}}</text></view>
       <view class="kv"><text class="k">名称</text><text class="v">{{result.name}}</text></view>
       <view class="kv"><text class="k">状态</text><text class="v">{{result.status}}</text></view>
-      <view class="kv" wx:if="{{result.keeper}}"><text class="k">保管人</text><text class="v">{{result.keeper}}</text></view>
+      <view class="kv" wx:if="{{result.keeperDisplay || result.keeper}}"><text class="k">保管人</text><text class="v">{{result.keeperDisplay || result.keeper}}</text></view>
       <view class="kv" wx:if="{{result.warehouse}}"><text class="k">存放库房</text><text class="v">{{result.warehouse}}</text></view>
       <view class="kv" wx:if="{{result.lastTestDate}}"><text class="k">上次试验</text><text class="v">{{result.lastTestDate}}</text></view>
       <view class="kv" wx:if="{{result.expireAt}}"><text class="k">有效截止</text><text class="v">{{result.expireAt}}</text></view>

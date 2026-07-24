@@ -14,6 +14,6 @@
   </view>
   <view class="foot" wx:if="{{tool.expireAt}}">
     <text class="muted">有效期至 {{tool.expireAt}}</text>
-    <text wx:if="{{tool.keeper}}" class="muted">{{tool.keeper}}</text>
+    <text wx:if="{{tool.keeperDisplay || tool.keeper}}" class="muted">{{tool.keeperDisplay || tool.keeper}}</text>
   </view>
 </view>

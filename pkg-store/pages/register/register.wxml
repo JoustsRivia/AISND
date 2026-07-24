@@ -6,18 +6,17 @@
       <input class="ipt" placeholder="请输入库房名称" value="{{name}}" bindinput="bindName" />
     </view>
 
-    <view class="row">
-      <text class="label">所属单位</text>
-      <picker class="ipt" mode="selector" range="{{units}}" range-key="name" value="{{unitIndex}}" bindchange="onUnitPick">
-        <view class="picker-txt {{unitIndex >= 0 ? '' : 'ph'}}">{{unitIndex >= 0 ? units[unitIndex].name : '请选择单位'}}</view>
-      </picker>
-    </view>
-
-    <view class="row">
-      <text class="label">所属机构</text>
-      <picker class="ipt" mode="selector" range="{{subOrgs}}" range-key="name" value="{{subIndex}}" bindchange="onSubPick" disabled="{{subOrgs.length === 0}}">
-        <view class="picker-txt {{subIndex >= 0 ? '' : 'ph'}}">{{subIndex >= 0 ? subOrgs[subIndex].name : (subOrgs.length === 0 ? '（暂无项目部，将挂到单位）' : '请选择项目部')}}</view>
-      </picker>
+    <view class="row col">
+      <text class="label">所属组织</text>
+      <org-cascading-picker
+        class="ipt"
+        orgTree="{{orgTree}}"
+        twoLevel="{{true}}"
+        unitId="{{selectedUnitId}}"
+        deptId="{{selectedDeptId}}"
+        placeholder="请选择单位 → 项目部"
+        bind:change="onOrgChange"
+      />
     </view>
 
     <view class="row col">

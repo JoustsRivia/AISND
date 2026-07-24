@@ -1,4 +1,6 @@
 {
-  "usingComponents": {},
+  "usingComponents": {
+    "user-picker": "../../../../components/user-picker/user-picker"
+  },
   "navigationBarTitleText": "器具录入"
 }

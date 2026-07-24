@@ -2,7 +2,7 @@
 const api = require('../../../utils/api');
 const network = require('../../../utils/network');
 const auth = require('../../../utils/auth');
-const { ROLES } = require('../../../utils/constants');
+const { ROLES, TOOL_STATUS } = require('../../../utils/constants');
 const { buildFlow } = require('../../../utils/flow');
 
 // 强制报废 7 项判定（与 cloudfunctions/scrap/index.js SCRAP_RULES 对应）
@@ -22,8 +22,9 @@ Page({
     reason: '', photos: [], submitting: false,
     rules: RULES, symptoms: [], judge: null,
     canApprove: false,
-    // R16 搜索选择器
+    // R16 搜索选择器（改由 db-picker 组件驱动）
     keyword: '', searchResults: [], selectedTool: null,
+    selectedCandidateId: '',
     scrapFlow: null, // 报废流程进度（用于 flow-steps）
   },
 
@@ -46,17 +47,47 @@ Page({
     this.runJudge();
   },
 
-  // R16 关键字搜索（模糊匹配 name/code）
-  async onSearch(e) {
-    const keyword = e.detail.value || '';
-    this.setData({ keyword });
+  // R16 db-picker(search) 搜索回调（替代手写 onSearch）
+  async onDbSearch(e) {
+    const keyword = e.detail.keyword || '';
     if (!keyword.trim()) { this.setData({ searchResults: [] }); return; }
     try {
       const r = await api.getToolList({ keyword, size: 20 });
-      this.setData({ searchResults: (r && r.list) || (Array.isArray(r) ? r : []) });
+      const list = (r && r.list) || (Array.isArray(r) ? r : []);
+      // 格式化为 db-picker 需要的 searchResults 格式
+      const formatted = list.map((t) => ({
+        value: t._id || t.code,
+        label: (t.code || '') + ' · ' + (t.name || ''),
+        sublabel: '状态: ' + (t.status || ''),
+        raw: t,
+      }));
+      this.setData({ searchResults: formatted });
     } catch (err) {
       this.setData({ searchResults: [] });
     }
+  },
+
+  // db-picker(search) 选中器具
+  onDbPickerChange(e) {
+    const raw = e.detail.item && e.detail.item.raw;
+    if (!raw) return;
+    this.setData({
+      selectedTool: raw,
+      keyword: (raw.code || '') + ' · ' + (raw.name || ''),
+      symptoms: [], judge: null,
+    });
+    this.updateScrapFlow();
+  },
+
+  // db-picker(selector) 候选器具选择
+  onCandidateChange(e) {
+    const raw = e.detail.item && e.detail.item.raw;
+    if (!raw) return;
+    this.setData({
+      selectedTool: raw, selectedCandidateId: e.detail.value,
+      symptoms: [], judge: null, scrapFlow: null,
+    });
+    this.runJudge();
   },
 
   // R17 扫码反查器具 → 自动选中
@@ -99,12 +130,12 @@ Page({
     const t = this.data.selectedTool;
     if (!t) { this.setData({ scrapFlow: null }); return; }
     let scrapStatus = null;
-    if (t.status === 'forbidden') scrapStatus = 'pending';
-    else if (t.status === 'scrapped') scrapStatus = 'approved';
-    else if (t.status === 'qualified') scrapStatus = 'rejected';
+    if (t.status === TOOL_STATUS.FORBIDDEN) scrapStatus = 'pending';
+    else if (t.status === TOOL_STATUS.SCRAPPED) scrapStatus = 'approved';
+    else if (t.status === TOOL_STATUS.QUALIFIED) scrapStatus = 'rejected';
     this.setData({ scrapFlow: scrapStatus ? buildFlow('scrap', scrapStatus) : null });
     // 异步补充：若 tool.status 为 'scrapped'，尝试拉取全状态记录以区分 approved/disposed
-    if (t.status === 'scrapped' && t._id) {
+    if (t.status === TOOL_STATUS.SCRAPPED && t._id) {
       api.getScrapList({ status: 'approved' }).then((records) => {
         const list = Array.isArray(records) ? records : (records && records.list) || [];
         const pendingRecords = list.filter((r) => r.toolId === t._id);

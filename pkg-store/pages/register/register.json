@@ -1,6 +1,7 @@
 {
   "usingComponents": {
-    "user-picker": "/components/user-picker/user-picker"
+    "user-picker": "/components/user-picker/user-picker",
+    "org-cascading-picker": "/components/org-cascading-picker/org-cascading-picker"
   },
   "navigationBarTitleText": "库房注册"
 }

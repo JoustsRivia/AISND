@@ -15,7 +15,7 @@
     <text>编号：{{label.code}}</text>
     <text>类别：{{label.category}} · 规格：{{label.spec}}</text>
     <text>上次试验：{{label.lastTestDate}} · 有效期至：{{label.expireAt}}</text>
-    <text>存放：{{label.store}} · 保管：{{label.keeper}}</text>
+    <text>存放：{{label.store}} · 保管：{{label.keeperDisplay || label.keeper}}</text>
     <button type="primary" bindtap="onDoPrint">打印</button>
   </view>
 </view>

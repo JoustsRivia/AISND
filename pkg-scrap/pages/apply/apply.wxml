@@ -10,21 +10,21 @@
   </view>
 
   <view class="card">
-    <!-- R16 搜索 + 扫码 -->
+    <!-- R16 db-picker 搜索 + 扫码 -->
     <view class="row col">
       <text class="label">搜索器具</text>
       <view class="search-bar">
-        <input class="input search-input" placeholder="输入名称/编号关键字"
-               value="{{keyword}}" bindinput="onSearch" confirm-type="search" />
+        <db-picker
+          mode="search"
+          placeholder="输入名称/编号关键字"
+          searchResults="{{searchResults}}"
+          labelKey="label"
+          valueKey="value"
+          descKey="sublabel"
+          bind:search="onDbSearch"
+          bind:change="onDbPickerChange"
+        />
         <view class="scan-btn" bindtap="onScanCode">扫码</view>
-      </view>
-      <!-- 搜索结果下拉 -->
-      <view wx:if="{{searchResults.length}}" class="search-dropdown">
-        <view wx:for="{{searchResults}}" wx:key="_id"
-              class="search-item" data-i="{{index}}" bindtap="onSelectResult">
-          <view class="si-main">{{item.code}} · {{item.name}}</view>
-          <view class="si-sub">状态：{{item.status}}</view>
-        </view>
       </view>
     </view>
 
@@ -38,11 +38,17 @@
     <!-- 报废流程进度（已提交/已审批/已处置） -->
     <flow-steps wx:if="{{scrapFlow}}" title="报废流转进度" labels="{{scrapFlow.labels}}" current="{{scrapFlow.current}}" rejected="{{scrapFlow.rejected}}" />
 
-    <!-- 候选 picker：禁用状态器具，作为备选 -->
+    <!-- 候选器具：禁用状态器具，作为备选（db-picker selector 模式） -->
     <view class="row"><text class="label">拟报废器具</text>
-      <picker wx:if="{{candidates.length}}" mode="selector" range="{{candidates}}" range-key="name" value="{{idx}}" bindchange="onPick">
-        <view class="picker">{{candidates[idx].name}}（{{candidates[idx].code}}）▾</view>
-      </picker>
+      <db-picker
+        wx:if="{{candidates.length}}"
+        mode="selector"
+        items="{{candidates}}"
+        value="{{selectedCandidateId}}"
+        labelKey="label"
+        valueKey="value"
+        bind:change="onCandidateChange"
+      />
       <text wx:else class="muted">暂无禁用状态器具</text>
     </view>
 

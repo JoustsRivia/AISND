@@ -1,5 +1,5 @@
 // pkg-store/pages/register/register.js —— M3.1 库房注册
-// R21：分区动态输入 + 组织两级 picker 选择（单位 → 项目部）
+// R21：分区动态输入 + org-cascading-picker 两级联动选择（单位 → 项目部）
 const api = require('../../../utils/api');
 const network = require('../../../utils/network');
 
@@ -9,13 +9,11 @@ Page({
     keeper: '',
     keeperOpenid: '',
     submitting: false,
-    // 组织树
+    // 组织树（传给 org-cascading-picker，不再手动解析层级）
     orgTree: [],
-    units: [],          // level===0 节点列表（picker range）
-    unitIndex: -1,      // 选中的单位索引
-    subOrgs: [],        // 选中单位下的 level===1 子节点
-    subIndex: -1,       // 选中的项目部索引
-    orgId: '',          // 最终提交的 orgId（项目部 _id，或单位 _id）
+    selectedUnitId: '',  // 选中的单位 _id（回显用）
+    selectedDeptId: '',  // 选中的项目部 _id（回显用）
+    orgId: '',           // 最终提交的 orgId（项目部 _id，或单位 _id）
     // 分区动态数组
     zones: [''],
     // 已注册库房列表
@@ -25,10 +23,9 @@ Page({
   async onLoad() {
     try {
       const tree = await api.getOrgTree();
-      const units = (tree || []).filter((o) => o.level === 0);
-      this.setData({ orgTree: tree || [], units });
+      this.setData({ orgTree: tree || [] });
     } catch (e) {
-      this.setData({ orgTree: [], units: [] });
+      this.setData({ orgTree: [] });
     }
     this.loadStoreList();
   },
@@ -50,28 +47,13 @@ Page({
     });
   },
 
-  // 选择单位：刷新该单位下的项目部（level===1 直属子节点）
-  onUnitPick(e) {
-    const idx = Number(e.detail.value);
-    const unit = this.data.units[idx];
-    if (!unit) return;
-    const subOrgs = (this.data.orgTree || []).filter(
-      (o) => o.level === 1 && o.parentId === unit._id
-    );
+  // org-cascading-picker 选择变更（替代 onUnitPick + onSubPick）
+  onOrgChange(e) {
     this.setData({
-      unitIndex: idx,
-      subOrgs,
-      subIndex: -1,
-      orgId: unit._id,   // 默认挂到单位，待选项目部后覆盖
+      orgId: e.detail.orgId || '',
+      selectedUnitId: e.detail.unitId || '',
+      selectedDeptId: e.detail.deptId || '',
     });
-  },
-
-  // 选择项目部
-  onSubPick(e) {
-    const idx = Number(e.detail.value);
-    const sub = this.data.subOrgs[idx];
-    if (!sub) return;
-    this.setData({ subIndex: idx, orgId: sub._id });
   },
 
   // 分区动态行：追加 / 删除 / 更新

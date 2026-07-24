@@ -10,6 +10,22 @@ const TOOL_STATUS = {
   FORBIDDEN: 'forbidden',     // 禁用（不合格/超期/报废外流）
 };
 
+// 器具来源枚举（单一源：tool-create 录入页 + CSV导入页共用）
+const TOOL_SOURCES = [
+  { value: 'self', name: '自购' },
+  { value: 'lease', name: '租赁' },
+];
+
+// 器具状态 → 中文标签（供 display.js / WXML 状态展示使用）
+const TOOL_STATUS_LABELS = {
+  [TOOL_STATUS.QUALIFIED]: '合格',
+  [TOOL_STATUS.PENDING_TEST]: '待检',
+  [TOOL_STATUS.IN_USE]: '领用中',
+  [TOOL_STATUS.MAINTAINING]: '维修中',
+  [TOOL_STATUS.SCRAPPED]: '已报废',
+  [TOOL_STATUS.FORBIDDEN]: '已禁用',
+};
+
 const ROLES = {
   LEAD: 'lead',                       // 工作专班负责人
   PROJECT_LEAD: 'project_lead',       // 项目部负责人
@@ -84,6 +100,6 @@ const HAZARD_LEVEL = { NORMAL: 'normal', SERIOUS: 'serious', MAJOR: 'major' };
 const WARNING_LEVEL = { NOTICE: 'notice', IMPORTANT: 'important', URGENT: 'urgent' };
 
 module.exports = {
-  TOOL_STATUS, ROLES, ROLE_ORDER, TOOL_CATEGORIES, DICT_TYPE, HAZARD_LEVEL, WARNING_LEVEL,
+  TOOL_STATUS, TOOL_STATUS_LABELS, TOOL_SOURCES, ROLES, ROLE_ORDER, TOOL_CATEGORIES, DICT_TYPE, HAZARD_LEVEL, WARNING_LEVEL,
   SPECIAL_EQUIP_CATEGORIES, CERT_TYPES, CERT_TO_CATEGORY, SUBSCRIBE_TMPL_ID,
 };

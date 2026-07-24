@@ -46,10 +46,12 @@
         <view class="picker">{{storeIndex >= 0 ? stores[storeIndex].name : '选择库房'}} ▾</view>
       </picker>
     </view>
-    <view class="row"><text class="label">保管责任人</text><input class="input" placeholder="如：张工" value="{{form.keeper}}" data-k="keeper" bindinput="bind" /></view>
+    <view class="row"><text class="label">保管责任人</text>
+      <user-picker class="input" placeholder="搜索或输入保管人姓名" value="{{form.keeperDisplay}}" bind:change="onKeeperChange" />
+    </view>
 
     <!-- M1.3.7 租赁专项字段（仅来源=租赁时显示） -->
-    <block wx:if="{{sourceIndex === 1}}">
+    <block wx:if="{{sources[sourceIndex].value === 'lease'}}">
       <view class="row lease-head"><text class="label">租赁信息</text><text class="lease-tip">检测合格证须随器入档</text></view>
       <view class="row"><text class="label">出租单位</text><input class="input" placeholder="如：XX机械租赁公司" value="{{form.leaseUnit}}" data-k="leaseUnit" bindinput="bind" /></view>
       <view class="row"><text class="label">合格证号</text><input class="input" placeholder="检测合格证编号" value="{{form.certNo}}" data-k="certNo" bindinput="bind" /></view>

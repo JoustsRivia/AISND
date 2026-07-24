@@ -1,6 +1,7 @@
 {
   "usingComponents": {
-    "flow-steps": "/components/flow-steps/flow-steps"
+    "flow-steps": "/components/flow-steps/flow-steps",
+    "db-picker": "/components/db-picker/db-picker"
   },
   "navigationBarTitleText": "报废申请"
 }
