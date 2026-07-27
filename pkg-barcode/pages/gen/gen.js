@@ -1,6 +1,7 @@
 // pkg-barcode/pages/gen/gen.js —— M14.1 真实二维码图形生成 + 标签输出
 const api = require('../../../utils/api');
 const qrcode = require('../../utils/qrcode.js');
+const { resolveUser } = require('../../../utils/user-utils');
 
 Page({
   data: {
@@ -21,7 +22,12 @@ Page({
     if (!t) { wx.showToast({ title: '请选择器具', icon: 'none' }); return; }
     const r = await api.generateBarcode(t._id).catch(() => null);
     const f = await api.getBarcodeFile(t._id).catch(() => null);
-    this.setData({ code: r, label: f && f.fields });
+    let label = (f && f.fields) || null;
+    // 统一展示：保管人 openid 解析为可读姓名
+    if (label && label.keeper) {
+      label = { ...label, keeperDisplay: await resolveUser(label.keeper).catch(() => label.keeper) };
+    }
+    this.setData({ code: r, label });
     this.renderQR((r && (r.code || t.code)) || '');
   },
 

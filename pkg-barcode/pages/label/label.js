@@ -1,5 +1,6 @@
 // pkg-barcode/pages/label/label.js —— M3.1.3 标识牌文件生成（仅生成文件，不接打印硬件）
 const api = require('../../../utils/api');
+const { resolveUser } = require('../../../utils/user-utils');
 
 Page({
   data: { tools: [], idx: 0, label: null },
@@ -15,7 +16,12 @@ Page({
     const t = this.data.tools[this.data.idx];
     if (!t) { wx.showToast({ title: '请选择器具', icon: 'none' }); return; }
     const r = await api.genLabel(t._id).catch(() => null);
-    this.setData({ label: (r && r.fields) || null });
+    const fields = (r && r.fields) || null;
+    // 统一展示：把保管人 openid 解析为可读姓名（解析失败回退 openid）
+    if (fields && fields.keeper) {
+      fields.keeperDisplay = await resolveUser(fields.keeper).catch(() => fields.keeper);
+    }
+    this.setData({ label: fields });
     if (r) wx.showToast({ title: '已生成', icon: 'success' });
   },
 
@@ -30,7 +36,8 @@ Page({
       '规格：' + (f.spec || ''),
       '上次试验：' + (f.lastTestDate || ''),
       '有效截止：' + (f.expireAt || ''),
-      '库房/保管：' + (f.store || '') + ' / ' + (f.keeper || ''),
+      '库房：' + (f.store || ''),
+      '保管责任人：' + (f.keeperDisplay || f.keeper || ''),
     ];
     const fs = wx.getFileSystemManager();
     const path = `${wx.env.USER_DATA_PATH}/标识牌_${f.code || Date.now()}.txt`;

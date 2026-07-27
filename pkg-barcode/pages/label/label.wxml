@@ -12,9 +12,14 @@
   </view>
 
   <view wx:if="{{label}}" class="card">
-    <view class="kv" wx:for="{{[['名称',label.name],['编号',label.code],['类别',label.category],['规格',label.spec],['上次试验',label.lastTestDate],['有效截止',label.expireAt],['库房/保管',label.store+' / '+label.keeper]]}}" wx:key="index">
-      <text class="k">{{item[0]}}</text><text class="v">{{item[1] || '—'}}</text>
-    </view>
+    <view class="kv"><text class="k">名称</text><text class="v">{{label.name || '—'}}</text></view>
+    <view class="kv"><text class="k">编号</text><text class="v">{{label.code || '—'}}</text></view>
+    <view class="kv"><text class="k">类别</text><text class="v">{{label.category || '—'}}</text></view>
+    <view class="kv"><text class="k">规格</text><text class="v">{{label.spec || '—'}}</text></view>
+    <view class="kv"><text class="k">上次试验</text><text class="v">{{label.lastTestDate || '—'}}</text></view>
+    <view class="kv"><text class="k">有效截止</text><text class="v">{{label.expireAt || '—'}}</text></view>
+    <view class="kv"><text class="k">库房</text><text class="v">{{label.store || '—'}}</text></view>
+    <view class="kv"><text class="k">保管责任人</text><text class="v">{{label.keeperDisplay || label.keeper || '—'}}</text></view>
     <button class="btn btn-outline btn-block" bindtap="onShare">分享/打印文件</button>
   </view>
   <view class="safe-bottom"></view>

@@ -1,5 +1,6 @@
 // pkg-barcode/pages/print/print.js —— M14 打印文件输出
 const api = require('../../../utils/api');
+const { resolveUser } = require('../../../utils/user-utils');
 
 Page({
   data: { list: [], idx: 0, label: null },
@@ -14,7 +15,12 @@ Page({
     const t = this.data.list[this.data.idx];
     if (!t) { wx.showToast({ title: '请选择器具', icon: 'none' }); return; }
     const r = await api.getBarcodeFile(t._id).catch(() => null);
-    this.setData({ label: r && r.fields });
+    const fields = (r && r.fields) || null;
+    // 统一展示：保管人 openid 解析为可读姓名
+    if (fields && fields.keeper) {
+      fields.keeperDisplay = await resolveUser(fields.keeper).catch(() => fields.keeper);
+    }
+    this.setData({ label: fields });
   },
 
   onDoPrint() {
@@ -28,7 +34,7 @@ Page({
       '试验日期：' + (f.testDate || ''),
       '有效截止：' + (f.expireAt || ''),
       '检测单位：' + (f.org || ''),
-      '保管人：' + (f.keeper || ''),
+      '保管人：' + (f.keeperDisplay || f.keeper || ''),
     ];
     const fs = wx.getFileSystemManager();
     const path = `${wx.env.USER_DATA_PATH}/标签_${f.code || Date.now()}.txt`;
