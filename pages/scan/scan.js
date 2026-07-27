@@ -44,6 +44,11 @@ Page({
     wx.scanCode({
       success: async (res) => {
         const code = res.result;
+        // #13 身份码：前缀区分器具码，扫码互验身份
+        if (code && code.indexOf('AISND|ID|') === 0) {
+          this.verifyIdentity(code.slice('AISND|ID|'.length));
+          return;
+        }
         const tool = await api.getToolDetail(code).catch(() => null);
         if (!tool) { wx.showToast({ title: '未识别的器具', icon: 'none' }); return; }
         const recent = this.data.recent.filter((r) => r._id !== tool._id).slice(0, 4);
@@ -55,6 +60,24 @@ Page({
         }, 600);
       },
       fail: () => {},
+    });
+  },
+
+  // #13 身份码核验：解析负载并展示被扫码人身份（离线可读，后续可加签名防伪）
+  verifyIdentity(jsonStr) {
+    let p;
+    try { p = JSON.parse(jsonStr); } catch (e) {
+      wx.showToast({ title: '无法识别身份码', icon: 'none' });
+      return;
+    }
+    const name = (p && p.n) || '未知用户';
+    const eid = (p && p.e) || '';
+    const role = ROLE_TEXT[(p && p.r)] || '成员';
+    wx.showModal({
+      title: '身份核验',
+      content: `姓名：${name}\n工号：${eid || '—'}\n角色：${role}`,
+      showCancel: false,
+      confirmText: '已核验',
     });
   },
 

@@ -128,4 +128,7 @@ Page({
   },
 
   goLedger() { wx.switchTab({ url: '/pages/ledger/ledger' }); },
+
+  // #13 工作台身份码入口（面向全部角色）：跳转个人身份码页，现场互扫验证
+  onIdentity() { wx.navigateTo({ url: '/pages/identity/identity' }); },
 });

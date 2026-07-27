@@ -1,0 +1,21 @@
+<!-- pages/identity/identity.wxml —— 我的身份码 -->
+<view class="page-pad">
+  <view class="card id-card">
+    <view class="id-avatar">{{name ? name[0] : '工'}}</view>
+    <view class="id-meta">
+      <text class="id-name">{{name}}</text>
+      <text class="id-role">{{roleText}}{{employeeId ? ' · ' + employeeId : ''}}</text>
+    </view>
+  </view>
+
+  <view class="card qr-card">
+    <view class="qr-title">现场身份码</view>
+    <view class="qr-wrap">
+      <canvas type="2d" id="qr" class="qr-canvas"></canvas>
+    </view>
+    <view class="qr-hint">同事使用「扫一扫」扫描本码即可核验你的身份</view>
+    <button class="btn btn-outline btn-block" bindtap="onShare">分享 / 出示</button>
+  </view>
+
+  <view class="safe-bottom"></view>
+</view>

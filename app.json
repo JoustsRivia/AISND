@@ -8,7 +8,8 @@
     "pages/profile/profile",
     "pages/login/login",
     "pages/register/register",
-    "pages/permission/permission"
+    "pages/permission/permission",
+    "pages/identity/identity"
   ],
   "subpackages": [
     {

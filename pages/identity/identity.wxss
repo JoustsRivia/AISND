@@ -1,0 +1,29 @@
+/* pages/identity/identity.wxss */
+.page-pad { padding: 24rpx; }
+.id-card {
+  display: flex; align-items: center; gap: 24rpx; margin-bottom: 24rpx;
+}
+.id-avatar {
+  width: 96rpx; height: 96rpx; border-radius: 50%;
+  background: var(--c-primary, #0F2B5B); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 40rpx; font-weight: 700;
+}
+.id-meta { display: flex; flex-direction: column; }
+.id-name { font-size: 36rpx; font-weight: 700; color: #0F2B5B; }
+.id-role { font-size: 26rpx; color: #6b7280; margin-top: 6rpx; }
+
+.qr-card { display: flex; flex-direction: column; align-items: center; }
+.qr-title { font-size: 30rpx; font-weight: 700; color: #0F2B5B; align-self: flex-start; margin-bottom: 20rpx; }
+.qr-wrap {
+  width: 420rpx; height: 420rpx; padding: 20rpx;
+  background: #fff; border: 2rpx solid #e5e7eb; border-radius: 16rpx;
+}
+.qr-canvas { width: 100%; height: 100%; }
+.qr-hint { font-size: 24rpx; color: #6b7280; text-align: center; margin: 20rpx 0 24rpx; }
+.btn-block { width: 100%; }
+.btn-outline {
+  background: #fff; color: var(--c-primary, #0F2B5B);
+  border: 2rpx solid var(--c-primary, #0F2B5B); border-radius: 12rpx;
+}
+.safe-bottom { height: 40rpx; }
