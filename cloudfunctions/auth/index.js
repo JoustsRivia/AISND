@@ -1,20 +1,24 @@
 // cloudfunctions/auth/index.js
-// 业务逻辑层：只引用 ./helpers，绝不直接调用 cloud.database() / cloud.getWXContext()。
-// 所有平台专属能力都被 helpers 封装，迁移时本文件无需改动。
+// 业务逻辑层：只引�? ./helpers，绝不直接调�? cloud.database() / cloud.getWXContext()�?
+// 所有平台专属能力都�? helpers 封装，迁移时本文件无需改动�?
 const { getOpenid } = require('./helpers/user');
-const { findUser, addUser, updateUser, update, listUsers, remove, listBy } = require('./helpers/db');
 
-// F2 安全修复：服务端角色白名单，禁止客户端伪造 role 提权。
-// 普通业务角色 + 专班负责人/项目部负责人/安监部管理人员 均允许在注册时自绑定；
-// 「小程序管理员(admin)」权限极高，不在此白名单，须由系统初始化/控制台分配，避免越权自建。
-// 与 utils/constants.js 的 ROLES 保持同源；此处硬编码以建立服务端权威边界，避免跨部署依赖。
-const SELF_BINDABLE_ROLES = ['worker', 'group_lead', 'safety_officer', 'lease_admin', 'lead', 'project_lead', 'supervisor'];
+const { createRateLimiter } = require('./rateLimiter');
+const __limiter = createRateLimiter({ getOpenid });
+const { findUser, addUser, updateUser, update, listUsers, remove, listBy } = require('./helpers/db');
+const { passwordError } = require('./password');
+
+// F2 安全修复：服务端角色白名单，禁止客户端伪�? role 提权�?
+// 普通业务角�? + 专班负责�?/项目部负责人/安监部管理人�? 均允许在注册时自绑定�?
+// 「小程序管理�?(admin)」权限极高，不在此白名单，须由系统初始化/控制台分配，避免越权自建�?
+// �? utils/constants.js �? ROLES 保持同源；此处硬编码以建立服务端权威边界，避免跨部署依赖�?
+const { ROLE_SELF_BINDABLE } = require('./roles');
 
 // 统一出口
 const ok = (data) => ({ code: 0, data });
 const fail = (message, code = 1) => ({ code, message });
 
-// 登录/注册合一：首次进入自动建档
+// 登录/注册合一：首次进入自动建�?
 async function login() {
   const openid = getOpenid();
   const exist = await findUser(openid);
@@ -42,69 +46,37 @@ async function getProfile() {
 
 async function updateProfile(payload) {
   const openid = getOpenid();
-  // 业务校验：不允许越权修改角色/orgId（由系统管理模块处理）
+  // 业务校验：不允许越权修改角色/orgId（由系统管理模块处理�?
   const { role, orgId, ...safe } = payload;
   await updateUser(openid, { ...safe, updatedAt: new Date() });
   const res = await findUser(openid);
   return ok(res.data[0]);
 }
 
-const crypto = require('crypto');
-function hashPwd(p) { return p ? crypto.createHash('sha1').update('tms_' + p).digest('hex') : ''; }
+const { hashPwd, verifyPwd } = require('./crypto');
 
-// R02 按组织树级别生成工号（与 system.generateEmployeeId 同源逻辑）
-// 规则：单位级→4位；项目部级→6位；班组级→8位。工号组织树内唯一。
+// R02 按组织树级别生成工号（与 system.generateEmployeeId 同源逻辑�?
+// 规则：单位级�?4位；项目部级�?6位；班组级→8位。工号组织树内唯一�?
+// R02 employeeId: reuse shared/employeeId.js (DUP-01)
 async function generateEmployeeId(orgId) {
-  const orgs = (await listBy('orgs', {}, 500)).data || [];
-  const byId = {};
-  orgs.forEach((o) => { byId[o._id] = o; });
-  const node = byId[orgId];
-  if (!node) return String(Date.now()).slice(-6);
-  let unit = node;
-  while (unit.parentId && byId[unit.parentId]) unit = byId[unit.parentId];
-  const unitList = orgs.filter((o) => o.level === 0 && !o.parentId);
-  const unitIdx = Math.max(0, unitList.findIndex((o) => o._id === unit._id)) + 1;
-  const unitSeq = String(unitIdx).padStart(2, '0');
-  let projIdx = 0;
-  if (node.level >= 1) {
-    let proj = node;
-    while (proj && proj.level > 1) proj = byId[proj.parentId];
-    if (proj) {
-      const sibs = orgs.filter((o) => o.level === 1 && o.parentId === unit._id);
-      projIdx = Math.max(0, sibs.findIndex((o) => o._id === proj._id)) + 1;
-    }
-  }
-  const projSeq = String(projIdx).padStart(2, '0');
-  let prefix;
-  if (node.level === 0) prefix = '';
-  else if (node.level === 1) prefix = unitSeq;
-  else prefix = unitSeq + projSeq;
-  const len = node.level === 0 ? 4 : (node.level === 1 ? 6 : 8);
-  const seqLen = len - prefix.length;
-  const allUsers = (await listBy('users', {}, 500)).data || [];
-  let max = 0;
-  const re = new RegExp('^' + prefix + '(\\d{' + seqLen + '})$');
-  for (const u of allUsers) {
-    if (!u.employeeId) continue;
-    const m = (u.employeeId || '').match(re);
-    if (m) max = Math.max(max, parseInt(m[1], 10) || 0);
-  }
-  return prefix + String(max + 1).padStart(seqLen, '0');
+  const orgs = await listAll('orgs');
+  const users = await listAll('users');
+  return require('./employeeId').generateEmployeeId(orgId, orgs, users);
 }
 
-// 注册新用户（UI② 注册按钮）：写入角色/单位/机构/账号/密码到 users 集合
-// 与 bindAccount 共用白名单与服务端校验，避免客户端伪造提权角色。
 async function register(payload) {
   const openid = getOpenid();
   const { role, unitId, orgId, username, nickname, password } = payload;
-  if (!SELF_BINDABLE_ROLES.includes(role)) {
-    return fail('角色不合法或需管理员分配：' + (role || '空'), 403);
+  if (!ROLE_SELF_BINDABLE.includes(role)) {
+    return fail('角色不合法或需管理员分配：' + (role || '�?'), 403);
   }
-  if (!orgId) return fail('请选择所属机构 / 班组', 400);
+  if (!orgId) return fail('请选择所属机�? / 班组', 400);
   // 用户名唯一性：排除当前身份自身，避免重复注册时误判
   const dup = await listUsers({ username });
   if (dup.data && dup.data.some((x) => x.openid !== openid)) return fail('用户名已存在', 409);
   // R02：自动生成组织树内唯一工号
+  const pwErr = passwordError(password);
+  if (pwErr) return fail(pwErr, 400);
   const employeeId = await generateEmployeeId(orgId);
   await updateUser(openid, {
     role,
@@ -121,14 +93,14 @@ async function register(payload) {
   return ok(res.data[0]);
 }
 
-// 首次登录绑定：允许设置角色/机构/账号（UI② 显式登录）
+// 首次登录绑定：允许设置角�?/机构/账号（UI�? 显式登录�?
 async function bindAccount(payload) {
   const openid = getOpenid();
   const { role, unitId, orgId, username, nickname } = payload;
 
-  // 服务端角色校验：不在白名单内（含伪造的 lead/project_lead/supervisor 等提权角色）一律拒绝
-  if (!SELF_BINDABLE_ROLES.includes(role)) {
-    return fail('角色不合法或需管理员分配：' + (role || '空'), 403);
+  // 服务端角色校验：不在白名单内（含伪造的 lead/project_lead/supervisor 等提权角色）一律拒�?
+  if (!ROLE_SELF_BINDABLE.includes(role)) {
+    return fail('角色不合法或需管理员分配：' + (role || '�?'), 403);
   }
 
   await updateUser(openid, {
@@ -143,9 +115,9 @@ async function bindAccount(payload) {
   return ok(res.data[0]);
 }
 
-// 凭证登录（UI② 登录按钮）：按账号名核对密码，并绑定当前微信身份。
-// 既兼容用户自注册账号（openid 已与账号一致），也支持管理员在后台预建的账号
-// （首次登录时把账号记录的 openid 绑定到当前微信身份，实现「账号名即身份」）。
+// 凭证登录（UI�? 登录按钮）：按账号名核对密码，并绑定当前微信身份�?
+// 既兼容用户自注册账号（openid 已与账号一致），也支持管理员在后台预建的账�?
+// （首次登录时把账号记录的 openid 绑定到当前微信身份，实现「账号名即身份」）�?
 async function signin(payload) {
   const openid = getOpenid();
   const { username, password } = payload;
@@ -154,15 +126,15 @@ async function signin(payload) {
   if (!byName.data || !byName.data.length) return fail('账号不存在，请先注册', 404);
   const u = byName.data[0];
   if (!u.bound) return fail('账号未完成注册，请先注册', 403);
-  if (u.password !== hashPwd(password)) return fail('密码不正确', 401);
-  // R12 凭证严格对应：signin 以 username 定位唯一账户，密码校验通过后只返回该账户档案，
-  // 因此「输入某账号的账号密码」必然且只能登录到该账号本身，不会误登其他账户。
-  // 若账号记录中的 openid 与当前微信身份不一致（管理员预建账号首次登录 / 用户换设备重装），
-  // 则把账号绑定到当前微信身份，兼容多设备使用。
+  if (!verifyPwd(password, u.password)) return fail('密码不正�?', 401);
+  // R12 凭证严格对应：signin �? username 定位唯一账户，密码校验通过后只返回该账户档案，
+  // 因此「输入某账号的账号密码」必然且只能登录到该账号本身，不会误登其他账户�?
+  // 若账号记录中�? openid 与当前微信身份不一致（管理员预建账号首次登�? / 用户换设备重装）�?
+  // 则把账号绑定到当前微信身份，兼容多设备使用�?
   if (u.openid !== openid) {
     await update('users', u._id, { openid, updatedAt: new Date() });
     u.openid = openid;
-    // 清理同 openid 下可能残留的自动建档空记录，避免 getCurrentUser 取到错误档案
+    // 清理�? openid 下可能残留的自动建档空记录，避免 getCurrentUser 取到错误档案
     const dups = await listUsers({ openid });
     for (const d of (dups.data || [])) {
       if (String(d._id) !== String(u._id) && (!d.username || !d.bound)) {
@@ -173,8 +145,8 @@ async function signin(payload) {
   return ok(u);
 }
 
-// 云函数入口：按 action 路由到纯业务函数
-exports.main = async (event) => {
+// 云函数入口：�? action 路由到纯业务函数
+exports.main = __limiter.wrap(async (event) => {
   const { action, payload = {} } = event;
   try {
     switch (action) {
@@ -189,4 +161,4 @@ exports.main = async (event) => {
   } catch (e) {
     return fail(e.message || '服务异常');
   }
-};
+}, 'auth');

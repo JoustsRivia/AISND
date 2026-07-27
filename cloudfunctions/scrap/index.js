@@ -1,6 +1,9 @@
 // cloudfunctions/scrap/index.js
 // 业务逻辑层（M8 报废 P0）：只引用 ./helpers，绝不直接 cloud.database()/getWXContext()。
 const { getOpenid } = require('./helpers/user');
+
+const { createRateLimiter } = require('./rateLimiter');
+const __limiter = createRateLimiter({ getOpenid });
 const {
   findTool, updateTool, addScrap, updateScrap, listScrap, listTools,
   getCurrentUser, add, listBy, _, findUser, listOrgs, allowedOrgIds, roleScope,
@@ -142,9 +145,9 @@ async function disposal(payload) {
   if (t.store || t.keeper) {
     const exist = await listBy('warnings', { type: 'scrap_outflow', refId: rec.toolId, read: _.neq(true) }, 10);
     if (!exist.data || exist.data.length === 0) {
-      const orgs = (await listBy('orgs', {}, 500)).data || [];
+      const orgs = await listAll('orgs');
       const orgName = (orgs.find((o) => o._id === t.orgId) || {}).name || '';
-      const allUsers = (await listBy('users', {}, 500)).data || [];
+      const allUsers = await listAll('users');
       const keeperName = (allUsers.find((u) => u.openid === t.keeper) || {}).nickname || '';
       await add('warnings', {
         level: 'urgent', type: 'scrap_outflow', refType: 'scrap', refId: rec.toolId, toolId: rec.toolId,
@@ -183,7 +186,7 @@ async function getScrap(id) {
   return (res.data || [])[0];
 }
 
-exports.main = async (event) => {
+exports.main = __limiter.wrap(async (event) => {
   const { action, payload = {} } = event;
   try {
     switch (action) {
@@ -196,4 +199,4 @@ exports.main = async (event) => {
       default: return fail('未知 action: ' + action);
     }
   } catch (e) { return fail(e.message || '服务异常'); }
-};
+}, 'scrap');

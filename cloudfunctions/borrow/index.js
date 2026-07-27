@@ -1,6 +1,9 @@
 // cloudfunctions/borrow/index.js
 // 业务逻辑层（M5 领用归还 P0）：只引用 ./helpers，绝不直接 cloud.database()/getWXContext()。
 const { getOpenid } = require('./helpers/user');
+
+const { createRateLimiter } = require('./rateLimiter');
+const __limiter = createRateLimiter({ getOpenid });
 const { findTool, updateTool, findUser, addBorrow, listBorrow, listBy, addRepair, listOrgs, _, allowedOrgIds, roleScope } = require('./helpers/db');
 
 const ok = (data) => ({ code: 0, data });
@@ -126,14 +129,77 @@ async function records(payload = {}) {
   return ok(res.data || []);
 }
 
-exports.main = async (event) => {
+// 批量领用（FEAT-05）：逐件校验资格，失败项单独标记不阻塞成功项
+async function batchBorrow(payload = {}) {
+  const openid = getOpenid();
+  const { ids = [] } = payload;
+  if (!Array.isArray(ids) || !ids.length) return fail('缺少器具 ID 列表');
+  const me = await findUser(openid);
+  const u = me.data && me.data[0];
+  const orgs = (await listOrgs(500)).data || [];
+  const success = [], failed = [];
+  for (const id of ids) {
+    const res = await findTool(id);
+    const t = res.data;
+    if (!t) { failed.push({ id, reason: '器具不存在' }); continue; }
+    if (u && roleScope(u.role) !== 'global') {
+      const oids = allowedOrgIds(u, orgs, {});
+      if (oids !== null && !oids.includes('__unbound__') && !oids.includes(t.orgId)) {
+        failed.push({ id, reason: '无权领用其他组织器具' }); continue;
+      }
+    }
+    if (t.status !== 'qualified') { failed.push({ id, reason: '器具不合格' }); continue; }
+    if (t.expireAt && new Date(t.expireAt) <= new Date()) { failed.push({ id, reason: '已超期' }); continue; }
+    if (!(await hasValidCert(openid, t.category))) { failed.push({ id, reason: '缺少有效特种证件' }); continue; }
+    const operatorName = u ? `${u.username || u.nickname || ''}${u.employeeId ? '（' + u.employeeId + '）' : ''}` : '';
+    const op = { type: 'borrow', ts: new Date(), by: operatorName, byOpenid: openid, note: '批量领用' };
+    await updateTool(id, { status: 'in_use', borrower: openid, operations: [...(t.operations || []), op], updatedAt: new Date() });
+    await addBorrow({ toolId: id, code: t.code, name: t.name, type: 'borrow', by: openid, orgId: t.orgId, ts: new Date() });
+    success.push(id);
+  }
+  return ok({ success, failed });
+}
+
+// 批量归还（FEAT-05）：每件独立判定外观，损坏自动转报修
+async function batchReturn(payload = {}) {
+  const openid = getOpenid();
+  const { ids = [], appearance = 'normal' } = payload;
+  if (!Array.isArray(ids) || !ids.length) return fail('缺少器具 ID 列表');
+  const me = await findUser(openid);
+  const u = me.data && me.data[0];
+  const success = [], failed = [];
+  for (const id of ids) {
+    const res = await findTool(id);
+    const t = res.data;
+    if (!t) { failed.push({ id, reason: '器具不存在' }); continue; }
+    if (t.status !== 'in_use') { failed.push({ id, reason: '非领用中' }); continue; }
+    const damaged = appearance === 'damaged';
+    const operatorName = u ? `${u.username || u.nickname || ''}${u.employeeId ? '（' + u.employeeId + '）' : ''}` : '';
+    const op = { type: 'return', ts: new Date(), by: operatorName, byOpenid: openid, appearance };
+    const patch = { status: damaged ? 'maintaining' : 'qualified', borrower: '', operations: [...(t.operations || []), op], updatedAt: new Date() };
+    if (damaged) patch.note = '批量归还外观损坏，已转入维修';
+    await updateTool(id, patch);
+    if (damaged) {
+      try {
+        await addRepair({ toolId: id, code: t.code, name: t.name, fault: '归还外观损坏', desc: '批量归还时外观检查为损坏，自动转入报修', status: 'pending', reporter: openid, auto: true, createdAt: new Date() });
+      } catch (e) { console.error('[borrow] batchReturn auto-create repair failed', e); }
+    }
+    await addBorrow({ toolId: id, code: t.code, name: t.name, type: 'return', by: openid, orgId: t.orgId, appearance, ts: new Date() });
+    success.push(id);
+  }
+  return ok({ success, failed });
+}
+
+exports.main = __limiter.wrap(async (event) => {
   const { action, payload = {} } = event;
   try {
     switch (action) {
       case 'borrow': return borrow(payload);
       case 'return': return returnTool(payload);
       case 'records': return records(payload);
+      case 'batchBorrow': return batchBorrow(payload);
+      case 'batchReturn': return batchReturn(payload);
       default: return fail('未知 action: ' + action);
     }
   } catch (e) { return fail(e.message || '服务异常'); }
-};
+}, 'borrow');

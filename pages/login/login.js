@@ -55,12 +55,21 @@ Page({
     wx.reLaunch({ url: '/pages/index/index' });
   },
 
+  // 密码强度校验（FEAT-01，规则与 shared/password.js 一致）：至少 6 位且含字母+数字
+  validatePassword(p) {
+    if (!p || p.length < 6) return '密码至少 6 位';
+    if (!/[a-zA-Z]/.test(p) || !/\d/.test(p)) return '密码需同时包含字母和数字';
+    return null;
+  },
+
   // 凭证登录（已注册用户）
   async onLogin() {
     if (!this.data.username || !this.data.password) {
       wx.showToast({ title: '请输入账号和密码', icon: 'none' });
       return;
     }
+    const pwErr = this.validatePassword(this.data.password);
+    if (pwErr) { wx.showToast({ title: pwErr, icon: 'none' }); return; }
     this.setData({ loading: true });
     try {
       const profile = await auth.signin({ username: this.data.username, password: this.data.password });
@@ -77,6 +86,8 @@ Page({
       wx.showToast({ title: '请输入账号和密码', icon: 'none' });
       return;
     }
+    const pwErr = this.validatePassword(this.data.password);
+    if (pwErr) { wx.showToast({ title: pwErr, icon: 'none' }); return; }
     const sel = this.data.sel;
     if (!sel || !sel.orgId) {
       wx.showToast({ title: '请选择所属机构/班组', icon: 'none' });

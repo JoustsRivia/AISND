@@ -35,7 +35,7 @@ const remove = (name, id) => collection(name).doc(id).remove();
 const listBy = (name, filter = {}, size = 50) => collection(name).where(filter).limit(size).get();
 
 module.exports = {
-  collection, _, regExp,
+  collection, _, regExp, listAll: base.listAll,
   findUser, addUser, updateUser, listUsers,
   findTool, addTool, updateTool, listTools, countTools,
   addBorrow, listBorrow,

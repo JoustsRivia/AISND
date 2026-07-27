@@ -1,6 +1,8 @@
 // cloudfunctions/check/index.js —— M10 监督检查隐患（纯业务，只引用 helpers）
 const { getOpenid } = require('./helpers/user');
-const db = require('./helpers/db');
+
+const { createRateLimiter } = require('./rateLimiter');
+const __limiter = createRateLimiter({ getOpenid });const db = require('./helpers/db');
 const ok = (data) => ({ code: 0, data });
 const fail = (message, code = 1) => ({ code, message });
 const now = () => new Date();
@@ -155,7 +157,7 @@ async function assess(payload) {
   return ok({ _id: added._id, ...doc });
 }
 
-exports.main = async (event) => {
+exports.main = __limiter.wrap(async (event) => {
   const { action, payload = {} } = event;
   try {
     switch (action) {
@@ -173,4 +175,4 @@ exports.main = async (event) => {
   } catch (e) {
     return fail(e.message || '服务异常');
   }
-};
+}, 'check');

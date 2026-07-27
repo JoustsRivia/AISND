@@ -1,0 +1,6 @@
+{
+  "usingComponents": {
+    "stats-card": "/components/stats-card/stats-card"
+  },
+  "navigationBarTitleText": "班组协作"
+}

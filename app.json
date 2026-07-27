@@ -58,7 +58,7 @@
     },
     {
       "root": "pkg-stats",
-      "pages": ["pages/dashboard/dashboard", "pages/six-standard/six-standard", "pages/project/project", "pages/report/report"]
+      "pages": ["pages/dashboard/dashboard", "pages/six-standard/six-standard", "pages/project/project", "pages/report/report", "pages/team/team"]
     },
     {
       "root": "pkg-system",

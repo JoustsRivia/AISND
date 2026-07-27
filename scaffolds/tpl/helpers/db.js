@@ -1,12 +1,9 @@
 // scaffolds/tpl/helpers/db.js  （模板，与各函数 helpers/ 一致）
 // ★ 隔离层：仅此文件可调用 cloud.database() 等 wx-server-sdk 数据能力。
-// 迁移到自有服务器时，只重写本文件（改为 MySQL/MongoDB 客户端），业务 index.js 零改动。
-const cloud = require('wx-server-sdk');
-cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
-const db = cloud.database();
-const _ = db.command;
-
-const collection = (name) => db.collection(name);
+// 与正式云函数一致，通过 ./dbBase 引用隔离层单一源（scripts/bundle-db-base.js 会把 dbBase.js 同步进 helpers/）。
+// 迁移到自有服务器时，只重写 dbBase.js（改为 MySQL/MongoDB 客户端），业务 index.js 零改动。
+const base = require('./dbBase');
+const { cloud, db, _, collection } = base;
 
 // ── users ──
 const findUser = (openid) => collection('users').where({ openid }).get();

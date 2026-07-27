@@ -23,6 +23,9 @@ Page({
   async onLoad() {
     // 进入扫码中枢前先服务端校验登录态
     if (!(await auth.requireServerLogin())) return;
+    // FEAT-04：恢复上次扫码历史（跨会话保留，便于连续巡检）
+    const recent = (() => { try { return wx.getStorageSync('scanHistory') || []; } catch (_) { return []; } })();
+    if (recent.length) this.setData({ recent });
   },
 
   onShow() {
@@ -54,6 +57,8 @@ Page({
         const recent = this.data.recent.filter((r) => r._id !== tool._id).slice(0, 4);
         recent.unshift({ _id: tool._id, name: tool.name, status: tool.status, code: tool.code || code });
         this.setData({ recent });
+        // FEAT-04：持久化扫码历史
+        try { wx.setStorageSync('scanHistory', recent); } catch (_) {}
         wx.showToast({ title: '扫码成功：' + tool.name, icon: 'none' });
         setTimeout(() => {
           wx.navigateTo({ url: '/pages/tool-detail/tool-detail?id=' + (tool._id || code) });

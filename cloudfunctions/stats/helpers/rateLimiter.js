@@ -14,6 +14,7 @@ const DEFAULT = {
   default: { window: 60 * 1000, max: 30 },
   import: { window: 60 * 1000, max: 200 },
   batch: { window: 60 * 1000, max: 300 },
+  login: { window: 60 * 1000, max: 5 },   // 认证类端点收紧，防爆破（RATE-01）
 };
 
 // 批量操作白名单（自动走高阈值档）
@@ -59,14 +60,16 @@ function createRateLimiter(opts = {}) {
    */
   function wrap(handler, action = 'unknown') {
     return async function (event) {
+      // 优先用请求携带的 action 作为限流键，使各业务 action 自动获得独立限流桶
+      const key = (event && event.action) || action;
       const openid = getOpenid ? getOpenid() : (event && event.userInfo && event.userInfo.openId) || 'anonymous';
-      const limit = await resolveLimit(action);
+      const limit = await resolveLimit(key);
       const rec = Date.now() - limit.window;
 
       try {
         const recent = (await collection('operation_logs').where({
           operator: openid,
-          action,
+          action: key,
           ts: require('./dbBase').db.command.gt(rec),
         }).get()).data || [];
 

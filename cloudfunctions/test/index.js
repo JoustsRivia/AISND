@@ -1,6 +1,9 @@
 // cloudfunctions/test/index.js
 // 业务逻辑层（M4 周期试验 P0）：只引用 ./helpers，绝不直接 cloud.database()/getWXContext()。
 const { getOpenid } = require('./helpers/user');
+
+const { createRateLimiter } = require('./rateLimiter');
+const __limiter = createRateLimiter({ getOpenid });
 const { findTool, updateTool, listTools, regExp } = require('./helpers/db');
 
 const ok = (data) => ({ code: 0, data });
@@ -83,7 +86,7 @@ async function verifyTag(payload) {
   });
 }
 
-exports.main = async (event) => {
+exports.main = __limiter.wrap(async (event) => {
   const { action, payload = {} } = event;
   try {
     switch (action) {
@@ -93,4 +96,4 @@ exports.main = async (event) => {
       default: return fail('未知 action: ' + action);
     }
   } catch (e) { return fail(e.message || '服务异常'); }
-};
+}, 'test');

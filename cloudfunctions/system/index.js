@@ -1,6 +1,8 @@
 // cloudfunctions/system/index.js —— M13 系统管理（组织/权限/字典/日志，纯业务，只引用 helpers）
 const { getOpenid } = require('./helpers/user');
-const db = require('./helpers/db');
+
+const { createRateLimiter } = require('./rateLimiter');
+const __limiter = createRateLimiter({ getOpenid });const db = require('./helpers/db');
 const _ = db._; // 查询命令（_shared/dbBase 透出的 command，cleanupLogs 用 _.lt）
 const ok = (data) => ({ code: 0, data });
 const fail = (message, code = 1) => ({ code, message });
@@ -43,6 +45,9 @@ async function getRatePolicy({ useCache = true } = {}) {
   __rateCache = { value, ts: Date.now() };
   return value;
 }
+// CACHE-01 / OPT-03：主动失效，避免云函数实例冻结恢复后持有超期缓存（unref 不阻塞事件循环）
+const __cacheTimer = setInterval(() => { clearRetentionCache(); clearRateCache(); }, 60000);
+if (__cacheTimer && typeof __cacheTimer.unref === 'function') __cacheTimer.unref();
 // 限流策略配置驱动（item 4）：优先后台配置，回退默认；批量白名单走更高阈值
 async function rateLimitFor(action) {
   const policy = await getRatePolicy();
@@ -51,60 +56,17 @@ async function rateLimitFor(action) {
   return policy.default || DEFAULT_RATE.default;
 }
 
-// 与 cloudfunctions/auth/index.js 同源的密码哈希（sha1 + 'tms_' 盐），保证账号在两处校验一致。
-const crypto = require('crypto');
-function hashPwd(p) { return p ? crypto.createHash('sha1').update('tms_' + p).digest('hex') : ''; }
+// 与 cloudfunctions/auth/index.js 同源的密码哈希：统一引用 shared/crypto.js（PBKDF2 + 旧 sha1 兼容）
+const { hashPwd } = require('./crypto');
+// 密码强度校验单一源（FEAT-01）
+const { passwordError } = require('./password');
 
-// ── R02 按组织树级别生成工号 ──────────────────────────────────────────
-// 规则：单位级(level 0) → 4 位(0001)；项目部级(level 1) → 6 位(260001，前两位为单位序号)；
-// 班组级(level 2) → 8 位(26010001，前两位单位序号 + 中两位项目部序号)。
-// 工号在组织树内唯一，注册时自动分配。
+// ── R02 按组织树级别生成工号（与 auth / shared/employeeId.js 同源纯函数） ──
+// 拉取用户列表后委托共享实现，保证 auth 与 system 两处算法完全一致（DUP-01）。
 async function generateEmployeeId(orgId, orgs) {
-  const list = orgs || ((await db.listBy('orgs', {}, 500)).data || []);
-  const byId = {};
-  list.forEach((o) => { byId[o._id] = o; });
-
-  const node = byId[orgId];
-  if (!node) return String(Date.now()).slice(-6);
-
-  // 找到根单位(level 0) → 单位序号
-  let unit = node;
-  while (unit.parentId && byId[unit.parentId]) unit = byId[unit.parentId];
-  const unitList = list.filter((o) => o.level === 0 && !o.parentId);
-  const unitIdx = Math.max(0, unitList.findIndex((o) => o._id === unit._id)) + 1;
-  const unitSeq = String(unitIdx).padStart(2, '0');
-
-  // 找到项目部(level 1) → 项目部序号
-  let projIdx = 0;
-  if (node.level >= 1) {
-    let proj = node;
-    while (proj && proj.level > 1) proj = byId[proj.parentId];
-    if (proj) {
-      const sibs = list.filter((o) => o.level === 1 && o.parentId === unit._id);
-      projIdx = Math.max(0, sibs.findIndex((o) => o._id === proj._id)) + 1;
-    }
-  }
-  const projSeq = String(projIdx).padStart(2, '0');
-
-  // 基于前缀查同组织树已有工号，取最大流水号 +1，保证唯一
-  let prefix;
-  if (node.level === 0) prefix = '';
-  else if (node.level === 1) prefix = unitSeq;
-  else prefix = unitSeq + projSeq;
-
-  const len = node.level === 0 ? 4 : (node.level === 1 ? 6 : 8);
-  const seqLen = len - prefix.length;
-
-  const allUsers = (await db.listBy('users', {}, 500)).data || [];
-  let max = 0;
-  const re = new RegExp('^' + prefix + '(\\d{' + seqLen + '})$');
-  for (const u of allUsers) {
-    if (!u.employeeId) continue;
-    const m = (u.employeeId || '').match(re);
-    if (m) max = Math.max(max, parseInt(m[1], 10) || 0);
-  }
-  const seq = String(max + 1).padStart(seqLen, '0');
-  return prefix + seq;
+  const list = orgs || (await db.listAll('orgs'));
+  const users = await db.listAll('users');
+  return require('./employeeId').generateEmployeeId(orgId, list, users);
 }
 
 // ── 默认组织架构（示例）─────────────────────────────────────────────────
@@ -132,10 +94,10 @@ async function seedOrgs() {
 
 async function orgTree() {
   await db.ensureCollection('orgs');
-  let res = await db.listBy('orgs', {}, 200);
-  if (!res.data || !res.data.length) {
+  let res = await db.listAll('orgs');
+  if (!res || !res.length) {
     await seedOrgs();
-    res = await db.listBy('orgs', {}, 200);
+    res = await db.listAll('orgs');
   }
   // R06：返回当前版本号，供前端缓存比对
   let version = 0;
@@ -152,7 +114,7 @@ async function orgTree() {
 //   lead（专班负责人） → 本公司(root)及下属所有项目部
 //   project_lead（项目部负责人） → 本项目部的班组节点
 //   supervisor（安监部管理人员） → 只读
-const ROLE_WHITE = ['worker', 'group_lead', 'safety_officer', 'lease_admin', 'project_lead', 'lead', 'supervisor', 'admin'];
+const { ROLE_ADMIN_ASSIGNABLE } = require('./roles');
 
 // R09：获取当前用户可编辑的 orgId 范围
 // 返回 { canEdit: boolean, editableIds: string[] | null }
@@ -212,7 +174,7 @@ async function orgManage(payload) {
   if (g.err) return g.err;
   const u = g.u;
   const { op = 'add', id, data = {} } = payload;
-  const orgs = (await db.listBy('orgs', {}, 500)).data || [];
+  const orgs = await db.listAll('orgs');
 
   // R09：编辑/删除时校验目标 orgId 是否在当前用户可编辑范围内
   if ((op === 'update' || op === 'delete') && id) {
@@ -300,7 +262,7 @@ async function userManage(payload) {
   if (op === 'list') {
     // R10：支持按组织/角色/关键字检索 + 分页
     const { orgId, role, keyword, page = 1, pageSize = 50 } = data;
-    let list = (await db.listBy('users', {}, 500)).data || [];
+    let list = await db.listAll('users');
     if (orgId) list = list.filter((u) => u.orgId === orgId);
     if (role) list = list.filter((u) => u.role === role);
     if (keyword) {
@@ -318,12 +280,14 @@ async function userManage(payload) {
   if (op === 'add') {
     if (!data.username) return fail('请填写用户名', 400);
     if (!data.password) return fail('请填写密码', 400);
-    if (data.role && !ROLE_WHITE.includes(data.role)) return fail('角色不合法', 403);
+    const pwErr = passwordError(data.password);
+    if (pwErr) return fail(pwErr, 400);
+    if (data.role && !ROLE_ADMIN_ASSIGNABLE.includes(data.role)) return fail('角色不合法', 403);
     // 用户名唯一性
     const dup = await db.listBy('users', { username: data.username }, 1);
     if (dup.data && dup.data.length) return fail('用户名已存在', 409);
     // R02：自动生成组织树内唯一工号
-    const orgs = (await db.listBy('orgs', {}, 500)).data || [];
+    const orgs = await db.listAll('orgs');
     const employeeId = await generateEmployeeId(data.orgId || '', orgs);
     const a = await db.add('users', {
       openid: '',                 // 由管理员预建，首次微信登录时绑定当前身份
@@ -351,9 +315,13 @@ async function userManage(payload) {
       patch.username = data.username;
     }
     if (data.nickname !== undefined) patch.nickname = data.nickname;
-    if (data.password) patch.password = hashPwd(data.password); // 仅非空时更新密码
+    if (data.password) { // 仅非空时更新密码，且需通过强度校验
+      const pwErr = passwordError(data.password);
+      if (pwErr) return fail(pwErr, 400);
+      patch.password = hashPwd(data.password);
+    }
     if (data.role !== undefined) {
-      if (data.role && !ROLE_WHITE.includes(data.role)) return fail('不允许分配该角色', 403);
+      if (data.role && !ROLE_ADMIN_ASSIGNABLE.includes(data.role)) return fail('不允许分配该角色', 403);
       patch.role = data.role;
     }
     if (data.unitId !== undefined) patch.unitId = data.unitId;
@@ -621,7 +589,7 @@ async function rateStats() {
 async function orgPerm() {
   const u = await db.getCurrentUser(getOpenid());
   if (!u || u.status === 'disabled') return fail('账号不可用', 403);
-  const orgs = (await db.listBy('orgs', {}, 500)).data || [];
+  const orgs = await db.listAll('orgs');
   const scope = await getOrgEditScope(u, orgs);
   return ok({
     role: u.role,
@@ -632,7 +600,7 @@ async function orgPerm() {
   });
 }
 
-exports.main = async (event) => {
+exports.main = __limiter.wrap(async (event) => {
   const ev = event || {};
   // 定时器触发时无 action，由 triggerName 路由（config.json 的 logCleanup → cleanupLogs）
   const action = ev.action || (ev.triggerName === 'logCleanup' ? 'cleanupLogs' : '');
@@ -656,4 +624,4 @@ exports.main = async (event) => {
   } catch (e) {
     return fail(e.message || '服务异常');
   }
-};
+}, 'system');

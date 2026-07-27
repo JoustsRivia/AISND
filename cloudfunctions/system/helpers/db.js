@@ -33,4 +33,4 @@ const saveDict = async (type, key, data) => {
   const a = await add('dicts', { type, key, data, createdAt: new Date() });
   return a._id;
 };
-module.exports = { _, add, getById, update, listBy, coll, collection: coll, getCurrentUser, listOrgs, addOrg, remove, removeOrg, countBy, saveDict, ensureCollection };
+module.exports = { _, add, getById, update, listBy, listAll, coll, collection: coll, getCurrentUser, listOrgs, addOrg, remove, removeOrg, countBy, saveDict, ensureCollection };

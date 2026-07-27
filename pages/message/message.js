@@ -1,6 +1,7 @@
 // pages/message/message.js —— 消息中心（M11 站内消息 + 预警）
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
+const net = require('../../utils/network');
 const { SUBSCRIBE_TMPL_ID } = require('../../utils/constants');
 
 const LEVEL_META = {
@@ -47,7 +48,7 @@ Page({
   },
 
   async load() {
-    const res = await api.getWarnings({ page: 1, size: 30 }).catch(() => []);
+    const res = await net.cacheThenNetwork('warnings', () => api.getWarnings({ page: 1, size: 30 })).catch(() => []);
     const raw = res || [];
     this.setData({ raw });
     this.applyFilter();
@@ -101,8 +102,10 @@ Page({
     };
     const url = ROUTES[refType];
     if (url) {
+      // FEAT-06 跳转精度：携带业务主键 refId，直达具体器具/证书/隐患/报废单据
+      const refId = msg.refId || msg._id;
       wx.navigateTo({
-        url,
+        url: `${url}?id=${refId}`,
         fail: () => { /* 跳转失败时仅保留已读状态 */ },
       });
     }

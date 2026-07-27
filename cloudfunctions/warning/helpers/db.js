@@ -23,7 +23,7 @@ async function scopedList(collName, filter = {}, opts = {}) {
 }
 
 module.exports = {
-  _, add, getById, update, listBy, coll,
+  _, add, getById, update, listBy, listAll, coll,
   getCurrentUser, listOrgs,
   subtreeIds, roleScope, allowedOrgIds, scopeFilter, scopedList,
 };

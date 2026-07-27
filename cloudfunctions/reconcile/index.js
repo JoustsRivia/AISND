@@ -1,6 +1,8 @@
 // cloudfunctions/reconcile/index.js —— M1.4 账物核对（纯业务，只引用 helpers）
 const { getOpenid } = require('./helpers/user');
-const db = require('./helpers/db');
+
+const { createRateLimiter } = require('./rateLimiter');
+const __limiter = createRateLimiter({ getOpenid });const db = require('./helpers/db');
 const ok = (data) => ({ code: 0, data });
 const fail = (message, code = 1) => ({ code, message });
 const now = () => new Date();
@@ -46,7 +48,7 @@ async function createTask(payload = {}) {
   if (exist.data && exist.data.length) return fail('该年月/仓库/类别已存在核对任务', 409);
 
   // 按仓库+类别筛选台账器具
-  const tools = await db.listBy('tools', storeId ? { store: storeName } : {}, 500);
+  const tools = await db.listAll('tools', storeId ? { store: storeName } : {});
   let items = (tools.data || []).map((t) => ({
     toolId: t._id,
     code: t.code || '',
@@ -155,7 +157,7 @@ async function diff(payload = {}) {
   return ok(rows);
 }
 
-exports.main = async (event) => {
+exports.main = __limiter.wrap(async (event) => {
   const { action, payload = {} } = event;
   try {
     switch (action) {
@@ -170,4 +172,4 @@ exports.main = async (event) => {
   } catch (e) {
     return fail(e.message || '服务异常');
   }
-};
+}, 'reconcile');

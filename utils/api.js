@@ -76,6 +76,9 @@ const borrowTool = (id) => invoke(FN.borrow, 'borrow', { id }).then((r) => { log
 // 归还需回传外观状态（normal/damaged），外观损坏触发报修（M5.2.1~M5.2.3）
 const returnTool = (id, data = {}) => invoke(FN.borrow, 'return', { id, ...data }).then((r) => { logOperation({ type: 'borrow', action: 'return', target: id }); return r; });
 const getBorrowRecords = (params) => invoke(FN.borrow, 'records', params);
+// FEAT-05 批量领用/归还
+const batchBorrowTools = (ids) => invoke(FN.borrow, 'batchBorrow', { ids }).then((r) => { logOperation({ type: 'borrow', action: 'batchBorrow', target: (ids || []).length }); return r; });
+const batchReturnTools = (ids, appearance = 'normal') => invoke(FN.borrow, 'batchReturn', { ids, appearance }).then((r) => { logOperation({ type: 'borrow', action: 'batchReturn', target: (ids || []).length }); return r; });
 
 // ── 维保 M7 ──────────────────────────────────────────────────────────
 const createMaintenance = (data) => invoke(FN.maintenance, 'create', data);
@@ -283,7 +286,7 @@ module.exports = {
   // 试验
   getTestDueList, submitTest, verifyTestTag,
   // 领用归还
-  borrowTool, returnTool, getBorrowRecords,
+  borrowTool, returnTool, getBorrowRecords, batchBorrowTools, batchReturnTools,
   // 维保
   createMaintenance, reportRepair, approveRepair, recordRepair, recheckRepair, getRepairList,
   listMaintenancePlans, execMaintenancePlan,

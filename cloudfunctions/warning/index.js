@@ -1,7 +1,9 @@
 // cloudfunctions/warning/index.js —— M11 预警消息（纯业务，只引用 helpers）
 const db = require('./helpers/db');
 const { getOpenid } = require('./helpers/user');
-const _ = db._;
+
+const { createRateLimiter } = require('./rateLimiter');
+const __limiter = createRateLimiter({ getOpenid });const _ = db._;
 const ok = (data) => ({ code: 0, data });
 const fail = (message, code = 1) => ({ code, message });
 const now = () => new Date();
@@ -53,8 +55,8 @@ async function generate() {
   const DAY = 86400000;
   const out = [];
   // 预加载 orgs 和 users，用于富化 orgName / keeperName
-  const orgs = (await db.listBy('orgs', {}, 500)).data || [];
-  const users = (await db.listBy('users', {}, 500)).data || [];
+  const orgs = await db.listAll('orgs');
+  const users = await db.listAll('users');
   const orgNameOf = {};
   orgs.forEach((o) => { orgNameOf[o._id] = o.name || ''; });
   const keeperNameOf = {};
@@ -71,7 +73,7 @@ async function generate() {
   };
   try {
     // 试验到期前15天 / 超期（M4.1.2 / M4.1.4）
-    const tools = await db.listBy('tools', {}, 200);
+    const tools = await db.listAll('tools');
     for (const t of (tools.data || [])) {
       if (!t.expireAt) continue;
       const exp = new Date(t.expireAt).getTime();
@@ -144,7 +146,7 @@ async function del(payload) {
   return ok({ id });
 }
 
-exports.main = async (event) => {
+exports.main = __limiter.wrap(async (event) => {
   const { action, payload = {} } = event;
   try {
     switch (action) {
@@ -159,4 +161,4 @@ exports.main = async (event) => {
   } catch (e) {
     return fail(e.message || '服务异常');
   }
-};
+}, 'warning');

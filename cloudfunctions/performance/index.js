@@ -1,6 +1,8 @@
 // cloudfunctions/performance/index.js —— M10.3 人员考核管理（评分/排行榜/奖惩，纯业务）
 const { getOpenid } = require('./helpers/user');
-const db = require('./helpers/db');
+
+const { createRateLimiter } = require('./rateLimiter');
+const __limiter = createRateLimiter({ getOpenid });const db = require('./helpers/db');
 const ok = (data) => ({ code: 0, data });
 const fail = (message, code = 1) => ({ code, message });
 const now = () => new Date();
@@ -110,7 +112,7 @@ async function rewardList(payload = {}) {
   return ok(res.data || []);
 }
 
-exports.main = async (event) => {
+exports.main = __limiter.wrap(async (event) => {
   const { action, payload = {} } = event;
   try {
     switch (action) {
@@ -125,4 +127,4 @@ exports.main = async (event) => {
   } catch (e) {
     return fail(e.message || '服务异常');
   }
-};
+}, 'performance');

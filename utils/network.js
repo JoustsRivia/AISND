@@ -36,4 +36,39 @@ function watchStatus(cb) {
   wx.onNetworkStatusChange((res) => cb && cb(res.isConnected, res.networkType));
 }
 
-module.exports = { getNetworkType, isOnline, requireOnline, watchStatus };
+// 缓存优先 + 网络兜底（M5.1.5 / M6.1.5 离线可浏览）：
+// 先返回本地缓存（未过期），再发起网络请求刷新；离线或请求失败时若缓存存在则降级用缓存，保证历史数据可看。
+const CACHE_TTL = 5 * 60 * 1000;
+
+function _readCache(key, ttl) {
+  try {
+    const raw = wx.getStorageSync('cache:' + key);
+    if (!raw) return null;
+    const obj = JSON.parse(raw);
+    if (Date.now() - obj.t > ttl) return null;
+    return obj.v;
+  } catch (e) { return null; }
+}
+
+function _writeCache(key, val) {
+  try {
+    wx.setStorageSync('cache:' + key, JSON.stringify({ t: Date.now(), v: val }));
+  } catch (e) { /* 存储满或异常：忽略，降级为纯网络 */ }
+}
+
+async function cacheThenNetwork(key, fetcher, opts = {}) {
+  const ttl = opts.ttl || CACHE_TTL;
+  const cached = _readCache(key, ttl);
+  let result = cached;
+  const online = await isOnline();
+  if (online) {
+    try {
+      const fresh = await fetcher();
+      if (fresh != null) { _writeCache(key, fresh); result = fresh; }
+    } catch (e) { /* 网络失败：保留缓存 */ }
+  }
+  if (result == null) throw new Error('NO_CACHE');
+  return result;
+}
+
+module.exports = { getNetworkType, isOnline, requireOnline, watchStatus, cacheThenNetwork, CACHE_TTL };

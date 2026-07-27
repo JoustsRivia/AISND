@@ -39,7 +39,7 @@ const listBy = (name, filter = {}, size = 50) => collection(name).where(filter).
 const getCurrentUser = base.getCurrentUser;
 const listOrgs = (size = 200) => collection('orgs').limit(size).get();
 module.exports = {
-  collection, _, regExp, listOrgs,
+  collection, _, regExp, listAll: base.listAll, listOrgs,
   findUser, addUser, updateUser, listUsers,
   findTool, addTool, updateTool, listTools, countTools,
   addBorrow, listBorrow,

@@ -1,6 +1,9 @@
 // cloudfunctions/tool/index.js
 // 业务逻辑层（M1 台账/档案/租赁/条码）：只引用 ./helpers，绝不直接 cloud.database()/getWXContext()。
 const { getOpenid } = require('./helpers/user');
+
+const { createRateLimiter } = require('./rateLimiter');
+const __limiter = createRateLimiter({ getOpenid });
 const {
   findUser, addTool, updateTool, removeTool, findTool, listTools, countTools, listOrgs, regExp, _, getCurrentUser,
   allowedOrgIds, listBy,
@@ -104,7 +107,20 @@ async function list(payload = {}) {
   if (status) where.status = status;
   if (category) where.category = category;
   if (source) where.source = source;
-  if (keyword) where.name = regExp(keyword, 'i');
+  if (keyword) {
+    // FEAT-03：关键词搜索扩展为 名称/编号/库房/保管人/出厂编号 多字段 OR 匹配，便于现场按任一已知信息检索
+    const kw = regExp(keyword, 'i');
+    where = _.and([
+      where,
+      _.or([
+        { name: kw },
+        { code: kw },
+        { store: kw },
+        { keeper: kw },
+        { factoryNo: kw },
+      ]),
+    ]);
+  }
   if (highRisk) where.category = _.in(HIGH_RISK_CATS); // M1.3.6 高危专项台账
   where = await scopeWhere(where, { ...payload, orgId: orgId || undefined, unitId: unitId || undefined });
   const skip = Math.max(0, (Number(page) - 1) * Number(size));
@@ -312,7 +328,20 @@ async function exportLedger(payload = {}) {
   if (status) where.status = status;
   if (category) where.category = category;
   if (source) where.source = source;
-  if (keyword) where.name = regExp(keyword, 'i');
+  if (keyword) {
+    // FEAT-03：关键词搜索扩展为 名称/编号/库房/保管人/出厂编号 多字段 OR 匹配，便于现场按任一已知信息检索
+    const kw = regExp(keyword, 'i');
+    where = _.and([
+      where,
+      _.or([
+        { name: kw },
+        { code: kw },
+        { store: kw },
+        { keeper: kw },
+        { factoryNo: kw },
+      ]),
+    ]);
+  }
   if (highRisk) where.category = _.in(HIGH_RISK_CATS);
   where = await scopeWhere(where, payload);
   const res = await listTools(where, 200, 0);
@@ -385,7 +414,7 @@ async function del(payload) {
   return ok({ _id: id });
 }
 
-exports.main = async (event) => {
+exports.main = __limiter.wrap(async (event) => {
   const { action, payload = {} } = event;
   try {
     switch (action) {
@@ -407,4 +436,4 @@ exports.main = async (event) => {
   } catch (e) {
     return fail(e.message || '服务异常');
   }
-};
+}, 'tool');

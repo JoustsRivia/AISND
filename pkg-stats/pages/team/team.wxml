@@ -1,0 +1,41 @@
+<!-- pkg-stats/pages/team/team.wxml —— M12.2 班组协作看板 -->
+<view class="team page-pad {{themeClass}}">
+  <view wx:if="{{loading}}" class="card muted">加载中…</view>
+  <block wx:else>
+    <view class="card team-head">
+      <view class="team-name">{{teamName || '我的班组'}}</view>
+      <view class="team-sub">成员 {{memberCount}} 人 · 未读预警 {{warnings}}</view>
+    </view>
+
+    <view class="card">
+      <view class="card-title">本班组器具状态</view>
+      <stats-card items="{{stats}}" columns="{{3}}" />
+    </view>
+
+    <view class="card">
+      <view class="card-title">成员（{{memberCount}}）</view>
+      <view wx:if="{{!members.length}}" class="muted">暂无成员数据</view>
+      <view wx:for="{{members}}" wx:key="employeeId" class="member-row">
+        <view class="avatar">{{item.name[0]}}</view>
+        <view class="member-info">
+          <view class="member-name">{{item.name}}</view>
+          <view class="member-role">{{item.role}} · {{item.employeeId}}</view>
+        </view>
+      </view>
+    </view>
+
+    <view class="card">
+      <view class="card-title">近期领用 / 归还</view>
+      <view wx:if="{{!activities.length}}" class="muted">暂无动态</view>
+      <view wx:for="{{activities}}" wx:key="index" class="act-row">
+        <text class="act-text">{{item.text}}</text>
+        <text class="act-time">{{item.time}}</text>
+      </view>
+    </view>
+
+    <view class="row gap-2">
+      <button class="btn btn-outline flex-1" bindtap="goDashboard">返回看板</button>
+    </view>
+  </block>
+  <view class="safe-bottom"></view>
+</view>

@@ -52,4 +52,5 @@ Page({
 
   goSix() { wx.navigateTo({ url: '/pkg-stats/pages/six-standard/six-standard' }); },
   goReport() { wx.navigateTo({ url: '/pkg-stats/pages/report/report' }); },
+  goTeam() { wx.navigateTo({ url: '/pkg-stats/pages/team/team' }); },
 });

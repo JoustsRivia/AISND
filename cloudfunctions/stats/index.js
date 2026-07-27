@@ -2,6 +2,8 @@
 const db = require('./helpers/db');
 const { getOpenid } = require('./helpers/user');
 
+const { createRateLimiter } = require('./rateLimiter');
+const __limiter = createRateLimiter({ getOpenid });
 const ok = (data) => ({ code: 0, data });
 const fail = (message, code = 1) => ({ code, message });
 const baseFilter = (orgId) => (orgId ? { orgId } : {});
@@ -218,7 +220,7 @@ async function homeStatus() {
   });
 }
 
-exports.main = async (event) => {
+exports.main = __limiter.wrap(async (event) => {
   const { action, payload = {} } = event || {};
   try {
     // 定时器触发（无 action）默认执行快照采集
@@ -237,4 +239,4 @@ exports.main = async (event) => {
   } catch (e) {
     return fail(e.message || '服务异常');
   }
-};
+}, 'stats');

@@ -1,6 +1,8 @@
 // cloudfunctions/purchase/index.js —— M2 采购验收（纯业务，只引用 helpers）
 const { getOpenid } = require('./helpers/user');
-const db = require('./helpers/db');
+
+const { createRateLimiter } = require('./rateLimiter');
+const __limiter = createRateLimiter({ getOpenid });const db = require('./helpers/db');
 // RBAC 数据范围原语（来自 _shared/dbBase.js 单一源，迁移零改动）
 const { scopeFilter, listOrgs } = db;
 const ok = (data) => ({ code: 0, data });
@@ -119,7 +121,7 @@ async function accept(payload) {
   return ok({ _id: added._id, ...doc });
 }
 
-exports.main = async (event) => {
+exports.main = __limiter.wrap(async (event) => {
   const { action, payload = {} } = event;
   try {
     switch (action) {
@@ -132,4 +134,4 @@ exports.main = async (event) => {
   } catch (e) {
     return fail(e.message || '服务异常');
   }
-};
+}, 'purchase');

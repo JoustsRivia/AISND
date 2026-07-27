@@ -2,6 +2,8 @@
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
 const { TOOL_CATEGORIES } = require('../../utils/constants');
+const { subtreeIds } = require('../../utils/org-utils');
+const net = require('../../utils/network');
 
 const STATUS_TABS = [
   { key: '', label: '全部' },
@@ -15,18 +17,6 @@ const STATUS_TABS = [
 
 const PAGE_SIZE = 20;
 
-// 客户端组织子树推导（用于分台账可选项收窄）
-function clientSubtree(tree, rootId) {
-  const ids = [rootId];
-  const q = [rootId];
-  while (q.length) {
-    const c = q.shift();
-    tree.forEach((o) => {
-      if (o.parentId === c && !ids.includes(o._id)) { ids.push(o._id); q.push(o._id); }
-    });
-  }
-  return ids;
-}
 
 Page({
   data: {
@@ -70,14 +60,14 @@ Page({
 
   // 分台账组织选项：管理员可选全部+任意机构；普通角色仅限自身子树内
   async loadOrgTree() {
-    const tree = await api.getOrgTree().catch(() => []);
+    const tree = await net.cacheThenNetwork('orgTree', () => api.getOrgTree()).catch(() => []);
     if (!tree.length) return;
     const byId = {};
     tree.forEach((o) => { byId[o._id] = o; });
     const p = auth.getProfile();
     let opts = tree;
     if (p && p.orgId && !(p.role === 'lead' || p.role === 'supervisor')) {
-      const set = new Set(clientSubtree(tree, p.orgId));
+      const set = new Set(subtreeIds(tree, p.orgId));
       opts = tree.filter((o) => set.has(o._id));
     }
     const options = [{ _id: '', label: '全部分台账' }].concat(opts.map((o) => {
@@ -112,11 +102,20 @@ Page({
     return opt ? opt._id : '';
   },
 
+  // 离线缓存键：按当前筛选维度生成，确保缓存与视图一一对应
+  _cacheKey() {
+    const { activeTab, activeChips, keyword, highRisk } = this.data;
+    const orgId = this._curOrgId();
+    return [orgId, activeTab, (activeChips || []).join(','), keyword, highRisk ? 1 : 0].join('|');
+  },
+
   // 重置并加载第一页
   async reload() {
     this.setData({ page: 1, hasMore: true, list: [], loading: true });
-    const res = await this.fetchPage(1);
-    this.setData({ list: res.list, hasMore: res.hasMore, loading: false });
+    const key = 'ledger:' + this._cacheKey();
+    const res = await net.cacheThenNetwork(key, () => this.fetchPage(1), { ttl: 60000 }).catch(() => null);
+    if (res) this.setData({ list: res.list, hasMore: res.hasMore, loading: false });
+    else this.setData({ loading: false });
   },
 
   async loadMore() {

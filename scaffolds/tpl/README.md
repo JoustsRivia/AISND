@@ -16,7 +16,8 @@
 cp -r scaffolds/tpl cloudfunctions/foo
 # 1. 在 cloudfunctions/foo/index.js 编写业务主逻辑（只引用 ./helpers，禁止直连 cloud.*）
 # 2. 将 cloudfunctions/foo/helpers/db.js、user.js 首行改为 // cloudfunctions/foo/helpers/...
-# 3. 部署：bash uploadCloudFunction.sh <envId> foo <projectPath>
+# 3. helpers/ 已含 rateLimiter.js：新云函数入口应 `const { createRateLimiter } = require('./rateLimiter');` 包装 handler，统一接入限流（见 OPT-02）
+# 4. 部署：bash uploadCloudFunction.sh <envId> foo <projectPath>
 ```
 
 ## 防误部署

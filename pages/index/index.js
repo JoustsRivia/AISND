@@ -1,6 +1,7 @@
 // pages/index/index.js —— 工作台（角色化九宫格 + 待办）
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
+const net = require('../../utils/network');
 const { moduleGroups } = require('../../utils/modules');
 const theme = require('../../utils/theme');
 const app = getApp();
@@ -75,7 +76,7 @@ Page({
 
   // 仅刷新模块徽标聚合（九宫格状态徽标），避免每次 onShow 都拉全量看板
   async refreshBadges() {
-    const hs = await api.getHomeStatus().catch(() => null);
+    const hs = await net.cacheThenNetwork('homeStatus', () => api.getHomeStatus()).catch(() => null);
     if (hs) this._hs = hs;
     this.applyProfile(auth.getProfile());
   },
@@ -101,10 +102,10 @@ Page({
     this.setData({ greeting: greetingByHour(now.getHours()), todayText: `${now.getMonth() + 1}月${now.getDate()}日` });
     const p = auth.getProfile() || (await auth.ensureLogin().catch(() => null));
     // 模块徽标聚合：先取一次并缓存，onShow 切回时直接复用，无需重复请求
-    const hs = await api.getHomeStatus().catch(() => null);
+    const hs = await net.cacheThenNetwork('homeStatus', () => api.getHomeStatus()).catch(() => null);
     if (hs) this._hs = hs;
     this.applyProfile(p);
-    const d = await api.getDashboard().catch(() => null);
+    const d = await net.cacheThenNetwork('dashboard', () => api.getDashboard()).catch(() => null);
     if (d) {
       this.setData({
         dashboard: d,
