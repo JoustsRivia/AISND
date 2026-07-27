@@ -86,7 +86,7 @@ Page({
       actions.push({ key: 'scrap', label: '报废' });
     }
     // 编辑入口（M1.3.4）：安全�?/班组�?/租赁管理�?/专班可改档案
-    if (auth.isSafety() || ['lead', 'group_lead', 'lease_admin'].includes(role)) {
+    if (st !== 'scrapped' && st !== 'forbidden' && (auth.isSafety() || ['lead', 'group_lead', 'lease_admin'].includes(role))) {
       actions.push({ key: 'edit', label: '编辑' });
     }
     this.setData({ actions: actions.slice(0, 4) });
