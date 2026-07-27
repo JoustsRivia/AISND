@@ -15,6 +15,10 @@ Page({
     await this.reload();
   },
 
+  async onShow() {
+    await this.reload();
+  },
+
   async reload() {
     this.setData({ loading: true });
     const list = await api.getRepairList({}).catch(() => []);

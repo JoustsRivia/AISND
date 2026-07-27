@@ -1,4 +1,6 @@
 {
-  "usingComponents": {},
+  "usingComponents": {
+    "attachment-uploader": "/components/attachment-uploader/index"
+  },
   "navigationBarTitleText": "证书登记"
 }

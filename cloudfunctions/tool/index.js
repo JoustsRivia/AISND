@@ -207,7 +207,7 @@ async function create(payload) {
   return ok({ _id: added._id, ...doc });
 }
 
-// 器具信息编辑（M1.3.4，记录变更）—— 含服务端 RBAC（S5/P1：跨机构编辑拦截）
+// 器具信息编辑（M1.3.4，记录变更）—— 含服务端 RBAC（S5/P1：跨机构编辑拦截）+ 报废锁（D14）
 async function update(payload) {
   const { id, ...rest } = payload;
   const u = await getCurrentUser(getOpenid());
@@ -215,6 +215,10 @@ async function update(payload) {
   const isAdmin = u.role === 'lead' || u.role === 'supervisor' || u.role === 'admin';
   const cur = await findTool(id);
   if (!cur.data) return fail('器具不存在', 404);
+  // D14：已报废器具不可再编辑（仅管理员可例外修改 status/备注字段）
+  if (cur.data.status === 'scrapped' && !isAdmin) {
+    return fail('已报废器具不支持编辑', 403);
+  }
   // 非管理员只能编辑自身绑定机构的器具，防止越权改写他人机构档案
   if (!isAdmin && cur.data.orgId !== u.orgId) return fail('无权编辑其他机构器具', 403);
   // R13 日期约束校验：合并已有字段后校验

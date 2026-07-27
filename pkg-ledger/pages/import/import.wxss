@@ -14,3 +14,8 @@
 .btn-imp { background: var(--c-primary-grad); }
 .result { text-align: center; color: var(--c-success); font-size: 28rpx; font-weight: 600; margin: var(--sp-2) 0; }
 .btn-back { margin-top: var(--sp-2); background: var(--c-bg); color: var(--c-text-sub); }
+
+/* 模板 QR 区域 */
+.tpl-section { text-align: center; margin-bottom: var(--sp-3); }
+.tpl-qr { width: 300rpx; display: block; margin: 0 auto; }
+.tpl-link { font-size: 26rpx; color: var(--c-primary); text-align: center; margin-top: 16rpx; text-decoration: underline; }

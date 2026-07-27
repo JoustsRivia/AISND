@@ -79,6 +79,17 @@ Page({
     this.setData({ zones });
   },
 
+  async onDeleteStore(e) {
+    const id = e.currentTarget.dataset.id;
+    const confirm = await wx.showModal({ title: '确认删除', content: '删除后不可恢复' }).catch(() => ({ confirm: false }));
+    if (!confirm.confirm) return;
+    try {
+      await api.deleteStore(id);
+      wx.showToast({ title: '已删除', icon: 'success' });
+      await this.loadStoreList();
+    } catch (err) { wx.showToast({ title: '删除失败', icon: 'none' }); }
+  },
+
   async onSubmit() {
     try { await network.requireOnline(); } catch (e) { return; }
     const { name, orgId, keeper, keeperOpenid, zones } = this.data;

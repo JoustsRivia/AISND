@@ -66,42 +66,64 @@ async function reportHazard(payload) {
   return ok({ _id: added._id, ...doc });
 }
 
-// 隐患指派（M10.4）
+// 隐患指派（M10.4）—— 含 operatorName（D17）
 async function assignHazard(payload) {
   const g = await requireRole('project_lead', 'supervisor', 'lead');
   if (g.err) return g.err;
-  const { id, assignee = '', dueDate = '' } = payload;
+  const { id, assignee = '', assigneeOpenid = '', dueDate = '' } = payload;
   const r = await db.getById('hazards', id);
   if (!r.data) return fail('隐患不存在', 404);
-  await db.update('hazards', id, { status: 'assigned', assignee, dueDate });
+  if (r.data.status === 'closed') return fail('隐患已闭环，不可再指派', 409);
+  const operatorName = g.u ? `${g.u.username || g.u.nickname || ''}${g.u.employeeId ? '（'+g.u.employeeId+'）' : ''}` : '';
+  await db.update('hazards', id, {
+    status: 'assigned', assignee, assigneeOpenid: assigneeOpenid || '', dueDate,
+    assignedBy: g.u.openid,
+    assignedByName: operatorName,
+    assignedAt: now(),
+  });
   return ok({ id, status: 'assigned' });
 }
 
-// 整改跟踪（M10.5）
+// 整改跟踪（M10.5）—— 含 operatorName + 闭环锁（D17）
 async function trackHazard(payload) {
   const { id, progressNote = '', evidence = [] } = payload;
   const openid = getOpenid();
   const r = await db.getById('hazards', id);
   if (!r.data) return fail('隐患不存在', 404);
+  // D17.3：闭环后不可再跟踪
+  if (r.data.status === 'closed') return fail('隐患已闭环，不可再跟踪', 409);
   // 守卫：仅指派处理人或管理员可更新整改进展
   const isAssignee = r.data.assignee === openid || r.data.assigneeOpenid === openid;
   if (!isAssignee) {
     const g = await requireRole('admin', 'supervisor', 'lead', 'project_lead', 'safety_officer');
     if (g.err) return g.err;
   }
-  const logs = (r.data.trackLogs || []).concat({ progressNote, evidence, ts: now() });
+  const me = await db.getCurrentUser(openid);
+  const operatorName = me ? `${me.username || me.nickname || ''}${me.employeeId ? '（'+me.employeeId+'）' : ''}` : '';
+  const logs = (r.data.trackLogs || []).concat({
+    progressNote, evidence, ts: now(),
+    operator: openid,
+    operatorName,
+  });
   await db.update('hazards', id, { trackLogs: logs });
   return ok({ id, trackLogs: logs });
 }
 
-// 闭环关闭（M10.6）
+// 闭环关闭（M10.6）—— 含 closed 守卫（D17）
 async function closeHazard(payload) {
   const g = await requireRole('supervisor', 'lead');
   if (g.err) return g.err;
   const { id, verifyNote = '' } = payload;
   const r = await db.getById('hazards', id);
   if (!r.data) return fail('隐患不存在', 404);
-  await db.update('hazards', id, { status: 'closed', closedAt: now(), verifyNote });
+  // D17.3：已闭环不可重复操作
+  if (r.data.status === 'closed') return fail('隐患已闭环，不可重复操作', 409);
+  const operatorName = g.u ? `${g.u.username || g.u.nickname || ''}${g.u.employeeId ? '（'+g.u.employeeId+'）' : ''}` : '';
+  await db.update('hazards', id, {
+    status: 'closed', closedAt: now(), verifyNote,
+    closedBy: g.u.openid,
+    closedByName: operatorName,
+  });
   return ok({ id, status: 'closed' });
 }
 

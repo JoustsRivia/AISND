@@ -44,6 +44,7 @@
       <view class="store-name">{{item.name}}</view>
       <view class="store-meta" wx:if="{{item.zone && item.zone.length}}">分区：{{item.zone.join('、')}}</view>
       <view class="store-meta" wx:if="{{item.keeper}}">管理员：{{item.keeper}}</view>
+      <view class="store-del" catchtap="onDeleteStore" data-id="{{item._id}}">删除</view>
     </view>
   </view>
   <view class="store-empty" wx:elif="{{storeList.length === 0 && !submitting}}">

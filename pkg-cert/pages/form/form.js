@@ -26,11 +26,9 @@ Page({
   onExpire(e) { this.setData({ expireAt: e.detail.value }); },
   bindIssuer(e) { this.setData({ issuer: e.detail.value }); },
 
-  async onPhoto() {
-    const m = await wx.chooseMedia({ count: 3, mediaType: ['image'] });
-    const ids = [];
-    for (const f of m.tempFiles) ids.push(await api.uploadFile(f.tempFilePath, 'image'));
-    this.setData({ photos: this.data.photos.concat(ids) });
+  // D9：照片区已由 attachment-uploader 组件接管（支持预览/删除）
+  onPhotosChange(e) {
+    this.setData({ photos: e.detail.value });
   },
 
   async onSubmit() {

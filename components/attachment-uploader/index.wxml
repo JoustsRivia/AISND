@@ -1,0 +1,11 @@
+<!-- 通用附件上传组件 —— 上传 / 预览 / 删除 -->
+<view class="att-box">
+  <view class="att-label">{{label}}（{{value.length}}/{{max}}）</view>
+  <view class="att-grid">
+    <view class="att-item" wx:for="{{value}}" wx:key="id" data-idx="{{index}}" bindtap="onPreview">
+      <image class="att-img" src="{{item.thumb || item.url}}" mode="aspectFill" />
+      <view class="att-rm" catchtap="onDelete" data-idx="{{index}}">×</view>
+    </view>
+    <view class="att-add" wx:if="{{value.length < max}}" bindtap="onAdd">+</view>
+  </view>
+</view>

@@ -181,11 +181,9 @@ Page({
     this.runJudge();
   },
 
-  async onPhoto() {
-    const m = await wx.chooseMedia({ count: 3, mediaType: ['image'] });
-    // 并行上传，缩短等待（原串行上传 3-5 张 = 3-5 倍延迟）
-    const ids = await Promise.all(m.tempFiles.map((f) => api.uploadFile(f.tempFilePath, 'image')));
-    this.setData({ photos: this.data.photos.concat(ids) });
+  // D9：照片区已由 attachment-uploader 组件接管（支持预览/删除）
+  onPhotosChange(e) {
+    this.setData({ photos: e.detail.value });
   },
 
   async onSubmit() {

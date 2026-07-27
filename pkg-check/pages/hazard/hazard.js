@@ -42,7 +42,7 @@ Page({
         time: log.time || '',
         title: it.desc,
         desc: log.note || log.progressNote || '',
-        operator: log.operator || '',
+        operator: log.operatorName || log.operator || '',
         status: 'normal',
       })),
     }));
@@ -124,19 +124,30 @@ Page({
 
   async onTapHazard(e) {
     const item = e.currentTarget.dataset.item;
-    const r = await wx.showActionSheet({ itemList: ['指派整改人', '跟踪进度', '闭环隐患'] }).catch(() => null);
+    let actions;
+    if (item.status === 'closed') {
+      // closed: no actions available, just view detail
+      return;
+    } else if (item.status === 'open') {
+      actions = ['指派整改人', '跟踪进度', '闭环隐患'];
+    } else {
+      // assigned or tracking
+      actions = ['跟踪进度', '闭环隐患'];
+    }
+    const r = await wx.showActionSheet({ itemList: actions }).catch(() => null);
     if (!r) return;
     try { await network.requireOnline(); } catch (err) { return; }
-    if (r.tapIndex === 0) {
+    const selectedAction = actions[r.tapIndex];
+    if (selectedAction === '指派整改人') {
       await this.onAssign(item);
-    } else if (r.tapIndex === 1) {
+    } else if (selectedAction === '跟踪进度') {
       const m = await wx.showModal({ title: '跟踪进度', editable: true, placeholderText: '请输入进度说明', content: '' });
       if (!m.confirm) return;
       const progressNote = (m.content || '').trim();
       if (!progressNote) { wx.showToast({ title: '请输入进度说明', icon: 'none' }); return; }
       await api.trackHazard(item._id, { progressNote });
       wx.showToast({ title: '已跟踪', icon: 'success' });
-    } else if (r.tapIndex === 2) {
+    } else if (selectedAction === '闭环隐患') {
       await api.closeHazard(item._id);
       wx.showToast({ title: '已闭环', icon: 'success' });
     }
@@ -144,6 +155,7 @@ Page({
   },
 
   // M10.2.3 隐患指派整改人 + 整改期限
+  // TODO: 后续迁移为用户搜索选择器(search-picker)，替换当前 editable modal 手动输入方式
   async onAssign(item) {
     const a = await wx.showModal({ title: '指派整改人', editable: true, placeholderText: '整改责任人姓名/工号', content: item._assignee || '' }).catch(() => null);
     if (!a || !a.confirm) return;

@@ -6,13 +6,15 @@ const auth = require('../../../utils/auth');
 const network = require('../../../utils/network');
 const { ROLES, ROLE_ORDER } = require('../../../utils/constants');
 
-// 可分配角色（与 cloudfunctions/system ROLE_WHITE 同源；lead/supervisor 仅由系统内置，不放进分配列表）
+// 可分配角色（与 cloudfunctions/system ROLE_WHITE 同源；D1：补充安监/专班角色预建能力）
 const ROLE_OPTIONS = [
   { value: ROLES.WORKER, name: '普通作业人员' },
   { value: ROLES.GROUP_LEAD, name: '班组长/班组安全员' },
   { value: ROLES.SAFETY_OFFICER, name: '项目部专职安全员' },
   { value: ROLES.LEASE_ADMIN, name: '租赁机具管理员' },
   { value: ROLES.PROJECT_LEAD, name: '项目部负责人' },
+  { value: ROLES.SUPERVISOR, name: '安监部管理人员' },
+  { value: ROLES.LEAD, name: '工作专班负责人' },
   { value: ROLES.ADMIN, name: '小程序管理员（最高权限）' },
 ];
 const KIND_OPTIONS = [

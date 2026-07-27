@@ -16,6 +16,7 @@
     <text class="b-txt">{{banner.text}}</text>
   </view>
 
+  <scroll-view scroll-y style="max-height: 60vh;">
   <view class="card info">
     <view class="row"><text class="k">保管责任人</text><text class="v">{{tool.keeperDisplay || tool.keeper || '—'}}</text></view>
     <view class="row"><text class="k">存放库房</text><text class="v">{{tool.store || '—'}}</text></view>
@@ -23,6 +24,7 @@
     <view class="row"><text class="k">规格型号</text><text class="v">{{tool.spec || '—'}}</text></view>
     <view class="row"><text class="k">器具来源</text><text class="v">{{tool.source === 'lease' ? '租赁' : '自有'}}</text></view>
   </view>
+  </scroll-view>
 
   <view class="card">
     <text class="card-title">使用状态</text>

@@ -16,6 +16,7 @@ Page({
   },
 
   async onLoad() { await this.load(); },
+  async onShow() { await this.load(); },
   async onPullDownRefresh() { await this.load(); wx.stopPullDownRefresh(); },
 
   async load() {

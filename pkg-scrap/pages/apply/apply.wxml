@@ -75,12 +75,11 @@
       <textarea class="area" placeholder="如：绝缘层击穿/金属构件永久变形/达到服役年限…" value="{{reason}}" bindinput="bindReason" />
     </view>
     <view class="row col"><text class="label">佐证照片</text>
-      <view class="photos">
-        <view wx:for="{{photos}}" wx:key="*this" class="ph">✓</view>
-        <view class="ph add" bindtap="onPhoto">＋</view>
-      </view>
+      <attachment-uploader value="{{photos}}" max="6" label="" bind:change="onPhotosChange" />
     </view>
   </view>
 
-  <button type="primary" loading="{{submitting}}" bindtap="onSubmit">提交报废审批</button>
+  <!-- D8：submit 按钮仅在未走过审批流程时显示（避免已审批/已处置仍可再提交） -->
+  <button type="primary" loading="{{submitting}}" wx:if="{{!scrapFlow || scrapFlow.current < 2}}" bindtap="onSubmit">提交报废审批</button>
+  <view wx:else class="card muted" style="text-align:center;padding:24rpx;">该器具已进入报废流程（已审批/已处置），无需重复提交</view>
 </view>

@@ -85,6 +85,24 @@ async function list(payload = {}) {
   return ok(res.data || []);
 }
 
+// 库房删除（D7）：仅库房管理员/系统管理员可删除；如库房下仍有器具则不可删除
+async function del(payload = {}) {
+  const { id } = payload;
+  if (!id) return fail('缺少库房ID', 400);
+  const openid = getOpenid();
+  const me = await db.getCurrentUser(openid);
+  if (!me || me.status === 'disabled') return fail('账号不可用', 403);
+  const isAdmin = me.role === 'admin' || me.role === 'supervisor' || me.role === 'lead';
+  const s = await db.getById('stores', id);
+  if (!s.data) return fail('库房不存在', 404);
+  if (!isAdmin && s.data.keeperOpenid !== openid) return fail('仅管理员或库房创建者可删除', 403);
+  // 检查库房下是否有器具
+  const tools = await db.listBy('tools', { store: s.data.name }, 1);
+  if (tools.data && tools.data.length) return fail('该库房下仍有器具，请先转移或处理', 409);
+  await db.remove('stores', id);
+  return ok({ id });
+}
+
 exports.main = async (event) => {
   const { action, payload = {} } = event;
   try {
@@ -94,6 +112,7 @@ exports.main = async (event) => {
       case 'records': return records(payload);
       case 'batchInbound': return batchInbound(payload);
       case 'list': return list(payload);
+      case 'delete': return del(payload);
       default: return fail('未知 action: ' + action);
     }
   } catch (e) {

@@ -1,0 +1,15 @@
+<!-- 通用可搜索选择器：用户/器具/库房 -->
+<view class="sp">
+  <view class="sp-label" wx:if="{{label}}">{{label}}</view>
+  <view class="sp-row" wx:if="{{pickedLabel}}">
+    <text class="sp-val">{{pickedLabel}}</text>
+    <text class="sp-clr" bindtap="onClear">×</text>
+  </view>
+  <input class="sp-inp" wx:else value="{{kw}}" placeholder="{{placeholder}}" bindinput="onInput" bindfocus="onFocus" bindblur="onBlur" />
+  <view class="sp-opt" wx:if="{{show && items.length}}">
+    <view class="sp-it" wx:for="{{items}}" wx:key="id" data-idx="{{index}}" bindtap="onPick">{{item.name}}</view>
+  </view>
+  <view class="sp-opt" wx:if="{{show && kw && items.length === 0}}">
+    <view class="sp-empty">无匹配结果</view>
+  </view>
+</view>

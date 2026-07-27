@@ -55,25 +55,46 @@ async function report(payload) {
   return ok({ _id: added._id, ...doc });
 }
 
-// 审批报修（M7.3）
+// 审批报修（M7.3）—— 含状态机前序锁定（D10）
 async function approve(payload) {
   const g = await requireApprover();
   if (g.err) return g.err;
   const { id, approve = true, remark = '' } = payload;
   const r = await db.getById('repair_records', id);
   if (!r.data) return fail('报修单不存在', 404);
-  await db.update('repair_records', id, { status: approve ? 'approved' : 'rejected', approveRemark: remark });
+  // D10：前序状态锁定——仅 pending 不可直接被审批
+  if (r.data.status !== 'pending') {
+    return fail(`当前状态「${r.data.status}」不可审批，仅待审批(pending)的报修单可操作`, 409);
+  }
+  const operatorName = g.u ? `${g.u.username || g.u.nickname || ''}${g.u.employeeId ? '（'+g.u.employeeId+'）' : ''}` : '';
+  await db.update('repair_records', id, {
+    status: approve ? 'approved' : 'rejected',
+    approveRemark: remark,
+    approver: g.u.openid,
+    approverName: operatorName,
+    approvedAt: now(),
+  });
   return ok({ id, status: approve ? 'approved' : 'rejected' });
 }
 
-// 维修登记（M7.4）
+// 维修登记（M7.4）—— 含状态机前序锁定（D10）
 async function record(payload) {
   const g = await requireApprover();
   if (g.err) return g.err;
   const { id, repairDetail = '', cost = 0, parts = [] } = payload;
   const r = await db.getById('repair_records', id);
   if (!r.data) return fail('报修单不存在', 404);
-  await db.update('repair_records', id, { status: 'repaired', repairDetail, cost, parts });
+  // D10：仅 approved 状态可登记维修
+  if (r.data.status !== 'approved') {
+    return fail(`当前状态「${r.data.status}」不可登记维修，仅已审批(approved)的报修单可操作`, 409);
+  }
+  const operatorName = g.u ? `${g.u.username || g.u.nickname || ''}${g.u.employeeId ? '（'+g.u.employeeId+'）' : ''}` : '';
+  await db.update('repair_records', id, {
+    status: 'repaired', repairDetail, cost, parts,
+    repairOperator: g.u.openid,
+    repairOperatorName: operatorName,
+    repairedAt: now(),
+  });
   return ok({ id, status: 'repaired' });
 }
 
@@ -109,15 +130,24 @@ async function execPlan(payload = {}) {
   return ok({ id, status: 'done' });
 }
 
-// 复检（M7.5）：合格则器具回到 qualified
+// 复检（M7.5）：合格则器具回到 qualified —— 含状态机前序锁定（D10）
 async function recheck(payload) {
   const g = await requireApprover();
   if (g.err) return g.err;
   const { id, pass = true } = payload;
   const r = await db.getById('repair_records', id);
   if (!r.data) return fail('报修单不存在', 404);
+  // D10：仅 repaired 状态可复检
+  if (r.data.status !== 'repaired') {
+    return fail(`当前状态「${r.data.status}」不可复检，仅已维修(repaired)的报修单可操作`, 409);
+  }
   const status = pass ? 'done' : 'repaired';
-  await db.update('repair_records', id, { status, recheckAt: now() });
+  const operatorName = g.u ? `${g.u.username || g.u.nickname || ''}${g.u.employeeId ? '（'+g.u.employeeId+'）' : ''}` : '';
+  await db.update('repair_records', id, {
+    status, recheckAt: now(),
+    recheckOperator: g.u.openid,
+    recheckOperatorName: operatorName,
+  });
   // 状态回写失败不得静默吞掉：记录日志并向上抛出，避免台账与器具状态不一致
   if (pass && r.data.toolId) {
     try {

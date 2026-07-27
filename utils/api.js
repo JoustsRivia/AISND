@@ -108,6 +108,8 @@ const inbound = (data) => invoke(FN.store, 'inbound', data).then((r) => { logOpe
 const getInboundRecords = (params) => invoke(FN.store, 'records', params);
 // R14：库房列表（供器具录入页选择存放库房）
 const getStoreList = (params) => invoke(FN.store, 'list', params);
+// D7：库房删除
+const deleteStore = (id) => invoke(FN.store, 'delete', { id });
 
 // ── 现场使用 M6 ───────────────────────────────────────────────────────
 const getSpotCheckTask = () => invoke(FN.site, 'checkTask');
@@ -284,12 +286,13 @@ module.exports = {
   borrowTool, returnTool, getBorrowRecords,
   // 维保
   createMaintenance, reportRepair, approveRepair, recordRepair, recheckRepair, getRepairList,
+  listMaintenancePlans, execMaintenancePlan,
   // 报废
   autoScrapCheck, judgeScrap, getScrapList, submitScrap, approveScrap, recordScrapDisposal,
   // 采购
   createPurchase, approvePurchase, createAcceptance, getPurchaseList,
   // 库房
-  registerStore, inbound, getInboundRecords, getStoreList,
+  registerStore, inbound, getInboundRecords, getStoreList, deleteStore,
   // 现场
   getSpotCheckTask, submitSpotCheck, getOpGuide, recordBriefing, getDailyCheck,
   // 培训

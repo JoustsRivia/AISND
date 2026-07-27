@@ -24,10 +24,7 @@
   </view>
 
   <view class="section-head"><view class="section-title">证件照片</view></view>
-  <view class="photo-row">
-    <view wx:for="{{photos}}" wx:key="*this" class="photo-thumb">✓</view>
-    <view class="photo-add" bindtap="onPhoto">+ 上传</view>
-  </view>
+  <attachment-uploader value="{{photos}}" max="6" label="" bind:change="onPhotosChange" />
 
   <button class="btn btn-primary btn-block" loading="{{submitting}}" bindtap="onSubmit">保存证书</button>
   <view class="safe-bottom"></view>

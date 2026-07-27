@@ -7,7 +7,11 @@ Page({
 
   async onLoad() {
     const r = await api.getToolList({ size: 200 }).catch(() => []);
-    this.setData({ tools: r || [], idx: (r && r.length) ? 0 : -1 });
+    const tools = (r || []).map((item) => ({
+      ...item,
+      displayPath: (item.store || '') + ' / ' + (item.keeper || ''),
+    }));
+    this.setData({ tools, idx: tools.length ? 0 : -1 });
   },
 
   onPick(e) { this.setData({ idx: +e.detail.value, label: null }); },

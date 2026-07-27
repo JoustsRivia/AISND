@@ -9,6 +9,11 @@ Page({
   data: {
     list: [], loading: true, isAdmin: false,
     specialCats: SPECIAL_EQUIP_CATEGORIES,
+    scope: 'all',
+  },
+
+  onLoad(options) {
+    this.setData({ scope: options.scope || 'all' });
   },
 
   onShow() { this.load(); },
@@ -18,12 +23,17 @@ Page({
     const p = auth.getProfile();
     const isAdmin = p && p.role === 'admin';
     const r = await api.certList(isAdmin ? {} : {}).catch(() => null);
-    const list = (r || []).map((c) => ({
-      ...c,
-      typeName: typeName(c.type),
-      expired: c.status !== 'valid',
-      expireShort: (c.expireAt || '').slice(0, 10),
-    }));
+    const list = (r || [])
+      .filter((c) => {
+        if (this.data.scope === 'expiring') return c.status !== 'valid' || (c.expireAt && new Date(c.expireAt) < new Date(Date.now() + 30 * 86400000));
+        return true;
+      })
+      .map((c) => ({
+        ...c,
+        typeName: typeName(c.type),
+        expired: c.status !== 'valid',
+        expireShort: (c.expireAt || '').slice(0, 10),
+      }));
     this.setData({ list, isAdmin, loading: false });
   },
 

@@ -1,4 +1,5 @@
 /* pkg-barcode/pages/gen/gen.wxss —— M14.1 */
+.gen-page { background: #f5f7fa; color: #1f2329; min-height: 100vh; }
 .gen { padding: 24rpx; }
 
 /* 子功能入口 */
@@ -39,6 +40,7 @@
   background: #fff; border-radius: 20rpx; border: 2rpx solid var(--c-border);
   display: flex; align-items: center; justify-content: center;
 }
+.qr-wrap .label { color: #1f2329; }
 .qr-canvas { width: 400rpx; height: 400rpx; }
 .qr-meta { margin-top: 18rpx; display: flex; flex-direction: column; gap: 6rpx; font-size: 24rpx; color: var(--c-text-weak); text-align: center; }
 .label-prev .title { font-size: 28rpx; font-weight: 600; color: var(--c-text); margin-bottom: 16rpx; }

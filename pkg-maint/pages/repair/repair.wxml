@@ -17,11 +17,14 @@
       <view class="line"><text class="muted">故障现象：</text><text>{{item.fault}}</text></view>
       <view class="line"><text class="muted">情况说明：</text><text>{{item.desc || '—'}}</text></view>
       <view class="line"><text class="muted">上报人：</text><text>{{item.reporter || '—'}}</text></view>
+      <view wx:if="{{item.approverName}}" class="line"><text class="muted">审批人：</text><text>{{item.approverName}}</text></view>
+      <view wx:if="{{item.repairOperatorName}}" class="line"><text class="muted">维修人：</text><text>{{item.repairOperatorName}}</text></view>
+      <view wx:if="{{item.recheckOperatorName}}" class="line"><text class="muted">复检人：</text><text>{{item.recheckOperatorName}}</text></view>
 
       <view class="actions">
-        <button size="mini" type="primary" loading="{{acting}}" disabled="{{acting}}" bindtap="onApprove">通过</button>
-        <button size="mini" loading="{{acting}}" disabled="{{acting}}" bindtap="onRecord">维修登记</button>
-        <button size="mini" type="warn" loading="{{acting}}" disabled="{{acting}}" bindtap="onRecheck">复检合格</button>
+        <button wx:if="{{item.status === 'pending'}}" size="mini" type="primary" loading="{{acting}}" disabled="{{acting}}" bindtap="onApprove">通过</button>
+        <button wx:if="{{item.status === 'approved'}}" size="mini" loading="{{acting}}" disabled="{{acting}}" bindtap="onRecord">维修登记</button>
+        <button wx:if="{{item.status === 'repaired'}}" size="mini" type="warn" loading="{{acting}}" disabled="{{acting}}" bindtap="onRecheck">复检合格</button>
       </view>
     </view>
   </view>
