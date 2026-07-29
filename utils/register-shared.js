@@ -1,21 +1,23 @@
 // utils/register-shared.js
 // 注册 / 登录页共享逻辑（消除 pages/register 与 pages/login 的重复实现）：
-//   - ROLES_BINDABLE：可自助绑定的角色清单（与 cloudfunctions/auth register 服务端白名单一致）
+//   - ROLES_BINDABLE：可自助绑定的角色清单（包含新角色码 a1~c24 + 旧角色码兼容）
 //   - ROLE_INFO：每个角色的结构化权限说明（数据范围 / 可用功能 / 审批链路），注册成功弹窗与权限页共用
 //   - buildUnits(tree)：把扁平组织树转换为「单位 + 其下级机构/班组（带路径）」结构，
-//     供单位 / 机构两级 picker 使用（注册、登录页逻辑完全一致，统一此处）。
-const { ROLES, ROLE_ORDER } = require('./constants');
+//     供系统管理页等单位/机构选择器使用（注册页不再使用此函数）。
 
-// 按 ROLE_ORDER（utils/constants.js 单一源）规范角色顺序；未在顺序表中的角色（如 lease_admin）
-// 排在末尾，保证「注册页 / 组织成员列表 / 筛选器」等所有角色选择器顺序一致。
+const { ROLES, ROLE_ORDER } = require('./constants');
+const { getLeafRoleCodes, getRoleMeta } = require('./role-tree');
+
+// 旧角色码排序（与 ROLE_ORDER 保持同源）
 function orderRoles(list) {
   const rank = (v) => { const i = ROLE_ORDER.indexOf(v); return i === -1 ? 999 : i; };
   return [...list].sort((a, b) => rank(a.value) - rank(b.value));
 }
 
-// 可自助绑定角色（与 cloudfunctions/auth SELF_BINDABLE_ROLES 服务端白名单一致，不含 admin）。
-// 顺序由 ROLE_ORDER 统一驱动，避免各角色选择器顺序漂移。
+// 可自助绑定角色清单：合并旧角色码（向后兼容）+ 新角色码（a1~c24）
+// 注意：旧角色码用于系统中已注册用户，新注册统一走三级级联选择器（新角色码）
 const ROLES_BINDABLE = orderRoles([
+  // ── 原角色（向后兼容，ROLE_ORDER 驱动顺序）──
   { value: ROLES.WORKER, name: '普通作业人员', desc: '仅可查看本班组工器具' },
   { value: ROLES.GROUP_LEAD, name: '班组长/班组安全员', desc: '仅可查看本班组工器具' },
   { value: ROLES.SAFETY_OFFICER, name: '项目部专职安全员', desc: '可管辖整个项目部台账' },
@@ -25,8 +27,9 @@ const ROLES_BINDABLE = orderRoles([
   { value: ROLES.SUPERVISOR, name: '安监部管理人员', desc: '安监督查与系统管理' },
 ]);
 
-// 角色 → 结构化权限说明（迭代 Item 6）：注册成功弹窗三段式 + 权限页常驻查看
+// ── 角色权限说明（合并新旧角色码）──
 const ROLE_INFO = {
+  // ── 旧角色（保持向后兼容）──
   [ROLES.WORKER]: {
     scope: '仅可查看本班组（机构）工器具台账',
     functions: ['浏览本班组器具档案与状态', '领用 / 归还本班组器具', '提交个人防护用品需求'],
@@ -61,6 +64,78 @@ const ROLE_INFO = {
     scope: '安监督查与系统管理',
     functions: ['全域监督检查', '隐患核销与考核', '字典与系统配置'],
     approval: '安监事项自行审批',
+  },
+
+  // ── 新角色码（a1~c24 三级级联角色树）──
+  a1: {
+    scope: '平台级安全监督管理，全局数据查看权限',
+    functions: ['全域安全监督检查', '全量台账与报表', '隐患核销与考核'],
+    approval: '平台安监事项自行审批',
+  },
+  a2: {
+    scope: '总包单位安全监督管理，管辖总包单位台账',
+    functions: ['总包单位安全监督检查', '总包单位台账查看', '整改跟踪与考核'],
+    approval: '总包安监事项自行审批',
+  },
+  b11: {
+    scope: '总包公司全局管理，管辖全部总包单位数据',
+    functions: ['总包全量台账与人员管理', '审批 / 归档 / 报表导出', '系统配置'],
+    approval: '最高权限，操作即时生效',
+  },
+  b12: {
+    scope: '总包部门业务管理，管辖本部门台账',
+    functions: ['本部门台账管理', '部门人员与任务', '部门级报表'],
+    approval: '部门内事项自行审批',
+  },
+  b21: {
+    scope: '管辖整个项目部台账',
+    functions: ['项目部全量台账', '项目部人员与任务', '项目级报表'],
+    approval: '项目部内事项自行审批',
+  },
+  b22: {
+    scope: '项目部隐患排查与安全交底',
+    functions: ['项目部全量台账查看', '隐患排查与整改跟踪', '安全交底与培训记录'],
+    approval: '项目部内事项自行审批；重大隐患报安监部',
+  },
+  b23: {
+    scope: '管辖本班组工器具与人员',
+    functions: ['本班组器具全生命周期管理', '指派本班成员作业任务', '审核本班领用申请'],
+    approval: '班组内操作直接生效；跨班/项目部事项报上级',
+  },
+  b24: {
+    scope: '本班组工器具使用',
+    functions: ['浏览本班组器具档案与状态', '领用 / 归还本班组器具', '提交个人防护用品需求'],
+    approval: '无需审批，操作即时生效',
+  },
+  c11: {
+    scope: '分包单位全局管理，管辖全部分包单位数据',
+    functions: ['分包全量台账与人员管理', '审批 / 归档 / 报表导出', '分包系统配置'],
+    approval: '最高权限，操作即时生效',
+  },
+  c12: {
+    scope: '分包部门业务管理，管辖本部门台账',
+    functions: ['本部门台账管理', '部门人员与任务', '部门级报表'],
+    approval: '部门内事项自行审批',
+  },
+  c21: {
+    scope: '管辖分包项目部台账',
+    functions: ['分包项目部全量台账', '项目部人员与任务', '项目级报表'],
+    approval: '项目部内事项自行审批',
+  },
+  c22: {
+    scope: '分包项目部隐患排查与安全交底',
+    functions: ['分包项目部全量台账查看', '隐患排查与整改跟踪', '安全交底与培训记录'],
+    approval: '项目部内事项自行审批；重大隐患报安监部/总包',
+  },
+  c23: {
+    scope: '管辖分包班组工器具与人员',
+    functions: ['分包班组器具全生命周期管理', '指派本班成员作业任务', '审核本班领用申请'],
+    approval: '班组内操作直接生效；跨班/项目部事项报上级',
+  },
+  c24: {
+    scope: '分包班组工器具使用',
+    functions: ['浏览分包班组器具档案与状态', '领用 / 归还本班组器具', '提交个人防护用品需求'],
+    approval: '无需审批，操作即时生效',
   },
 };
 

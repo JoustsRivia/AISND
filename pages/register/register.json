@@ -1,7 +1,7 @@
 {
   "usingComponents": {
     "form-field": "/components/form-field/form-field",
-    "role-org-picker": "/components/role-org-picker/role-org-picker"
+    "cascading-role-picker": "/components/cascading-role-picker/cascading-role-picker"
   },
   "navigationBarTitleText": "注册"
 }

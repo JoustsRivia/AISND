@@ -1,0 +1,59 @@
+<!-- components/cascading-role-picker/cascading-role-picker.wxml —— 三级级联角色选择器 -->
+<view class="crp">
+  <view class="crp-header">
+    <text class="crp-label">请选择您的角色</text>
+  </view>
+
+  <!-- 三级 picker-view（类似时间选择器） -->
+  <view class="crp-picker-wrap">
+    <picker-view
+      class="crp-picker"
+      value="{{pickerValue}}"
+      indicator-style="height: 88rpx;"
+      bindchange="onColumnChange"
+    >
+      <!-- 第一列：安监/总包/分包 -->
+      <picker-view-column>
+        <view
+          wx:for="{{col1}}"
+          wx:key="*this"
+          class="crp-item {{index === pickerValue[0] ? 'crp-item-sel' : ''}}"
+        >{{item}}</view>
+      </picker-view-column>
+
+      <!-- 第二列：管理/现场等 -->
+      <picker-view-column>
+        <view
+          wx:for="{{col2}}"
+          wx:key="*this"
+          class="crp-item {{index === pickerValue[1] ? 'crp-item-sel' : ''}}"
+        >{{item}}</view>
+      </picker-view-column>
+
+      <!-- 第三列：具体岗位（可能为空，a1/a2 无此级） -->
+      <picker-view-column wx:if="{{showCol3}}">
+        <view
+          wx:for="{{col3}}"
+          wx:key="*this"
+          class="crp-item {{index === pickerValue[2] ? 'crp-item-sel' : ''}}"
+        >{{item}}</view>
+      </picker-view-column>
+      <!-- 无三级时占位列 -->
+      <picker-view-column wx:else>
+        <view class="crp-item crp-item-empty">—</view>
+      </picker-view-column>
+    </picker-view>
+  </view>
+
+  <!-- 当前角色描述 -->
+  <view class="crp-desc" wx:if="{{selectedMeta}}">
+    <text class="crp-desc-icon">ⓘ</text>
+    <text class="crp-desc-text">{{selectedMeta.desc || (selectedName + '：' + (selectedMeta.path ? selectedMeta.path.join(' → ') : ''))}}</text>
+  </view>
+
+  <!-- 角色路径 -->
+  <view class="crp-path" wx:if="{{selectedMeta && selectedMeta.path}}">
+    <text class="crp-path-label">已选：</text>
+    <text class="crp-path-text">{{selectedMeta.path.join(' → ')}}</text>
+  </view>
+</view>

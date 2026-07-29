@@ -93,3 +93,86 @@
 2. **【架构】** 评估隔离层副本「入库 vs 构建生成」的取舍：当前入库保证可部署，但需依赖 `pretest` 重写避免漂移；可考虑 CI 校验副本与单一源一致。
 3. **【安全】** 落地 NEW-01 多端管理后台与 NEW-03 审计日志导出，闭环 RBAC 剩余读接口（ledger/reconcile/training 看板型接口按 `orgId` 子树收窄）。
 4. **【运维】** 轮换已明文写入 remote URL 的 GitHub token，改用凭据助手/SSH。
+
+---
+
+## 7. 自 2026-07-28 三级级联角色选择器改造
+
+> **范围**：注册页角色/组织/权限树重构。**新增 5 文件，修改 12 文件**。
+> **核心变更**：将注册页「角色 + 所属单位 + 机构/班组」三个独立 Flat Picker 替换为**三级级联角色选择器**（`picker-view` 实现，类似时间选择器交互），角色选定后自动推导组织归属与权限树。
+
+### 7.1 背景与根因
+
+**症状**：用户注册时"所属单位"和"机构/班组"形成的组织树不正确，角色与组织错位。
+
+**根因**：角色（role）与组织（unit/org）是两套独立选择器，没有任何级联约束。用户可以选「项目部负责人」角色 +「班组」级别 org 节点，形成逻辑矛盾的组织树。
+
+**治疗策略**：用三级级联选择器替换三个独立 picker，让角色选择本身携带组织/权限语义，并自动推导正确的组织归属。
+
+### 7.2 新增文件
+
+| 文件 | 说明 |
+|------|------|
+| `utils/role-tree.js` | 角色树数据结构（14 个叶子角色：a1~a2, b11~b24, c11~c24） + 级联查询/元数据/路径工具函数 |
+| `components/cascading-role-picker/` (4 文件) | `picker-view` 三级级联选择器组件，L1→L2→L3 严格级联、实时角色描述、自动通知父页面 |
+| `tests/role-tree.test.js` | 20 项纯函数单测：树结构完整性、级联查询、角色元数据、叶子识别 |
+
+### 7.3 修改文件
+
+| 文件 | 变更 |
+|------|------|
+| `pages/register/register.js` | 替换 `role-org-picker` → `cascading-role-picker`；新增 `_autoMatchOrg()` 根据角色自动匹配组织树节点 |
+| `pages/register/register.wxml` | 替换组件引用；新增组织匹配状态提示 |
+| `pages/register/register.json` | 组件路径更新 |
+| `pages/register/register.wxss` | 新增 `.org-match*` 样式 |
+| `pages/login/login.js` | 同步适配（登录页注册模式同样使用新组件 + 自动匹配） |
+| `pages/login/login.wxml` | 同上 |
+| `pages/login/login.json` | 同上 |
+| `pages/login/login.wxss` | 同上 |
+| `utils/register-shared.js` | 新增 `ROLE_INFO` 含全部 14 个新角色码（a1~c24）的权限说明（数据范围/可用功能/审批链路） |
+| `utils/constants.js` | 新增 `ROLE_TREE_CODES` 常量映射 |
+| `shared/roles.js` | `ROLE_SELF_BINDABLE` 扩展包含全部新角色码 |
+| `cloudfunctions/auth/index.js` | 新增 `listAll` 导入；`register()` 新增 `orgKind` 校验：验证注册提交的 org 节点 kind 与角色要求一致，不匹配返回 400 |
+
+### 7.4 角色树架构
+
+```
+一级          二级              三级（叶子角色）
+安监人员(a) ─ 平台安监(a1)
+          ─ 总包安监(a2)
+总包人员(b) ─ 总包管理(b1) ─ 公司负责人(b11)、部门经理(b12)
+          ─ 总包现场(b2) ─ 项目部负责人(b21)、安全员(b22)、班长(b23)、作业(b24)
+分包人员(c) ─ 分包管理(c1) ─ 分包负责人(c11)、部门经理(c12)
+          ─ 分包现场(c2) ─ 项目部负责人(c21)、安全员(c22)、班长(c23)、作业(c24)
+```
+
+- **14 个叶子角色码**均可自助注册（admin 除外）
+- 旧角色码（worker/group_lead 等）保留向后兼容
+- 角色码与服务端 orgKind 映射：`unit`(a1/a2/b11/b12/c11/c12)、`project`(b21/b22/c21/c22)、`team`(b23/b24/c23/c24)
+
+### 7.5 设计决策
+
+| 决策 | 理由 |
+|------|------|
+| `picker-view` 而非三个独立 `picker` | 用户要求"类似时间选择器的交互方式"，三列联动是标准实现 |
+| 保留 `role-org-picker` 组件不删除 | 系统管理页的用户管理可能仍需 flat role picker |
+| `components/cascading-role-picker/` 通过 `bind:change` 派发完整角色元数据 | 父页面零感知级联细节，职责单一 |
+| 旧角色码保留在 `ROLE_SELF_BINDABLE` | 已注册用户不受影响；新注册推荐走三级级联 |
+| `_autoMatchOrg()` 按 unitType + orgKind 关键词匹配 | 简单实用；无匹配时提示管理员创建组织架构 |
+
+### 7.6 质量门禁
+
+| 门禁 | 结果 |
+|------|------|
+| `node --test tests/role-tree.test.js` | ✅ 20 pass / 0 fail |
+| `npm run lint:helpers` | ✅ 36 文件首行路径合规 |
+| 预存 `tests/cloud-functions.test.js` | ⚠️ 已有 1 fail（`rateLimiter.js` 缺失，属测试环境不一致，非本次引入） |
+
+### 7.7 遗留问题与下一步
+
+| 项 | 说明 |
+|------|------|
+| `_autoMatchOrg()` 匹配策略 | 当前基于名称关键词匹配，可演化为基于 org 节点的 `kind` 字段精确匹配（需确保组织树 `kind` 字段有值） |
+| 云函数 `rateLimiter` 本地测试 | `cloudfunctions/*/index.js` 中 `require('./rateLimiter')` 在本地 Node 下解析失败（部署环境正常），建议统一加 `./helpers/` 前缀或用环境变量切换 |
+| 旧角色码清理 | 待确认所有在册用户已迁移到新角色码后，可将旧角色码从 `ROLE_SELF_BINDABLE` 移除 |
+| `register-shared.js` 中 `buildUnits()` | 保留但不再被注册/登录页引用（改为 `_autoMatchOrg`），系统管理页等其他场景仍在使用 |

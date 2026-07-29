@@ -48,6 +48,30 @@ const ROLE_ORDER = [
   ROLES.LEAD,          // 专班负责人
 ];
 
+// 新角色树三级角色码（一级：安监a/总包b/分包c；二级：管理/现场；三级：具体岗位）
+// 这些角色码由 utils/role-tree.js 的 ROLE_TREE 单一源定义，此处仅声明常量映射供引用。
+const ROLE_TREE_CODES = {
+  // 安监 (a)
+  SAFETY_PLATFORM: 'a1',        // 平台安监人员
+  SAFETY_CONTRACTOR: 'a2',      // 总包安监人员
+  // 总包管理人员 (b1)
+  CONTRACTOR_HEAD: 'b11',       // 公司负责人
+  CONTRACTOR_MANAGER: 'b12',    // 部门经理
+  // 总包现场工作人员 (b2)
+  CONTRACTOR_PROJECT_LEAD: 'b21',     // 项目部负责人
+  CONTRACTOR_SAFETY_OFFICER: 'b22',   // 项目部专职安全员
+  CONTRACTOR_GROUP_LEAD: 'b23',       // 自有班组班长/安全员
+  CONTRACTOR_WORKER: 'b24',           // 自有作业人员
+  // 分包管理人员 (c1)
+  SUBCONTRACTOR_HEAD: 'c11',    // 分包负责人
+  SUBCONTRACTOR_MANAGER: 'c12', // 分包部门经理
+  // 分包现场工作人员 (c2)
+  SUBCONTRACTOR_PROJECT_LEAD: 'c21',     // 分包项目部负责人
+  SUBCONTRACTOR_SAFETY_OFFICER: 'c22',   // 分包项目部专职安全员
+  SUBCONTRACTOR_GROUP_LEAD: 'c23',       // 分包班组班长/安全员
+  SUBCONTRACTOR_WORKER: 'c24',           // 分包作业人员
+};
+
 const TOOL_CATEGORIES = [
   { code: 'insulation', name: '绝缘安全工器具' },
   { code: 'motor', name: '手持电动机具' },
@@ -100,6 +124,7 @@ const HAZARD_LEVEL = { NORMAL: 'normal', SERIOUS: 'serious', MAJOR: 'major' };
 const WARNING_LEVEL = { NOTICE: 'notice', IMPORTANT: 'important', URGENT: 'urgent' };
 
 module.exports = {
-  TOOL_STATUS, TOOL_STATUS_LABELS, TOOL_SOURCES, ROLES, ROLE_ORDER, TOOL_CATEGORIES, DICT_TYPE, HAZARD_LEVEL, WARNING_LEVEL,
+  TOOL_STATUS, TOOL_STATUS_LABELS, TOOL_SOURCES, ROLES, ROLE_ORDER, ROLE_TREE_CODES,
+  TOOL_CATEGORIES, DICT_TYPE, HAZARD_LEVEL, WARNING_LEVEL,
   SPECIAL_EQUIP_CATEGORIES, CERT_TYPES, CERT_TO_CATEGORY, SUBSCRIBE_TMPL_ID,
 };

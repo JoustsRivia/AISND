@@ -5,7 +5,7 @@ const { getOpenid } = require('./helpers/user');
 
 const { createRateLimiter } = require('./rateLimiter');
 const __limiter = createRateLimiter({ getOpenid });
-const { findUser, addUser, updateUser, update, listUsers, remove, listBy } = require('./helpers/db');
+const { findUser, addUser, updateUser, update, listUsers, remove, listBy, listAll } = require('./helpers/db');
 const { passwordError } = require('./password');
 
 // F2 安全修复：服务端角色白名单，禁止客户端伪�? role 提权�?
@@ -69,6 +69,14 @@ async function register(payload) {
   const { role, unitId, orgId, username, nickname, password } = payload;
   if (!ROLE_SELF_BINDABLE.includes(role)) {
     return fail('角色不合法或需管理员分配：' + (role || '�?'), 403);
+  }
+  const _orgKindMap = { a1:'unit',a2:'unit', b11:'unit',b12:'unit', b21:'project',b22:'project',b23:'team',b24:'team', c11:'unit',c12:'unit', c21:'project',c22:'project',c23:'team',c24:'team' };
+  if (_orgKindMap[role] && orgId) {
+    const _orgs = await listAll('orgs');
+    const _node = (_orgs || []).find(o => o._id === orgId);
+    if (_node && _node.kind && _node.kind !== _orgKindMap[role]) {
+      return fail('\u6240\u9009\u7ec4\u7ec7\u8282\u70b9\u7c7b\u578b(' + (_node.kind||'') + ')\u4e0e\u89d2\u8272(' + role + ')\u8981\u6c42(' + _orgKindMap[role] + ')\u4e0d\u5339\u914d', 400);
+    }
   }
   if (!orgId) return fail('请选择所属机�? / 班组', 400);
   // 用户名唯一性：排除当前身份自身，避免重复注册时误判

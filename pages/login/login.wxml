@@ -1,4 +1,4 @@
-<!-- pages/login/login.wxml —— 登录页（hero 渐变头 + 上浮卡片，与主 tab 视觉统一） -->
+<!-- pages/login/login.wxml —— 登录页（hero 渐变头 + 上浮卡片，与主 tab 视觉统一�� -->
 <view class="login">
   <view class="hero login-hero">
     <view class="brand-sub">工器具安全管理平台</view>
@@ -13,9 +13,14 @@
         <view class="seg-item {{mode==='register'?'seg-on':''}}" data-mode="register" bindtap="onMode">注册</view>
       </view>
 
-      <!-- 注册专属：角色 + 单位 + 机构/班组（共享 role-org-picker 组件） -->
+      <!-- 注册专属：三级级联角色选择器 -->
       <block wx:if="{{mode==='register'}}">
-        <role-org-picker showRole="{{true}}" roles="{{roles}}" units="{{units}}" bind:change="onOrgPick" />
+        <cascading-role-picker bind:change="onRolePick" />
+        <view class="org-match" wx:if="{{isRoleComplete}}">
+          <text wx:if="{{orgLoading}}" class="org-match-loading">⏳ 正在匹配组织架构…</text>
+          <text wx:elif="{{matchedOrgId}}" class="org-match-ok">✅ 已自动匹配组织归属</text>
+          <text wx:else class="org-match-warn">⚠ 未找到匹配的组织节点，请联系管理员</text>
+        </view>
       </block>
 
       <form-field label="用户名" value="{{username}}" placeholder="请输入用户名" bind:input="onUserInput" />
@@ -28,7 +33,7 @@
       <button wx:if="{{mode==='login'}}" type="primary" loading="{{loading}}" bindtap="onLogin">登 录</button>
       <button wx:else type="primary" loading="{{loading}}" bindtap="onRegister">注册并登录</button>
 
-      <view class="note">🔒 小程序管理员由系统后台指派；其余角色（含专班负责人 / 项目部负责人 / 安监部管理人员）均可自助注册</view>
+      <view class="note">🔒 通过级联选择器逐级选择角色，系统将自动匹配组织归属与权限</view>
       <view wx:if="{{mode==='login'}}" class="forgot" bindtap="onForgot">忘记密码？<text class="link">立即找回</text></view>
       <view class="forgot" bindtap="goRegister">没有账号？<text class="link">去注册</text></view>
     </view>

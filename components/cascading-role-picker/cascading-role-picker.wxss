@@ -1,0 +1,77 @@
+/* components/cascading-role-picker/cascading-role-picker.wxss —— 三级级联选择器（自包含样式） */
+.crp { display: flex; flex-direction: column; }
+
+.crp-header {
+  padding: 16rpx 0 8rpx;
+}
+.crp-label {
+  font-size: 28rpx;
+  color: var(--c-text-sub);
+  font-weight: 600;
+}
+
+/* picker-view 容器 */
+.crp-picker-wrap {
+  height: 360rpx;
+  margin: 12rpx 0;
+  border-radius: var(--r-md);
+  background: var(--c-bg);
+  overflow: hidden;
+}
+.crp-picker {
+  width: 100%;
+  height: 100%;
+}
+
+/* 每列选项样式 */
+.crp-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 88rpx;
+  font-size: 28rpx;
+  color: var(--c-text-weak);
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0 8rpx;
+}
+.crp-item-sel {
+  color: var(--c-primary);
+  font-weight: 700;
+  font-size: 30rpx;
+}
+.crp-item-empty {
+  color: var(--c-divider);
+}
+
+/* 角色描述 */
+.crp-desc {
+  display: flex;
+  align-items: flex-start;
+  padding: 16rpx 20rpx;
+  margin: 8rpx 0;
+  background: var(--c-info-bg);
+  border-radius: var(--r-md);
+  font-size: 24rpx;
+  line-height: 1.6;
+}
+.crp-desc-icon {
+  color: var(--c-primary);
+  margin-right: 10rpx;
+  flex-shrink: 0;
+}
+.crp-desc-text {
+  color: var(--c-text-sub);
+}
+
+/* 角色路径 */
+.crp-path {
+  padding: 8rpx 0;
+  font-size: 22rpx;
+  color: var(--c-text-weak);
+}
+.crp-path-label {
+  color: var(--c-text-sub);
+}

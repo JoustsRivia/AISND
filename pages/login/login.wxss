@@ -17,3 +17,9 @@
 .seg { display: flex; background: var(--c-bg); border-radius: var(--r-pill); padding: 6rpx; margin-bottom: var(--sp-3); }
 .seg-item { flex: 1; text-align: center; height: 72rpx; line-height: 72rpx; font-size: 28rpx; color: var(--c-text-sub); border-radius: var(--r-pill); transition: all 0.2s; }
 .seg-on { background: var(--c-card); color: var(--c-primary); font-weight: 700; box-shadow: var(--sh-card); }
+
+/* 组织自动匹配状态 */
+.org-match { padding: 12rpx 0; font-size: 24rpx; }
+.org-match-loading { color: var(--c-text-weak); }
+.org-match-ok { color: #39b54a; font-weight: 600; }
+.org-match-warn { color: #f37d37; }

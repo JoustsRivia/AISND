@@ -29,3 +29,9 @@
 .info-b { display: block; font-size: 24rpx; color: var(--c-text-sub); line-height: 1.6; }
 .info-li { display: block; }
 .modal-link { margin-top: 20rpx; text-align: center; font-size: 24rpx; color: var(--c-primary); }
+
+/* 组织自动匹配状态 */
+.org-match { padding: 12rpx 0; font-size: 24rpx; }
+.org-match-loading { color: var(--c-text-weak); }
+.org-match-ok { color: #39b54a; font-weight: 600; }
+.org-match-warn { color: #f37d37; }
