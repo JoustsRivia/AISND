@@ -3,7 +3,7 @@
   <view class="hero fade-in">
     <view class="avatar">{{avatarText}}</view>
     <view class="info">
-      <text class="name">{{profile.nickName || profile.username || '未命名用户'}}</text>
+      <text class="name">{{profile.nickname || profile.username || '未命名用户'}}</text>
       <view class="sub-row">
         <text class="role-pill">{{roleText || '成员'}}</text>
         <text wx:if="{{orgName}}" class="org">{{orgName}}</text>

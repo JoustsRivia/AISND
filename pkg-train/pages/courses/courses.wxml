@@ -35,7 +35,7 @@
       <view wx:for="{{userSearchResults}}" wx:key="_id"
             class="search-item {{item._selected ? 'sel' : ''}}"
             data-index="{{index}}" catchtap="toggleSelectUser">
-        <text>{{item.name || item.nickName || item._id}}</text>
+        <text>{{item.name || item.nickname || item._id}}</text>
         <text wx:if="{{item._selected}}" class="check">✓</text>
       </view>
     </scroll-view>

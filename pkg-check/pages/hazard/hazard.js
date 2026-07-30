@@ -28,7 +28,7 @@ Page({
     if (!profile || !profile.bound) { wx.reLaunch({ url: '/pages/login/login' }); return; }
     await this.loadList();
   },
-  async onPullDownRefresh() { await this.loadList(); wx.stopPullDownRefresh(); },
+  async onPullDownRefresh() { try { await this.loadList(); } finally { wx.stopPullDownRefresh(); } },
 
   async loadList() {
     this.setData({ loading: true });

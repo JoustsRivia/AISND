@@ -34,7 +34,7 @@ Page({
     if (!profile || !profile.bound) { wx.reLaunch({ url: '/pages/login/login' }); return; }
     await this.loadRank();
   },
-  async onPullDownRefresh() { await this.refresh(); wx.stopPullDownRefresh(); },
+  async onPullDownRefresh() { try { await this.refresh(); } finally { wx.stopPullDownRefresh(); } },
 
   refresh() {
     if (this.data.tab === 'rank') return this.loadRank();

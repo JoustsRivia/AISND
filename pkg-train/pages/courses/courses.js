@@ -22,7 +22,7 @@ Page({
     if (!profile || !profile.bound) { wx.reLaunch({ url: '/pages/login/login' }); return; }
     await this.load();
   },
-  async onPullDownRefresh() { await this.load(); wx.stopPullDownRefresh(); },
+  async onPullDownRefresh() { try { await this.load(); } finally { wx.stopPullDownRefresh(); } },
 
   async load() {
     this.setData({ loading: true });
@@ -63,7 +63,7 @@ Page({
         ? arr
         : arr.filter((u) => {
             const name = (u.name || '').toLowerCase();
-            const nick = (u.nickName || '').toLowerCase();
+            const nick = (u.nickname || '').toLowerCase();
             const uid = (u._id || '').toLowerCase();
             return name.includes(key) || nick.includes(key) || uid.includes(key);
           });
@@ -84,7 +84,7 @@ Page({
     const selected = this.data.selectedUsers.slice();
     const i = selected.findIndex((u) => u._id === user._id);
     if (i >= 0) selected.splice(i, 1);
-    else selected.push({ _id: user._id, name: user.name || user.nickName || user._id });
+    else selected.push({ _id: user._id, name: user.name || user.nickname || user._id });
     const selIds = selected.map((u) => u._id);
     const results = this.data.userSearchResults.map((u) => ({
       ...u,

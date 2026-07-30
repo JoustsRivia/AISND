@@ -5,7 +5,7 @@
     <view class="hero-user">
       <view class="avatar">{{avatarText}}</view>
       <view class="hero-meta">
-        <text class="hello">{{greeting}}，{{profile.nickName || profile.username || '同事'}}</text>
+        <text class="hello">{{greeting}}，{{profile.nickname || profile.username || '同事'}}</text>
         <view class="role-pill">{{roleText || '成员'}} · {{todayText}}</view>
       </view>
     </view>

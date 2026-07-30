@@ -11,5 +11,5 @@ Page({
   goSubmit(e) {
     wx.navigateTo({ url: '/pkg-test/pages/submit/submit?id=' + e.currentTarget.dataset.id });
   },
-  onPullDownRefresh() { this.load().then(() => wx.stopPullDownRefresh()); },
+  onPullDownRefresh() { this.load().then(() => wx.stopPullDownRefresh()).catch(() => wx.stopPullDownRefresh()); },
 });

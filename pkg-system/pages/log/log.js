@@ -65,7 +65,7 @@ Page({
     this.load(true);
     if (isAdmin) this.loadAdmin();
   },
-  onPullDownRefresh() { this.load(true).then(() => wx.stopPullDownRefresh()); },
+  onPullDownRefresh() { this.load(true).then(() => wx.stopPullDownRefresh()).catch(() => wx.stopPullDownRefresh()); },
 
   // 切换类型筛选（后端按 type 过滤；'' 表示全部）
   onFilter(e) {

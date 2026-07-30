@@ -53,7 +53,7 @@ Page({
 
     const members = (users || []).filter((u) => !orgId || orgSet.has(u.orgId)).slice(0, 12);
     const memberList = members.map((u) => ({
-      name: u.nickName || u.username || '成员',
+      name: u.nickname || u.username || '成员',
       role: ROLE_TEXT[u.role] || '成员',
       employeeId: u.employeeId || '',
     }));

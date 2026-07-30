@@ -35,7 +35,7 @@ Page({
   async onLoad() {
     await Promise.all([this.loadTasks(), this.loadStores()]);
   },
-  async onPullDownRefresh() { await this.refresh(); wx.stopPullDownRefresh(); },
+  async onPullDownRefresh() { try { await this.refresh(); } finally { wx.stopPullDownRefresh(); } },
 
   async refresh() {
     if (this.data.tab === 'task') await this.loadTasks();

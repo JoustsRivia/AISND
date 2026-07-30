@@ -310,3 +310,44 @@
 | 1 | `scripts/validate-functions.js` | 仅校验 dbBase/userBase 一致性，其余 5 个共享文件（rateLimiter/crypto/employeeId/roles/password）不做漂移检测 | 低 |
 | 2 | `utils/api.js` `invoke` | `res.result` 为 undefined 时会将原始 wx 对象 resolve（实际不会触发） | 低 |
 | 3 | `utils/role-tree.js` `getRoleTree()` | 返回内部引用而非拷贝（调用方只读，暂无风险） | 低 |
+
+### 7.13 第三轮交叉验证：代理遗漏缺陷收口（2026-07-30）
+
+> 代理第二轮复查（§7.11）完成前端 6 项中危修复后，本 Agent 手工逐模式扫描全库，发现代理遗漏了子包页面（`pkg-*`）中的同类缺陷。
+
+**A. nickName（大写N）拼写 —— 6 处（代理修复了 JS 层 2 处，漏修 WXML 3 处 + 子包 JS 3 处）**
+
+| 文件 | 行 | 原值 | 根因 |
+|------|-----|------|------|
+| `pages/index/index.wxml` | 8 | `profile.nickName` | 后端存储字段为 `nickname`（小写n），模板引用 `nickName` → 永远 undefined → 始终走 fallback，昵称从不显示 |
+| `pages/profile/profile.wxml` | 6 | `profile.nickName` | 同上 |
+| `pkg-train/pages/courses/courses.wxml` | 38 | `item.nickName` | 同上 |
+| `pkg-train/pages/courses/courses.js` | 66, 87 | `u.nickName` / `user.nickName` | 搜索过滤与选中逻辑用错字段 |
+| `pkg-stats/pages/team/team.js` | 56 | `u.nickName` | 成员列表名称回退用错字段 |
+
+> 修复：统一改为 `nickname`（小写n）。
+
+**B. onPullDownRefresh 无错误处理 —— 10 处子包页面（代理修复了 3 处主包页面，漏修 10 处子包页面）**
+
+| 文件 | 原模式 | 风险 |
+|------|--------|------|
+| `pkg-check/pages/{assessment,hazard,inspection,performance}/**` | `async onPullDownRefresh() { await ...; wx.stopPullDownRefresh(); }` | `load()` 抛错 → `stopPullDownRefresh()` 不执行 → 下拉刷新 spinner 永久卡死 |
+| `pkg-ledger/pages/reconcile/` | 同上 | 同上 |
+| `pkg-maint/pages/plan/` | 同上 | 同上 |
+| `pkg-train/pages/{courses,sign-in}/` | 同上 | 同上 |
+| `pkg-system/pages/log/` | `this.load().then(...)` 缺 `.catch()` | 同上 |
+| `pkg-test/pages/due-list/` | 同上 | 同上 |
+
+> 修复：async 模式改为 `try { await ... } finally { wx.stopPullDownRefresh() }`；then 模式追加 `.catch(() => wx.stopPullDownRefresh())`。
+
+**C. 最终基线**
+
+| 门禁 | 结果 |
+|------|------|
+| `check:syntax` | ✅ 268 JS |
+| `check:frontend` | ✅ 零直连 |
+| `lint:helpers` | ✅ 36 helper |
+| `validate:functions` | ✅ 18 云函数 |
+| `npm test` | ✅ **150/150（全绿）** |
+
+**D. 本轮提交**：`nickName` 全量修复 6 处 + `onPullDownRefresh` 子包覆盖 10 处 + 本文档 §7.13。
