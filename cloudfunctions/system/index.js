@@ -105,7 +105,7 @@ async function orgTree() {
     const vr = await db.listBy('configs', { key: 'orgTreeVersion' }, 1);
     version = (vr.data && vr.data[0] && Number(vr.data[0].value)) || 0;
   } catch (_) {}
-  return ok({ list: res.data || [], version });
+  return ok({ list: res || [], version });
 }
 
 // ── 组织架构管理（op: add | update | delete | seed）───────────────────

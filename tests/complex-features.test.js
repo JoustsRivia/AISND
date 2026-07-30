@@ -191,3 +191,28 @@ test('R25: evaluate 非参训人不可评价', async () => {
   const r = await training.main({ action: 'evaluate', payload: { id: 'tr1', score: 85 } });
   assert.strictEqual(r.code, 403);
 });
+
+// ───────────────────────── 回归守卫：orgTree 返回非空组织树 ─────────────────────────
+test('system.orgTree: 空库自愈播种并返回非空列表', async () => {
+  mock.__store.orgs = []; // 触发自愈播种
+  const r = await system.main({ action: 'orgTree', payload: {} });
+  assert.strictEqual(r.code, 0);
+  assert.ok(Array.isArray(r.data.list), 'list 应为数组');
+  assert.ok(r.data.list.length > 0, '自愈播种后组织树不应为空');
+});
+
+// ───────────────────────── 回归守卫：warning.delete ─────────────────────────
+test('warning.delete: 删除存在的预警', async () => {
+  mock.__store.users = [{ openid: 'test_openid', role: 'admin', status: 'active' }];
+  mock.__store.warnings = [{ _id: 'w1', type: 'test_due', refId: 't1', title: '测试预警', orgId: '', read: false, createdAt: new Date() }];
+  const r = await require('../cloudfunctions/warning/index').main({ action: 'delete', payload: { id: 'w1' } });
+  assert.strictEqual(r.code, 0);
+  assert.strictEqual(r.data.id, 'w1');
+  assert.strictEqual(mock.__store.warnings.length, 0, '预警应已被删除');
+});
+
+test('warning.delete: 不存在的预警返回404', async () => {
+  mock.__store.users = [{ openid: 'test_openid', role: 'admin', status: 'active' }];
+  const r = await require('../cloudfunctions/warning/index').main({ action: 'delete', payload: { id: 'nonexistent' } });
+  assert.strictEqual(r.code, 404);
+});

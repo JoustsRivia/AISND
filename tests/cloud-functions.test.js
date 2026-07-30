@@ -197,3 +197,22 @@ test('scrap.list: 全局角色看全量待审报废', async () => {
   assert.strictEqual(r.code, 0);
   assert.strictEqual(r.data.length, 2); // 全局：全量
 });
+
+// ───────────────────────── 回归守卫：scrap.disposal 外流告警 ─────────────────────────
+test('scrap.disposal: 处置时若仍有 store/keeper 则生成外流预警', async () => {
+  mock.__store.users = [
+    { openid: 'lead1', role: 'lead', status: 'active', orgId: 'o1' },
+    { openid: 'keeper1', nickname: '张保管', status: 'active', orgId: 'o1' },
+  ];
+  mock.__store.tools = [{ _id: 't1', code: 'T001', name: '扳手', store: '库房A', keeper: 'keeper1', orgId: 'o1', status: 'scrapped' }];
+  mock.__store.orgs = [{ _id: 'o1', name: '测试公司', parentId: '', level: 0 }];
+  mock.__store.scrap_records = [{ _id: 's1', status: 'approved', toolId: 't1' }];
+  mock.__setOpenid('lead1');
+  const r = await scrap.main({ action: 'disposal', payload: { scrapId: 's1', method: '销毁', destroyedAt: new Date().toISOString() } });
+  assert.strictEqual(r.code, 0);
+  const warning = (mock.__store.warnings || []).find((w) => w.type === 'scrap_outflow');
+  assert.ok(warning, '应生成外流预警');
+  assert.strictEqual(warning.toolCode, 'T001');
+  assert.strictEqual(warning.keeperName, '张保管');
+  assert.strictEqual(warning.orgName, '测试公司');
+});

@@ -209,7 +209,7 @@
 | helper 首行注释 | `npm run lint:helpers` | ✅ 36 个 helper 首行均为真实路径 |
 | 云函数可部署 | `npm run validate:functions` | ✅ 18 个云函数，异常 0 |
 | 角色树单测 | `node --test tests/role-tree.test.js` | ✅ 20/20 |
-| 全量单测 | `npm test` | ✅ **146/146（全绿）** |
+| 全量单测 | `npm test` | ✅ **150/150（全绿，含 4 个 §7.10 回归测试）** |
 
 **B. 修复的预存缺陷（非本特性引入，阻塞测试套件 / 功能）**
 
@@ -233,3 +233,44 @@
 
 - HTML 预览由 `/workspace/role-picker-preview.html` 移入仓库 `demos/role-picker-preview.html`（纯前端演示，不进入小程序构建，门禁脚本不扫描 HTML）。
 - 命名/目录/依赖均遵循项目约定：工具树单一源 `utils/role-tree.js`（kebab，首行真实路径）、组件 `components/cascading-role-picker/`（4 件套）、`shared/roles.js` 经 `bundle-db-base.js` 同步为各函数 `helpers/roles.js`、页面仅经 `utils/api.js` 调用云函数（前端解耦门禁通过）。
+
+### 7.10 全面代码复查与缺陷整改（2026-07-30）
+
+> **范围**：对 18 个云函数 `index.js` 及 `helpers/db.js` 进行全面逻辑审查，根治已知及新发现的缺陷。
+
+**A. 复查发现与修复**
+
+| 缺陷 | 严重度 | 根因 | 修复 | 文件 |
+|------|--------|------|------|------|
+| `system/orgTree` 端点恒返回空列表 | **高** | `listAll('orgs')` 返回裸数组，但 `return ok({ list: res.data \|\| [] })` 误取 `.data` → `list` 恒为 `[]` | `res.data` → `res` | `cloudfunctions/system/index.js` |
+| `warning/delete` 动作崩溃 | **高** | `coll('warnings')` 调用但 `coll` 未在 index.js 作用域引入（仅在 `db` 对象上），触发 `ReferenceError` | `coll(...)` → `db.coll(...)` | `cloudfunctions/warning/index.js` |
+| `scrap/disposal` 外流告警路径崩溃 | **高** | `listAll('orgs')` / `listAll('users')` 调用但 `listAll` 未在 destructured import 中声明，触发 `ReferenceError` | 追加 `listAll` 到 import | `cloudfunctions/scrap/index.js` |
+
+> 三者均为「测试缺口导致未暴露」型缺陷：`orgTree` 无内容校验测试、`warning.delete` 无测试、`scrap.disposal`（store/keeper 告警分支）无测试。修复后同步补齐回归测试，防止再灭。
+
+**B. 补充的回归测试**
+
+| 新增测试 | 目的 | 文件 |
+|----------|------|------|
+| `system.orgTree: 空库自愈播种并返回非空列表` | 防止 `orgTree` 端点返回空列表 | `tests/complex-features.test.js` |
+| `warning.delete: 删除存在的预警` | 防止 `coll` 作用域 bug 回归 | `tests/complex-features.test.js` |
+| `warning.delete: 不存在的预警返回404` | 守卫正常不存在路径 | `tests/complex-features.test.js` |
+| `scrap.disposal: 处置时若仍有 store/keeper 则生成外流预警` | 防止 `listAll` import bug 回归 | `tests/cloud-functions.test.js` |
+
+**C. 其余审查未发现新缺陷**
+
+- `listAll` 裸数组 vs `listBy` `{data}` 的返回值约定在全量扫描后已无剩余误用（第 7.9 节已修复 reconcile/warning，本节修复 system/orgTree）。
+- 所有 `require` 路径均为 `./helpers/<name>`，无遗漏根级引用。
+- 空值守卫（`.data`、`.find`、`.map` 前守卫）在修复后已全覆盖关键路径。
+- 错误处理：各 `exports.main` 均有外层 `try/catch`，各业务函数均有输入校验与 `fail` 分支。`warning/generate` 内层 `catch(e)` 为有意空的"单类异常不影响其他类别"，风险可控。
+- `auth/index.js` 的编码不影响逻辑正确性（仅中文注释为 mojibake，代码为 ASCII 正确）。
+
+**D. 门禁终态**
+
+| 门禁 | 结果 |
+|------|------|
+| `check:syntax` | ✅ 268 文件 |
+| `check:frontend` | ✅ 零直连 `wx.cloud.*` |
+| `lint:helpers` | ✅ 36 文件 |
+| `validate:functions` | ✅ 18 云函数，异常 0 |
+| `npm test` | ✅ **150/150（+4 回归测试）** |

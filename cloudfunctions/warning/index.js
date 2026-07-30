@@ -142,7 +142,7 @@ async function del(payload) {
       return fail('无权删除该预警', 403);
     }
   }
-  await coll('warnings').doc(id).remove();
+  await db.coll('warnings').doc(id).remove();
   return ok({ id });
 }
 

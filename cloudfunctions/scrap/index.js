@@ -5,7 +5,7 @@ const { getOpenid } = require('./helpers/user');
 const { createRateLimiter } = require('./helpers/rateLimiter');
 const __limiter = createRateLimiter({ getOpenid });
 const {
-  findTool, updateTool, addScrap, updateScrap, listScrap, listTools,
+  findTool, updateTool, addScrap, updateScrap, listScrap, listTools, listAll,
   getCurrentUser, add, listBy, _, findUser, listOrgs, allowedOrgIds, roleScope,
 } = require('./helpers/db');
 
