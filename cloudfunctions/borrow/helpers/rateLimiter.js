@@ -18,7 +18,8 @@ const DEFAULT = {
 };
 
 // 批量操作白名单（自动走高阈值档）
-const BATCH_ACTIONS = ['importTools', 'batchInbound', 'batchGen', 'batchImport'];
+// 注意：此处使用云函数 action 名（event.action），而非 api.js 函数名
+const BATCH_ACTIONS = ['import', 'batchBorrow', 'batchReturn', 'batchInbound', 'batchGen', 'batchCheck'];
 
 /**
  * 创建限流器
