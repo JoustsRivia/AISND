@@ -274,3 +274,39 @@
 | `lint:helpers` | ✅ 36 文件 |
 | `validate:functions` | ✅ 18 云函数，异常 0 |
 | `npm test` | ✅ **150/150（+4 回归测试）** |
+
+### 7.11 前端 + 共享层深度复查（2026-07-30 第二轮）
+
+> **范围**：逐文件审查 `pages/`、`components/`、`utils/`、`shared/`，修复新发现的逻辑缺陷。
+
+**A. 前端 — 6 个中等缺陷（`ac1a767`）**
+
+| # | 位置 | 缺陷 | 影响 | 修复 |
+|---|------|------|------|------|
+| 1–3 | `pages/index|ledger|message` `onPullDownRefresh` | `.then()` 无 `.catch()` | 刷新失败 → spinner 永远不停止（wx.stopPullDownRefresh 在 catch 内） | 追加 `.catch()` 链 |
+| 4 | `pages/message` `onMarkAll` | `readAllWarnings` 调用时序：服务端失败后无反馈 | 乐观更新了 UI 且 toast 了成功，实际服务端未标记 | 改为 `await` + `res.code === 0` 判断后再乐观操作 |
+| 5–6 | `pages/tool-detail|scan` `requireOnline` | catch 块静默 `return`（不调用原回调） | 无网络时用户点击按钮无任何 UI 反馈 | catch 内至少 `wx.showToast({title:'请检查网络'})` |
+| 7 | `pages/profile` 头像显示 | `p.nickName`（大写 N）→ 微信 `getUserProfile` 返回的字段是 `nickname`（小写 n），头像文字永远取 username 首字，非 nickname | 头像昵称永不对 | 改为 `p.nickname` |
+
+**B. 共享层 — 1 个中等缺陷（`2cccf0c`）**
+
+| 缺陷 | 根因 | 修复 |
+|------|------|------|
+| `shared/rateLimiter.js` `BATCH_ACTIONS` 名单名实漂移 | `'importTools'` 是 API 函数名，云函数 action 实为 `'import'`；`'batchImport'` 无对应 action；缺少 `'batchBorrow'`/`'batchReturn'`/`'batchCheck'` | 对齐云函数 action 名，删除死条目，补全 3 个批量操作 |
+
+> `BATCH_ACTIONS` 控制批量操作使用高阈值（300/min）而非默认 30/min。名单错位导致批量导入/领用/归还/点检实际跑在 30/min 低频档，生产环境可能误触发 429 限流。
+
+**C. 其余维度零新增缺陷**
+
+- `wx.cloud.*` 直连：pages/components 零命中（`check:frontend` 验证）
+- WXML ↔ JS 事件绑定：全部 `bindxxx` 在 JS 中均有对应 handler
+- `require` 路径：18 云函数一致指向 `./helpers/<name>`
+- `listAll`/`listBy` 返回值约定：全量扫描零剩余误用
+
+### 7.12 已知低优先级防御性观测（非阻塞，记录待排期）
+
+| # | 位置 | 描述 | 严重度 |
+|---|------|------|--------|
+| 1 | `scripts/validate-functions.js` | 仅校验 dbBase/userBase 一致性，其余 5 个共享文件（rateLimiter/crypto/employeeId/roles/password）不做漂移检测 | 低 |
+| 2 | `utils/api.js` `invoke` | `res.result` 为 undefined 时会将原始 wx 对象 resolve（实际不会触发） | 低 |
+| 3 | `utils/role-tree.js` `getRoleTree()` | 返回内部引用而非拷贝（调用方只读，暂无风险） | 低 |
