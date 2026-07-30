@@ -2,7 +2,7 @@
 // 业务逻辑层（M14 条码文件 / 上传元数据）：只引用 ./helpers，绝不直接 cloud.database()/getWXContext()。
 const { getOpenid } = require('./helpers/user');
 
-const { createRateLimiter } = require('./rateLimiter');
+const { createRateLimiter } = require('./helpers/rateLimiter');
 const __limiter = createRateLimiter({ getOpenid });
 const { findTool, add, listBy, findUser, listOrgs, allowedOrgIds, roleScope, _ } = require('./helpers/db');
 

@@ -1,7 +1,7 @@
 // cloudfunctions/check/index.js —— M10 监督检查隐患（纯业务，只引用 helpers）
 const { getOpenid } = require('./helpers/user');
 
-const { createRateLimiter } = require('./rateLimiter');
+const { createRateLimiter } = require('./helpers/rateLimiter');
 const __limiter = createRateLimiter({ getOpenid });const db = require('./helpers/db');
 const ok = (data) => ({ code: 0, data });
 const fail = (message, code = 1) => ({ code, message });

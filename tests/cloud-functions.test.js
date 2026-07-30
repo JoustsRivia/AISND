@@ -13,15 +13,15 @@ require('./mock-cloud'); // 必须在 require 业务云函数前安装 wx-server
 
 const { test, beforeEach } = require('node:test');
 const assert = require('node:assert');
-const crypto = require('node:crypto');
+const { hashPwd, verifyPwd } = require('../cloudfunctions/auth/helpers/crypto');
 
 const auth = require('../cloudfunctions/auth/index');
 const purchase = require('../cloudfunctions/purchase/index');
 const scrap = require('../cloudfunctions/scrap/index');
 const mock = require('./mock-cloud');
 
-// 与 cloudfunctions/auth / system 同源的密码哈希（sha1 + 'tms_' 盐），用于断言口令已哈希
-function hashPwd(p) { return p ? crypto.createHash('sha1').update('tms_' + p).digest('hex') : ''; }
+// 与 cloudfunctions/auth/helpers/crypto 同源的密码哈希（PBKDF2），用于断言口令已哈希（非明文）
+// 注意：真实实现已升级为 PBKDF2（见 shared/crypto.js SEC-01），不再使用旧 sha1('tms_'+p)，故此处直接引用真实 hashPwd。
 
 beforeEach(() => {
   mock.__reset();
@@ -41,7 +41,8 @@ test('auth.register: 合法角色成功建档且口令被哈希（非明文）',
   assert.strictEqual(r.code, 0);
   const u = mock.__store.users.find((x) => x.username === 'alice');
   assert.ok(u, '应在 users 集合写入用户');
-  assert.strictEqual(u.password, hashPwd('secret123'));
+  // PBKDF2 每次哈希使用随机盐，故不能按字面比较哈希串；改用 verifyPwd 校验口令确已哈希且可验证
+  assert.ok(verifyPwd('secret123', u.password), '口令应已哈希且可用 verifyPwd 校验通过');
   assert.notStrictEqual(u.password, 'secret123');
   assert.strictEqual(u.bound, true);
 });

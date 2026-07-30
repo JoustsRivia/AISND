@@ -1,7 +1,7 @@
 // cloudfunctions/maintenance/index.js —— M7 维保报修（纯业务，只引用 helpers）
 const { getOpenid } = require('./helpers/user');
 
-const { createRateLimiter } = require('./rateLimiter');
+const { createRateLimiter } = require('./helpers/rateLimiter');
 const __limiter = createRateLimiter({ getOpenid });const db = require('./helpers/db');
 // RBAC 数据范围原语（来自 _shared/dbBase.js 单一源，迁移零改动）
 const { scopeFilter, listOrgs } = db;

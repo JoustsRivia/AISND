@@ -3,16 +3,16 @@
 // 所有平台专属能力都�? helpers 封装，迁移时本文件无需改动�?
 const { getOpenid } = require('./helpers/user');
 
-const { createRateLimiter } = require('./rateLimiter');
+const { createRateLimiter } = require('./helpers/rateLimiter');
 const __limiter = createRateLimiter({ getOpenid });
 const { findUser, addUser, updateUser, update, listUsers, remove, listBy, listAll } = require('./helpers/db');
-const { passwordError } = require('./password');
+const { passwordError } = require('./helpers/password');
 
 // F2 安全修复：服务端角色白名单，禁止客户端伪�? role 提权�?
 // 普通业务角�? + 专班负责�?/项目部负责人/安监部管理人�? 均允许在注册时自绑定�?
 // 「小程序管理�?(admin)」权限极高，不在此白名单，须由系统初始化/控制台分配，避免越权自建�?
 // �? utils/constants.js �? ROLES 保持同源；此处硬编码以建立服务端权威边界，避免跨部署依赖�?
-const { ROLE_SELF_BINDABLE } = require('./roles');
+const { ROLE_SELF_BINDABLE } = require('./helpers/roles');
 
 // 统一出口
 const ok = (data) => ({ code: 0, data });
@@ -53,7 +53,7 @@ async function updateProfile(payload) {
   return ok(res.data[0]);
 }
 
-const { hashPwd, verifyPwd } = require('./crypto');
+const { hashPwd, verifyPwd } = require('./helpers/crypto');
 
 // R02 按组织树级别生成工号（与 system.generateEmployeeId 同源逻辑�?
 // 规则：单位级�?4位；项目部级�?6位；班组级→8位。工号组织树内唯一�?
@@ -61,7 +61,7 @@ const { hashPwd, verifyPwd } = require('./crypto');
 async function generateEmployeeId(orgId) {
   const orgs = await listAll('orgs');
   const users = await listAll('users');
-  return require('./employeeId').generateEmployeeId(orgId, orgs, users);
+  return require('./helpers/employeeId').generateEmployeeId(orgId, orgs, users);
 }
 
 async function register(payload) {

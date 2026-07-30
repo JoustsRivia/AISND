@@ -2,7 +2,7 @@
 // 业务逻辑层（M5 领用归还 P0）：只引用 ./helpers，绝不直接 cloud.database()/getWXContext()。
 const { getOpenid } = require('./helpers/user');
 
-const { createRateLimiter } = require('./rateLimiter');
+const { createRateLimiter } = require('./helpers/rateLimiter');
 const __limiter = createRateLimiter({ getOpenid });
 const { findTool, updateTool, findUser, addBorrow, listBorrow, listBy, addRepair, listOrgs, _, allowedOrgIds, roleScope } = require('./helpers/db');
 

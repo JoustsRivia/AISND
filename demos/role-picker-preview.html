@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>善工智管 · 三级级联角色选择器预览（纯前端）</title>
+<style>
+  :root {
+    --c-primary: #1A56DB;
+    --c-primary-grad: linear-gradient(135deg, #1A56DB 0%, #2F6BEF 100%);
+    --c-card: #ffffff;
+    --c-bg: #f4f6fb;
+    --c-text: #1f2733;
+    --c-text-sub: #5b6675;
+    --c-text-weak: #98a2b3;
+    --c-divider: #eceef3;
+    --c-info-bg: #eef4ff;
+    --c-info: #1A56DB;
+    --r-md: 16rpx;
+    --r-lg: 24rpx;
+    --sh-card: 0 8rpx 30rpx rgba(26,86,219,.08);
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0;
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+    background: #e9edf5;
+    color: var(--c-text);
+  }
+  .phone {
+    max-width: 420px; margin: 24px auto;
+    background: var(--c-bg);
+    min-height: 860px;
+    border-radius: 28px;
+    box-shadow: 0 20px 60px rgba(20,40,80,.18);
+    overflow: hidden;
+    position: relative;
+  }
+  /* 顶部 hero */
+  .hero {
+    background: var(--c-primary-grad);
+    color: #fff;
+    padding: 48px 28px 36px;
+  }
+  .brand-sub { font-size: 22px; opacity: .85; letter-spacing: 2px; }
+  .brand-title { font-size: 34px; font-weight: 800; margin-top: 6px; }
+  /* 卡片 */
+  .form-wrap { padding: 20px 16px 40px; }
+  .card {
+    background: var(--c-card);
+    border-radius: 20px;
+    padding: 20px 18px;
+    box-shadow: var(--sh-card);
+  }
+  .section-label { font-size: 15px; color: var(--c-text-sub); font-weight: 600; margin: 4px 0 8px; }
+
+  /* 级联滚轮选择器 */
+  .crp-picker-wrap {
+    height: 220px; margin: 8px 0;
+    border-radius: 14px; background: #fafbfe;
+    position: relative; overflow: hidden;
+    border: 1px solid var(--c-divider);
+  }
+  .crp-picker { display: flex; height: 100%; }
+  .crp-col {
+    flex: 1; height: 100%; overflow-y: auto;
+    scroll-snap-type: y mandatory;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;          /* 触控时保证纵向滚动不被浏览器手势抢占 */
+    user-select: none;            /* 点击/拖动选择时不选中文本 */
+    padding: 88px 0; /* 上下留白使首尾可居中 */
+  }
+  .crp-item {
+    height: 44px; line-height: 44px; text-align: center;
+    scroll-snap-align: center;
+    font-size: 15px; color: var(--c-text-weak);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    padding: 0 4px; cursor: pointer;
+    transition: color .12s, background .12s;
+  }
+  .crp-item:hover { color: var(--c-primary); background: rgba(26,86,219,.05); }
+  .crp-item:active { background: rgba(26,86,219,.12); }
+  .crp-item.sel { color: var(--c-primary); font-weight: 700; font-size: 16px; }
+  .crp-indicator {
+    position: absolute; left: 0; right: 0; top: 88px; height: 44px;
+    border-top: 1px solid var(--c-divider); border-bottom: 1px solid var(--c-divider);
+    background: rgba(26,86,219,.04);
+    pointer-events: none;
+  }
+  .crp-divider { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--c-divider); pointer-events: none; }
+
+  /* 角色描述 + 路径 */
+  .crp-desc {
+    display: flex; align-items: flex-start; gap: 8px;
+    margin: 10px 0 4px; padding: 12px 14px;
+    background: var(--c-info-bg); border-radius: 12px;
+    font-size: 13px; line-height: 1.6; color: var(--c-text-sub);
+  }
+  .crp-desc .i { color: var(--c-primary); flex-shrink: 0; }
+  .crp-path { font-size: 12px; color: var(--c-text-weak); padding: 4px 2px; }
+  .crp-path b { color: var(--c-primary); }
+
+  /* 自动关联卡片 */
+  .auto-card { margin-top: 16px; border-top: 1px dashed var(--c-divider); padding-top: 14px; }
+  .auto-title { font-size: 14px; font-weight: 700; color: var(--c-text); margin-bottom: 10px; }
+  .auto-title .dot { display:inline-block; width:8px; height:8px; border-radius:50%; background:#39b54a; margin-right:6px; }
+  .kv { display: flex; gap: 10px; font-size: 13px; margin: 6px 0; }
+  .kv .k { width: 92px; color: var(--c-text-weak); flex-shrink: 0; }
+  .kv .v { color: var(--c-text-sub); }
+  .tag { display:inline-block; background: var(--c-info-bg); color: var(--c-primary); border-radius: 8px; padding: 2px 10px; font-size: 12px; margin: 2px 4px 2px 0; }
+  .func-li { font-size: 13px; color: var(--c-text-sub); line-height: 1.9; }
+
+  .btn {
+    margin-top: 18px; width: 100%; border: none; border-radius: 14px;
+    background: var(--c-primary-grad); color: #fff; font-size: 16px; font-weight: 700;
+    padding: 14px 0; cursor: pointer;
+  }
+  .btn:active { opacity: .9; }
+
+  .note { font-size: 12px; color: var(--c-text-weak); margin-top: 12px; line-height: 1.6; }
+
+  /* 模拟提交弹窗 */
+  .mask {
+    position: absolute; inset: 0; background: rgba(0,0,0,.45);
+    display: none; align-items: center; justify-content: center; z-index: 20;
+  }
+  .mask.show { display: flex; }
+  .modal {
+    width: 300px; background: #fff; border-radius: 18px; padding: 24px 22px;
+    box-shadow: 0 12px 40px rgba(0,0,0,.2);
+  }
+  .modal .ico { font-size: 44px; text-align: center; }
+  .modal .t { text-align: center; font-size: 18px; font-weight: 800; margin-top: 6px; }
+  .modal .s { text-align: center; font-size: 13px; color: var(--c-text-weak); margin-top: 4px; }
+  .payload {
+    margin: 16px 0; padding: 12px; background: #f6f8fc; border-radius: 10px;
+    font-size: 12px; color: var(--c-text-sub); line-height: 1.7;
+    font-family: ui-monospace, Menlo, Consolas, monospace; word-break: break-all;
+    max-height: 220px; overflow: auto;
+  }
+  .modal .btn { margin-top: 6px; }
+  .banner {
+    background: #fff7e6; border: 1px solid #ffe1a8; color: #a06b00;
+    font-size: 12px; padding: 8px 12px; border-radius: 10px; margin: 0 16px 14px;
+  }
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="banner">⚠ 纯前端预览：本页不调用微信云开发后端，组织匹配与权限说明均为本地模拟数据，用于演示交互。</div>
+
+  <div class="hero">
+    <div class="brand-sub">善工智管</div>
+    <div class="brand-title">账号注册</div>
+  </div>
+
+  <div class="form-wrap">
+    <div class="card">
+      <div class="section-label">请逐级选择您的角色</div>
+
+      <!-- 三级滚轮选择器 -->
+      <div class="crp-picker-wrap">
+        <div class="crp-indicator"></div>
+        <div class="crp-divider" style="left:33.33%"></div>
+        <div class="crp-divider" style="left:66.66%"></div>
+        <div class="crp-picker" id="picker">
+          <div class="crp-col" data-col="0"></div>
+          <div class="crp-col" data-col="1"></div>
+          <div class="crp-col" data-col="2"></div>
+        </div>
+      </div>
+
+      <div class="crp-desc"><span class="i">ⓘ</span><span id="roleDesc">请滚动上方滚轮选择角色…</span></div>
+      <div class="crp-path" id="rolePath"></div>
+
+      <!-- 自动关联：组织树 + 权限树 -->
+      <div class="auto-card" id="autoCard" style="display:none">
+        <div class="auto-title"><span class="dot"></span>自动关联结果（无需手动选单位/机构）</div>
+        <div class="kv"><span class="k">所属单位类型</span><span class="v" id="unitType"></span></div>
+        <div class="kv"><span class="k">组织节点类型</span><span class="v" id="orgKind"></span></div>
+        <div class="kv"><span class="k">匹配组织节点</span><span class="v" id="matchedOrg"></span></div>
+        <div class="kv" style="align-items:flex-start"><span class="k">权限范围</span><span class="v" id="permScope"></span></div>
+        <div class="kv" style="align-items:flex-start"><span class="k">可用功能</span><span class="v" id="permFunc"></span></div>
+        <div class="kv" style="align-items:flex-start"><span class="k">审批链路</span><span class="v" id="permApproval"></span></div>
+      </div>
+
+      <button class="btn" id="submitBtn">注册并登录</button>
+      <div class="note">🔒 通过三级级联选择器逐级选择角色，系统自动匹配组织归属与权限，禁止跨树 / 跳过层级注册。</div>
+    </div>
+  </div>
+
+  <!-- 模拟提交结果 -->
+  <div class="mask" id="mask">
+    <div class="modal">
+      <div class="ico">✅</div>
+      <div class="t">注册成功（模拟）</div>
+      <div class="s">已自动建立角色对应的组织树与权限树</div>
+      <div class="payload" id="payload"></div>
+      <button class="btn" id="closeBtn">进入工作台</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+ * 角色树（与 utils/role-tree.js 同源，纯前端预览副本）
+ * ============================================================ */
+const ROLE_TREE = [
+  { value:'a', name:'安监人员', unitType:'safety', children:[
+    { value:'a1', name:'平台安监人员', orgKind:'unit', unitType:'safety', desc:'平台级安全监督管理' },
+    { value:'a2', name:'总包安监人员', orgKind:'unit', unitType:'safety', desc:'总包单位安全监督管理' },
+  ]},
+  { value:'b', name:'总包人员', unitType:'contractor', children:[
+    { value:'b1', name:'总包管理人员', unitType:'contractor', children:[
+      { value:'b11', name:'公司负责人', orgKind:'unit', unitType:'contractor', desc:'总包公司全局管理' },
+      { value:'b12', name:'部门经理', orgKind:'unit', unitType:'contractor', desc:'总包部门业务管理' },
+    ]},
+    { value:'b2', name:'总包现场工作人员', unitType:'contractor', children:[
+      { value:'b21', name:'项目部负责人', orgKind:'project', unitType:'contractor', desc:'管辖整个项目部台账' },
+      { value:'b22', name:'项目部专职安全员', orgKind:'project', unitType:'contractor', desc:'项目部隐患排查与安全交底' },
+      { value:'b23', name:'自有班组班长/安全员', orgKind:'team', unitType:'contractor', desc:'管辖本班组工器具与人员' },
+      { value:'b24', name:'自有作业人员', orgKind:'team', unitType:'contractor', desc:'本班组工器具使用' },
+    ]},
+  ]},
+  { value:'c', name:'分包人员', unitType:'subcontractor', children:[
+    { value:'c1', name:'分包管理人员', unitType:'subcontractor', children:[
+      { value:'c11', name:'分包负责人', orgKind:'unit', unitType:'subcontractor', desc:'分包单位全局管理' },
+      { value:'c12', name:'分包部门经理', orgKind:'unit', unitType:'subcontractor', desc:'分包部门业务管理' },
+    ]},
+    { value:'c2', name:'分包现场工作人员', unitType:'subcontractor', children:[
+      { value:'c21', name:'分包项目部负责人', orgKind:'project', unitType:'subcontractor', desc:'管辖分包项目部台账' },
+      { value:'c22', name:'分包项目部专职安全员', orgKind:'project', unitType:'subcontractor', desc:'分包项目部隐患排查与安全交底' },
+      { value:'c23', name:'分包班组班长/安全员', orgKind:'team', unitType:'subcontractor', desc:'管辖分包班组工器具与人员' },
+      { value:'c24', name:'分包作业人员', orgKind:'team', unitType:'subcontractor', desc:'分包班组工器具使用' },
+    ]},
+  ]},
+];
+
+/* 角色权限说明（与 utils/register-shared.js 同源摘录） */
+const ROLE_INFO = {
+  a1:{scope:'平台级安全监督管理，全局数据查看权限',functions:['全域安全监督检查','全量台账与报表','隐患核销与考核'],approval:'平台安监事项自行审批'},
+  a2:{scope:'总包单位安全监督管理，管辖总包单位台账',functions:['总包单位安全监督检查','总包单位台账查看','整改跟踪与考核'],approval:'总包安监事项自行审批'},
+  b11:{scope:'总包公司全局管理，管辖全部总包单位数据',functions:['总包全量台账与人员管理','审批/归档/报表导出','系统配置'],approval:'最高权限，操作即时生效'},
+  b12:{scope:'总包部门业务管理，管辖本部门台账',functions:['本部门台账管理','部门人员与任务','部门级报表'],approval:'部门内事项自行审批'},
+  b21:{scope:'管辖整个项目部台账',functions:['项目部全量台账','项目部人员与任务','项目级报表'],approval:'项目部内事项自行审批'},
+  b22:{scope:'项目部隐患排查与安全交底',functions:['项目部全量台账查看','隐患排查与整改跟踪','安全交底与培训记录'],approval:'项目部内事项自行审批；重大隐患报安监部'},
+  b23:{scope:'管辖本班组工器具与人员',functions:['本班组器具全生命周期管理','指派本班成员作业任务','审核本班领用申请'],approval:'班组内操作直接生效；跨班/项目部事项报上级'},
+  b24:{scope:'本班组工器具使用',functions:['浏览本班组器具档案与状态','领用/归还本班组器具','提交个人防护用品需求'],approval:'无需审批，操作即时生效'},
+  c11:{scope:'分包单位全局管理，管辖全部分包单位数据',functions:['分包全量台账与人员管理','审批/归档/报表导出','分包系统配置'],approval:'最高权限，操作即时生效'},
+  c12:{scope:'分包部门业务管理，管辖本部门台账',functions:['本部门台账管理','部门人员与任务','部门级报表'],approval:'部门内事项自行审批'},
+  c21:{scope:'管辖分包项目部台账',functions:['分包项目部全量台账','项目部人员与任务','项目级报表'],approval:'项目部内事项自行审批'},
+  c22:{scope:'分包项目部隐患排查与安全交底',functions:['分包项目部全量台账查看','隐患排查与整改跟踪','安全交底与培训记录'],approval:'项目部内事项自行审批；重大隐患报安监部/总包'},
+  c23:{scope:'管辖分包班组工器具与人员',functions:['分包班组器具全生命周期管理','指派本班成员作业任务','审核本班领用申请'],approval:'班组内操作直接生效；跨班/项目部事项报上级'},
+  c24:{scope:'分包班组工器具使用',functions:['浏览分包班组器具档案与状态','领用/归还本班组器具','提交个人防护用品需求'],approval:'无需审批，操作即时生效'},
+};
+const UNIT_TYPE_LABEL = { safety:'安监单位', contractor:'总包单位', subcontractor:'分包单位' };
+const ORG_KIND_LABEL = { unit:'单位级节点', project:'项目部级节点', team:'班/组级节点' };
+
+/* 模拟组织树（演示自动匹配，不代表真实数据） */
+const MOCK_ORG_TREE = [
+  { _id:'u_safe', name:'平台安全监察部', kind:'unit', level:0, parentId:null },
+  { _id:'u_c1', name:'安装总承包公司', kind:'unit', level:0, parentId:null },
+  { _id:'u_c1_p1', name:'安装公司·项目部A', kind:'project', level:1, parentId:'u_c1' },
+  { _id:'u_c1_p1_t1', name:'安装公司·项目部A·电气班', kind:'team', level:2, parentId:'u_c1_p1' },
+  { _id:'u_c1_p2', name:'安装公司·项目部B', kind:'project', level:1, parentId:'u_c1' },
+  { _id:'u_c2', name:'广安总承包公司', kind:'unit', level:0, parentId:null },
+  { _id:'u_s1', name:'第一分包单位', kind:'unit', level:0, parentId:null },
+  { _id:'u_s1_p1', name:'分包1·项目部', kind:'project', level:1, parentId:'u_s1' },
+  { _id:'u_s1_p1_t1', name:'分包1·项目部·作业班', kind:'team', level:2, parentId:'u_s1_p1' },
+  { _id:'u_s2', name:'第二分包单位', kind:'unit', level:0, parentId:null },
+];
+
+/* ============================================================
+ * 级联选择器逻辑
+ * ============================================================ */
+const ROW_H = 44;                 // 与 CSS .crp-item 高度一致
+const PAD = 88;                   // 与 CSS .crp-col 上下 padding 一致
+const cols = [...document.querySelectorAll('.crp-col')];
+let state = { i0:0, i1:0, i2:0 };
+
+function childrenOf(value) {
+  if (!value) return ROLE_TREE.map(n => ({ value:n.value, name:n.name }));
+  let found = null;
+  (function walk(ns){ for (const n of ns){ if (n.value===value){ found=n; return; } if (n.children) walk(n.children); } })(ROLE_TREE);
+  return found && found.children ? found.children.map(n => ({ value:n.value, name:n.name })) : [];
+}
+function nodeOf(path) {
+  let node = null;
+  (function walk(ns, acc){ for (const n of ns){ const p=[...acc,n]; if (p.length===path.length && p.every((x,i)=>x.value===path[i].value)){ node=n; return; } if (n.children) walk(n.children, p); } })(ROLE_TREE, []);
+  return node;
+}
+
+function renderColumn(colIdx, list, selIdx) {
+  const col = cols[colIdx];
+  col.innerHTML = list.map((it, i) =>
+    `<div class="crp-item ${i===selIdx?'sel':''}" data-i="${i}">${it.name}</div>`).join('');
+  col.scrollTop = selIdx * ROW_H;
+}
+
+function rebuild(resetTo) {
+  // resetTo: {i0,i1,i2} 重置后各级索引
+  // 注意：直接基于 ROLE_TREE 原始节点（带 .children）做结构遍历，
+  // 不能用 childrenOf()(它会把节点 map 成 {value,name} 而丢弃 children)。
+  state = resetTo;
+  const l1 = ROLE_TREE;
+  const n1 = l1[resetTo.i0];
+  const l2 = (n1 && n1.children) ? n1.children : [];
+  const n2 = l2[resetTo.i1] || null;
+  const l3 = (n2 && n2.children) ? n2.children : [];
+  // renderColumn 只需 {value,name}，这里统一映射
+  renderColumn(0, l1.map(n=>({value:n.value,name:n.name})), resetTo.i0);
+  renderColumn(1, l2.map(n=>({value:n.value,name:n.name})), resetTo.i1);
+  renderColumn(2, l3.map(n=>({value:n.value,name:n.name})), resetTo.i2);
+  syncSelectionUI();
+}
+
+function currentPathNodes() {
+  const l1 = ROLE_TREE;
+  const n1 = l1[state.i0];
+  const l2 = (n1 && n1.children) ? n1.children : [];
+  const n2 = l2[state.i1] || null;
+  const l3 = (n2 && n2.children) ? n2.children : null;
+  const n3 = l3 ? l3[state.i2] : null;
+  return { n1, n2, n3 };
+}
+
+function syncSelectionUI() {
+  const { n1, n2, n3 } = currentPathNodes();
+  const eff = n3 || n2;
+  // 高亮当前项
+  cols.forEach((col, ci) => {
+    const idx = [state.i0, state.i1, state.i2][ci];
+    [...col.children].forEach((el, i) => el.classList.toggle('sel', i === idx));
+  });
+  if (!eff) { document.getElementById('roleDesc').textContent='请滚动上方滚轮选择角色…'; document.getElementById('rolePath').textContent=''; document.getElementById('autoCard').style.display='none'; return; }
+  const node = nodeOf([n1, n2, n3].filter(Boolean));
+  document.getElementById('roleDesc').textContent = node.desc || (eff.name);
+  const path = [n1, n2, n3].filter(Boolean).map(n=>n.name).join(' → ');
+  document.getElementById('rolePath').innerHTML = '已选：<b>'+path+'</b>';
+  showAutoAssoc(node);
+}
+
+/* 自动关联：组织树 + 权限树（本地模拟匹配，无后端） */
+function showAutoAssoc(node) {
+  const card = document.getElementById('autoCard');
+  card.style.display = 'block';
+  const meta = ROLE_INFO[node.value] || {};
+  document.getElementById('unitType').innerHTML = `<span class="tag">${UNIT_TYPE_LABEL[node.unitType]||node.unitType}</span>`;
+  document.getElementById('orgKind').innerHTML = `<span class="tag">${ORG_KIND_LABEL[node.orgKind]||node.orgKind}</span> <span style="color:#98a2b3;font-size:12px">(${node.orgKind})</span>`;
+  document.getElementById('permScope').textContent = meta.scope || '—';
+  document.getElementById('permFunc').innerHTML = (meta.functions||[]).map(f=>`<div class="func-li">· ${f}</div>`).join('');
+  document.getElementById('permApproval').textContent = meta.approval || '—';
+
+  // 模拟组织匹配
+  const unitKw = { safety:['安全','监察'], contractor:['总承包','安装','广安'], subcontractor:['分包'] }[node.unitType] || [];
+  const orgKw = { unit:['unit'], project:['项目部'], team:['班','组'] }[node.orgKind] || [];
+  let unit = MOCK_ORG_TREE.find(o => o.level===0 && unitKw.some(k => o.name.includes(k)));
+  unit = unit || MOCK_ORG_TREE.find(o=>o.level===0);
+  let matched = '';
+  if (unit) {
+    const byId = Object.fromEntries(MOCK_ORG_TREE.map(o=>[o._id,o]));
+    const subtree = MOCK_ORG_TREE.filter(o => {
+      if (o._id===unit._id) return false;
+      let p=o.parentId; while(p){ if(p===unit._id) return true; p = byId[p]?byId[p].parentId:null; }
+      return false;
+    });
+    let m = subtree.find(o => orgKw.some(k => (o.kind||'').includes(k) || o.name.includes(k)));
+    if (!m && subtree.length) m = subtree.find(o => node.orgKind==='team' ? (o.kind==='team'||o.level>=2) : node.orgKind==='project' ? (o.kind==='project'||o.level===1) : true) || subtree[0];
+    matched = m ? `${m.name} <span style="color:#98a2b3;font-size:12px">(${m.kind})</span>` : (unit.name+'（无下级节点）');
+  }
+  document.getElementById('matchedOrg').innerHTML = matched || '—';
+}
+
+/* 选中某一级（级联）：ci=列索引，idx=该项在列中的索引 */
+function selectAt(ci, idx) {
+  if (ci === 0) {
+    rebuild({ i0: idx, i1: 0, i2: 0 });
+  } else if (ci === 1) {
+    rebuild({ i0: state.i0, i1: idx, i2: 0 });
+  } else {
+    state.i2 = idx;
+    cols[2].scrollTop = idx * ROW_H;   // 视觉居中反馈
+    syncSelectionUI();
+  }
+}
+
+/* 滚动 → 更新当前索引（滚轮 / 触控拖动） */
+cols.forEach((col, ci) => {
+  col.addEventListener('scroll', () => {
+    // 用当前列已渲染项数量做上界保护，避免 scrollTop 越界算错索引
+    const maxIdx = Math.max(0, col.children.length - 1);
+    const idx = Math.max(0, Math.min(maxIdx, Math.round(col.scrollTop / ROW_H)));
+    const cur = [state.i0, state.i1, state.i2][ci];
+    if (idx === cur) { syncHighlight(col, idx); return; }
+    selectAt(ci, idx);
+  });
+  /* 点击某一项直接选中：短列表 / 桌面端最可靠的交互。
+     这正是“第三级无法选择”的根因——2~4 项的短列在桌面滚轮 / 触控下几乎滚不动，
+     scroll 事件无法稳定触发；改为点击直选，无论能否滚动都能精确选中。 */
+  col.addEventListener('click', (e) => {
+    const item = e.target.closest('.crp-item');
+    if (!item) return;
+    const idx = parseInt(item.dataset.i, 10);
+    if (isNaN(idx)) return;
+    selectAt(ci, idx);
+  });
+});
+function syncHighlight(col, idx){ [...col.children].forEach((el,i)=>el.classList.toggle('sel', i===idx)); }
+
+/* 初始化 */
+rebuild({ i0:0, i1:0, i2:0 });
+
+/* 模拟提交 */
+document.getElementById('submitBtn').addEventListener('click', () => {
+  const { n1, n2, n3 } = currentPathNodes();
+  const eff = n3 || n2;
+  if (!eff) { alert('请先选择完整角色'); return; }
+  const node = nodeOf([n1, n2, n3].filter(Boolean));
+  const meta = ROLE_INFO[node.value] || {};
+  const unitTypeLabel = UNIT_TYPE_LABEL[node.unitType]||node.unitType;
+  const orgKindLabel = ORG_KIND_LABEL[node.orgKind]||node.orgKind;
+  const matchedUnit = document.getElementById('matchedOrg').textContent.trim();
+  const path = [n1, n2, n3].filter(Boolean).map(n=>n.name).join(' / ');
+  const payload = {
+    role: node.value,
+    rolePath: path,
+    unitType: node.unitType + ' (' + unitTypeLabel + ')',
+    orgKind: node.orgKind + ' (' + orgKindLabel + ')',
+    matchedOrg: matchedUnit,
+    permission: { scope: meta.scope, functions: meta.functions, approval: meta.approval },
+    note: '（纯前端预览，未发送任何请求）'
+  };
+  document.getElementById('payload').textContent = JSON.stringify(payload, null, 2);
+  document.getElementById('mask').classList.add('show');
+});
+document.getElementById('closeBtn').addEventListener('click', () => {
+  document.getElementById('mask').classList.remove('show');
+});
+</script>
+</body>
+</html>

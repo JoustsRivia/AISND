@@ -1,7 +1,7 @@
 // cloudfunctions/system/index.js —— M13 系统管理（组织/权限/字典/日志，纯业务，只引用 helpers）
 const { getOpenid } = require('./helpers/user');
 
-const { createRateLimiter } = require('./rateLimiter');
+const { createRateLimiter } = require('./helpers/rateLimiter');
 const __limiter = createRateLimiter({ getOpenid });const db = require('./helpers/db');
 const _ = db._; // 查询命令（_shared/dbBase 透出的 command，cleanupLogs 用 _.lt）
 const ok = (data) => ({ code: 0, data });
@@ -57,16 +57,16 @@ async function rateLimitFor(action) {
 }
 
 // 与 cloudfunctions/auth/index.js 同源的密码哈希：统一引用 shared/crypto.js（PBKDF2 + 旧 sha1 兼容）
-const { hashPwd } = require('./crypto');
+const { hashPwd } = require('./helpers/crypto');
 // 密码强度校验单一源（FEAT-01）
-const { passwordError } = require('./password');
+const { passwordError } = require('./helpers/password');
 
 // ── R02 按组织树级别生成工号（与 auth / shared/employeeId.js 同源纯函数） ──
 // 拉取用户列表后委托共享实现，保证 auth 与 system 两处算法完全一致（DUP-01）。
 async function generateEmployeeId(orgId, orgs) {
   const list = orgs || (await db.listAll('orgs'));
   const users = await db.listAll('users');
-  return require('./employeeId').generateEmployeeId(orgId, list, users);
+  return require('./helpers/employeeId').generateEmployeeId(orgId, list, users);
 }
 
 // ── 默认组织架构（示例）─────────────────────────────────────────────────
@@ -114,7 +114,7 @@ async function orgTree() {
 //   lead（专班负责人） → 本公司(root)及下属所有项目部
 //   project_lead（项目部负责人） → 本项目部的班组节点
 //   supervisor（安监部管理人员） → 只读
-const { ROLE_ADMIN_ASSIGNABLE } = require('./roles');
+const { ROLE_ADMIN_ASSIGNABLE } = require('./helpers/roles');
 
 // R09：获取当前用户可编辑的 orgId 范围
 // 返回 { canEdit: boolean, editableIds: string[] | null }

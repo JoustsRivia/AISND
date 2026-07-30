@@ -2,7 +2,7 @@
 // 业务逻辑层（M8 报废 P0）：只引用 ./helpers，绝不直接 cloud.database()/getWXContext()。
 const { getOpenid } = require('./helpers/user');
 
-const { createRateLimiter } = require('./rateLimiter');
+const { createRateLimiter } = require('./helpers/rateLimiter');
 const __limiter = createRateLimiter({ getOpenid });
 const {
   findTool, updateTool, addScrap, updateScrap, listScrap, listTools,

@@ -1,6 +1,6 @@
 // cloudfunctions/system/helpers/db.js （隔离层：仅此处可调用 cloud.database()）
 const base = require('./dbBase');
-const { cloud, db, _, collection } = base;
+const { cloud, db, _, collection, listAll } = base;
 const coll = collection;
 
 // 确保集合存在（管理端 API，云函数内可用）。已存在时 createCollection 会报错，捕获即可。

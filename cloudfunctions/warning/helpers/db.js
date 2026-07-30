@@ -1,6 +1,6 @@
 // cloudfunctions/warning/helpers/db.js （隔离层：仅此处可调用 cloud.database()）
 const base = require('./dbBase');
-const { cloud, db, _, collection } = base;
+const { cloud, db, _, collection, listAll } = base;
 // RBAC 数据范围原语（来自 _shared/dbBase.js 单一源，迁移零改动）
 const { subtreeIds, roleScope, allowedOrgIds, scopeFilter } = base;
 const { getOpenid } = require('./user');

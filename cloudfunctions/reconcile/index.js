@@ -1,7 +1,7 @@
 // cloudfunctions/reconcile/index.js —— M1.4 账物核对（纯业务，只引用 helpers）
 const { getOpenid } = require('./helpers/user');
 
-const { createRateLimiter } = require('./rateLimiter');
+const { createRateLimiter } = require('./helpers/rateLimiter');
 const __limiter = createRateLimiter({ getOpenid });const db = require('./helpers/db');
 const ok = (data) => ({ code: 0, data });
 const fail = (message, code = 1) => ({ code, message });
@@ -49,7 +49,7 @@ async function createTask(payload = {}) {
 
   // 按仓库+类别筛选台账器具
   const tools = await db.listAll('tools', storeId ? { store: storeName } : {});
-  let items = (tools.data || []).map((t) => ({
+  let items = (tools || []).map((t) => ({
     toolId: t._id,
     code: t.code || '',
     name: t.name || '',

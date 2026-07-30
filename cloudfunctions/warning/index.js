@@ -2,7 +2,7 @@
 const db = require('./helpers/db');
 const { getOpenid } = require('./helpers/user');
 
-const { createRateLimiter } = require('./rateLimiter');
+const { createRateLimiter } = require('./helpers/rateLimiter');
 const __limiter = createRateLimiter({ getOpenid });const _ = db._;
 const ok = (data) => ({ code: 0, data });
 const fail = (message, code = 1) => ({ code, message });
@@ -74,7 +74,7 @@ async function generate() {
   try {
     // 试验到期前15天 / 超期（M4.1.2 / M4.1.4）
     const tools = await db.listAll('tools');
-    for (const t of (tools.data || [])) {
+    for (const t of (tools || [])) {
       if (!t.expireAt) continue;
       const exp = new Date(t.expireAt).getTime();
       if (exp < now) {

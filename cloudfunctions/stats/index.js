@@ -2,7 +2,7 @@
 const db = require('./helpers/db');
 const { getOpenid } = require('./helpers/user');
 
-const { createRateLimiter } = require('./rateLimiter');
+const { createRateLimiter } = require('./helpers/rateLimiter');
 const __limiter = createRateLimiter({ getOpenid });
 const ok = (data) => ({ code: 0, data });
 const fail = (message, code = 1) => ({ code, message });

@@ -1,7 +1,7 @@
 // cloudfunctions/site/index.js —— M6 现场使用（班前点检/规程/交底，纯业务，只引用 helpers）
 const { getOpenid } = require('./helpers/user');
 
-const { createRateLimiter } = require('./rateLimiter');
+const { createRateLimiter } = require('./helpers/rateLimiter');
 const __limiter = createRateLimiter({ getOpenid });const db = require('./helpers/db');
 const ok = (data) => ({ code: 0, data });
 const fail = (message, code = 1) => ({ code, message });

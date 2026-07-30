@@ -176,3 +176,60 @@
 | 云函数 `rateLimiter` 本地测试 | `cloudfunctions/*/index.js` 中 `require('./rateLimiter')` 在本地 Node 下解析失败（部署环境正常），建议统一加 `./helpers/` 前缀或用环境变量切换 |
 | 旧角色码清理 | 待确认所有在册用户已迁移到新角色码后，可将旧角色码从 `ROLE_SELF_BINDABLE` 移除 |
 | `register-shared.js` 中 `buildUnits()` | 保留但不再被注册/登录页引用（改为 `_autoMatchOrg`），系统管理页等其他场景仍在使用 |
+
+### 7.8 纯前端 HTML 预览（`/workspace/role-picker-preview.html`）
+
+> **定位**：独立交付物（**已入库** `demos/role-picker-preview.html`，仅作交互演示），不调用微信云开发后端，组织匹配/权限说明均为本地 `MOCK_ORG_TREE` 模拟数据。与 `utils/role-tree.js`、`utils/register-shared.js` 同源摘录。
+> **目的**：让非小程序环境（浏览器/桌面）也能直观体验三级级联选择器的交互，而无需搭建微信开发者工具。
+
+**已修复的两个反馈缺陷：**
+
+| 缺陷 | 根因 | 修复 |
+|------|------|------|
+| B1：第一/二级正常，第三级数组数据不显示 | `rebuild()` / `currentPathNodes()` 通过 `childrenOf()` 取子级，而 `childrenOf()` 把节点 `map` 成 `{value,name}` 会**丢弃 `.children`**，导致 `l1[resetTo.i0].children` 恒为 `undefined`，第三列永远 `[]` | 改回直接基于 `ROLE_TREE` 原始节点做结构遍历，仅在渲染时统一 `map` 成 `{value,name}`，保留 `.children` 链路 |
+| B2：第三级依旧无法选择 | 交互层**仅依赖 `scroll` 事件 + `scroll-snap-type: y mandatory`**。2~4 项的短列在桌面滚轮/触控下几乎滚不动（内容高度 ≈ 滚动区高度），`scroll` 事件无法稳定触发，索引计算 `Math.round(scrollTop/ROW_H)` 失效 | ① 新增**点击直选** `col.addEventListener('click', ...)`：读取被点 `.crp-item` 的 `data-i` 直接 `selectAt()`，与滚动解耦；② `selectAt(ci,idx)` 统一级联逻辑（L0/L1 触发 `rebuild`，L2 仅更新 `state.i2` + 视觉居中）；③ `scroll` 处理器增加 `maxIdx = col.children.length-1` 上界保护，避免越界算错索引；④ CSS 增加 `touch-action: pan-y`、`user-select: none` 及 `.crp-item:hover/:active` 桌面端可点击反馈 |
+
+**验证**（DOM mock 跑通 `selectAt` 全链路）：
+
+- 14 个叶子角色（a1~a2, b11~b24, c11~c24）经「点击第三级」链路逐级 `selectAt` 全部命中，**14/14 通过**；
+- 样例 `b → b2 → b23`：角色描述「管辖本班组工器具与人员」、自动关联节点「安装公司·项目部A·电气班 (team)」、`autoCard` 正常显示、路径高亮正确。
+
+**注意**：小程序侧 `components/cascading-role-picker/` 用的是原生 `picker-view`（`bindcolumnchange`），移动端选择本就是原生可靠交互，**不受 B2 影响**；B2 仅存在于此 HTML 预览的 `scroll-snap` 模拟实现中，已通过点击直选根除。
+
+### 7.9 集成适配与遗留问题（2026-07-30 接手整合）
+
+> **范围**：将三级级联角色选择器改造**完整接入项目并跑通本地质量门禁**。本次除功能代码（c89e302 已提交）外，还修复了若干**阻塞测试套件、但与本特性无关**的预存缺陷，并补齐了交付物入库。
+
+**A. 已通过的本地门禁（适配后全绿）**
+
+| 门禁 | 命令 | 结果 |
+|------|------|------|
+| 语法 | `npm run check:syntax` | ✅ 268 个 JS 文件 |
+| 前端解耦 | `npm run check:frontend` | ✅ pages/components/utils 均无直连 `wx.cloud.*` |
+| helper 首行注释 | `npm run lint:helpers` | ✅ 36 个 helper 首行均为真实路径 |
+| 云函数可部署 | `npm run validate:functions` | ✅ 18 个云函数，异常 0 |
+| 角色树单测 | `node --test tests/role-tree.test.js` | ✅ 20/20 |
+| 全量单测 | `npm test` | ✅ **146/146（全绿）** |
+
+**B. 修复的预存缺陷（非本特性引入，阻塞测试套件 / 功能）**
+
+| 缺陷 | 根因 | 修复 | 文件 |
+|------|------|------|------|
+| 18 个云函数 `index.js` 模块加载失败 | 根级 `require('./rateLimiter'|'./password'|'./roles'|'./crypto'|'./employeeId')` 引用的 helper 实际位于 `helpers/`，与同文件已有的 `./helpers/db`、`./helpers/user` 约定不一致；本地 Node 与（推断）真实部署均无法解析 | 统一改为 `./helpers/<name>` | `cloudfunctions/*/index.js`（18 个） |
+| `system` / `warning` 的 `helpers/db.js` 导出 `listAll` 但未定义 | 二处 `module.exports` 引用了从未声明的 `listAll`，导致模块加载即 `ReferenceError` | 从 `base`（即 `dbBase.js`）解构引入 `listAll` | `cloudfunctions/system/helpers/db.js`、`cloudfunctions/warning/helpers/db.js` |
+| `auth.register` 单测断言失败 | 测试硬编码旧 `sha1('tms_'+pw)` 哈希，而真实 `helpers/crypto.js` 已升级为 **PBKDF2（随机盐）**；二者算法不一致，且 PBKDF2 每次盐随机、无法字面比较 | 测试改用真实 `hashPwd` 并由 `verifyPwd` 校验口令确已哈希 | `tests/cloud-functions.test.js` |
+| `reconcile.createTask` 建任务恒返回 `400` | `db.listAll('tools', ...)` 返回**裸数组**，但代码误用 `(tools.data \|\| [])` → `tools.data` 为 `undefined` → `items` 恒空 → 永远命中"无匹配器具"分支；同模块其他 `listBy` 调用返回 `{data}` 因而此前未暴露 | 改为 `(tools \|\| [])`（与全局 `listAll` 裸数组约定一致） | `cloudfunctions/reconcile/index.js` |
+| `warning.generate` 不生成任何预警 | `generate` 内 `const tools = await db.listAll('tools')` 后误用 `(tools.data \|\| [])`，循环不执行 → `warnings` 集合为空 → 测试 `mock.__store.warnings.find` 抛 `Cannot read ... 'find'` | 改为 `(tools \|\| [])`（同 B4 同类失误） | `cloudfunctions/warning/index.js` |
+
+> 注：require 路径与 `listAll` 缺陷此前被 `./rateLimiter` 加载错误"遮盖"——函数尚未 require 到 `helpers/db` 即已抛错，问题未暴露；修复 require 路径后浮出，属**治本**。B4/B5 为 `reconcile`/`warning` 模块内 `listAll` 裸数组 vs `.data` 的约定误用，修复后 `reconcile.createTask`（含 409 重复校验）与 `R24 warning.generate` 均转绿，全量单测由 144/146 升至 146/146。
+
+**C. `auth/index.js` 编码处理（细节）**
+
+- HEAD 中 `cloudfunctions/auth/index.js` 为 GBK/混合编码（含少量损坏字节，`file` 标为 Non-ISO extended-ASCII），但中文实为 UTF-8 字节（被 `file` 误判）。
+- 本次对该文件**仅改 5 行 require 路径**，故采用"还原 HEAD 字节 → 按字节做 5 处 ASCII 替换"的最小改动法，避免整文件重编码产生百行 mojibake 噪音 diff。最终 diff 仅含 5 行 require 路径变更，HEAD 既有少量损坏中文（预存，非本次引入）原样保留。
+- 其余 17 个云函数原即为 UTF-8，批量 require 改写不产生编码噪音，diff 均为单行 require 变更。
+
+**D. 交付物入库**
+
+- HTML 预览由 `/workspace/role-picker-preview.html` 移入仓库 `demos/role-picker-preview.html`（纯前端演示，不进入小程序构建，门禁脚本不扫描 HTML）。
+- 命名/目录/依赖均遵循项目约定：工具树单一源 `utils/role-tree.js`（kebab，首行真实路径）、组件 `components/cascading-role-picker/`（4 件套）、`shared/roles.js` 经 `bundle-db-base.js` 同步为各函数 `helpers/roles.js`、页面仅经 `utils/api.js` 调用云函数（前端解耦门禁通过）。

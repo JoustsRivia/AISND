@@ -2,7 +2,7 @@
 // 业务逻辑层（M1 台账/档案/租赁/条码）：只引用 ./helpers，绝不直接 cloud.database()/getWXContext()。
 const { getOpenid } = require('./helpers/user');
 
-const { createRateLimiter } = require('./rateLimiter');
+const { createRateLimiter } = require('./helpers/rateLimiter');
 const __limiter = createRateLimiter({ getOpenid });
 const {
   findUser, addTool, updateTool, removeTool, findTool, listTools, countTools, listOrgs, regExp, _, getCurrentUser,
