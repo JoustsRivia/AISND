@@ -42,7 +42,7 @@ Page({
 
   async onScan() {
     // 无网络提示（M5.1.5 / M6.1.5）
-    try { await network.requireOnline(); } catch (e) { return; }
+    try { await network.requireOnline(); } catch (e) { wx.showToast({ title: '当前无网络', icon: 'none' }); return; }
 
     wx.scanCode({
       success: async (res) => {

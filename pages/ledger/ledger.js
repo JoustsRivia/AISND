@@ -51,7 +51,7 @@ Page({
   },
 
   onPullDownRefresh() {
-    this.reload().then(() => wx.stopPullDownRefresh());
+    this.reload().then(() => wx.stopPullDownRefresh()).catch(() => wx.stopPullDownRefresh());
   },
 
   onReachBottom() {

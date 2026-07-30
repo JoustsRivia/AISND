@@ -72,7 +72,7 @@ Page({
     this.refresh();
   },
 
-  onPullDownRefresh() { this.refresh().then(() => wx.stopPullDownRefresh()); },
+  onPullDownRefresh() { this.refresh().then(() => wx.stopPullDownRefresh()).catch(() => wx.stopPullDownRefresh()); },
 
   // 仅刷新模块徽标聚合（九宫格状态徽标），避免每次 onShow 都拉全量看板
   async refreshBadges() {
@@ -86,7 +86,7 @@ Page({
       this.setData({ profile: null, roleText: '', avatarText: '工', modules: [], groups: attachBadges(moduleGroups(null), this._hs) });
       return;
     }
-    const name = p.nickName || p.username || '';
+    const name = p.nickname || p.username || '';
     this.setData({
       profile: p,
       roleText: ROLE_TEXT[p.role] || '成员',

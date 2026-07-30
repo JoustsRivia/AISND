@@ -41,7 +41,7 @@ Page({
     if (!(await auth.requireServerLogin())) return;
     this.load();
   },
-  onPullDownRefresh() { this.load().then(() => wx.stopPullDownRefresh()); },
+  onPullDownRefresh() { this.load().then(() => wx.stopPullDownRefresh()).catch(() => wx.stopPullDownRefresh()); },
   onShow() {
     if (!auth.isLoggedIn()) { wx.reLaunch({ url: '/pages/login/login' }); return; }
     if (!this.data.loading) this.load();
@@ -113,11 +113,11 @@ Page({
 
   onMarkAll() {
     if (!this.data.hasUnread) return;
-    api.readAllWarnings().catch(() => {});
     const raw = this.data.raw.map((m) => ({ ...m, read: true }));
     wx.showToast({ title: '已全部标记已读', icon: 'success' });
     this.setData({ raw });
     this.applyFilter();
+    api.readAllWarnings().catch(() => {});
   },
 
   // 触发预警自动生成（M11.1）：扫描试验到期/超期、证书到期、隐患超期、报废异动

@@ -46,7 +46,7 @@ Page({
     this.setData({
       profile: p,
       roleText: p ? (ROLE_TEXT[p.role] || p.role || '成员') : '',
-      avatarText: (p && (p.nickName || p.username)) ? (p.nickName || p.username).charAt(0).toUpperCase() : '我',
+      avatarText: (p && (p.nickname || p.username)) ? (p.nickname || p.username).charAt(0).toUpperCase() : '我',
       orgName: p && p.orgName ? p.orgName : '',
     });
 

@@ -97,7 +97,7 @@ Page({
     const id = this.data.id;
     // 领用 / 归还：直接调云函数（M5.1.1 / M5.2.1），后端做资格校验与外观检�?
     if (key === 'borrow' || key === 'return') {
-      try { await network.requireOnline(); } catch (err) { return; } // M5.1.5 无网络提�?
+      try { await network.requireOnline(); } catch (err) { wx.showToast({ title: '当前无网络，请检查网络连接', icon: 'none' }); return; } // M5.1.5 无网络提�?
       wx.showLoading({ title: '处理�?' });
       try {
         if (key === 'borrow') {
