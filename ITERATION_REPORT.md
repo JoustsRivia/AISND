@@ -351,3 +351,30 @@
 | `npm test` | ✅ **150/150（全绿）** |
 
 **D. 本轮提交**：`nickName` 全量修复 6 处 + `onPullDownRefresh` 子包覆盖 10 处 + 本文档 §7.13。
+
+### 7.14 运行时崩溃修复：onTapItem 读取 undefined._id（2026-07-30）
+
+> 用户上报微信运行时错误 `MiniProgramError: Cannot read properties of undefined (reading '_id')`，堆栈定位到 `di.onTapItem`（编译后 `chunk_10.appservice.js`）。
+
+**根因（治本分析）**
+
+- 报错点：`pages/ledger/ledger.js` `onTapItem`：`const t = e.detail.tool; wx.navigateTo({ ... + (t._id || '') })`。当 `e.detail.tool` 为 `undefined` 时，`t._id` 直接抛 `Cannot read properties of undefined`。
+- 上游：`e.detail.tool` 来自 `components/tool-card/tool-card.js` `onTap()`：`this.triggerEvent('tap', { tool: this.data.tool })`。
+- 数据链路（`reload → fetchPage → api.getToolList → cacheThenNetwork`）返回的是规整器具数组，**数据本身没问题**。
+- 真正成因：台账页在刷新/分页时会 `setData({ list: [] })` 先清空再填充，或通过 `list.concat(...)` 追加。微信在 `wx:for` 列表过渡（清空/回收/复用）期间，`<tool-card tool="{{item}}">` 的 `item` 会**瞬时为 `undefined`**；此时组件属性 `tool` 被绑成 `undefined`，而属性默认值 `value: {}` **不会被回填**（微信已知行为）。于是 `this.data.tool === undefined`，冒泡后 `e.detail.tool === undefined`，下游 `t._id` 崩溃。
+
+**修复（双层边界防护，彻底消除成因而非掩盖现象）**
+
+| 层 | 文件 | 改动 |
+|----|------|------|
+| 发射边界（根因点） | `components/tool-card/tool-card.js` | `triggerEvent('tap', { tool: this.data.tool \|\| {} })` —— 保证下游永远拿到对象（至少空对象），不再冒泡 `undefined` |
+| 主处理器（二次安全网） | `pages/ledger/ledger.js` | `const t = (e.detail && e.detail.tool) \|\| {}; if (!t._id) return;` —— 即便上游异常也绝不崩溃，仅对有效 `_id` 跳转 |
+| 同类加固 | `pkg-site/pages/daily-check/daily-check.js` | `onTapItem` 增加 `if (!item) return;` —— 同一类 `undefined` 崩溃（原会抛 `reading 'status'`），一并消除 |
+
+**验证**
+
+- `node --check` 语法门禁通过（268 文件）。
+- 逻辑单测（Node 模拟）：对 `e.detail.tool = undefined / {} / 有效对象 / 缺 detail` 四情形，修复后均不抛错，仅有效 `_id` 才跳转；对照组确认旧逻辑在 undefined 上抛错。
+- 全量门禁 + `npm test`：✅ 150/150 全绿，零回归。
+
+> 说明：前端 `Page/Component` 无法在 Node 测试 harness（仅覆盖云函数）中直接运行，故用等价的纯逻辑片段做边界验证；真机/开发者工具需人工回归一次点击空卡片。

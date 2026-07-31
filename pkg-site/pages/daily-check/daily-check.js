@@ -28,6 +28,7 @@ Page({
 
   onTapItem(e) {
     const item = e.currentTarget.dataset.item;
+    if (!item) return;
     if (item.status === 'pending') {
       wx.navigateTo({ url: '/pkg-site/pages/spot-check/spot-check?toolId=' + (item.toolId || '') });
     }

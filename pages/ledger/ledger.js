@@ -245,7 +245,9 @@ Page({
   },
 
   onTapItem(e) {
-    const t = e.detail.tool;
-    wx.navigateTo({ url: '/pages/tool-detail/tool-detail?id=' + (t._id || '') });
+    const t = (e && e.detail && e.detail.tool) || {};
+    // 列表过渡期可能传入空工具对象，无 _id 则无从跳转详情页，直接忽略点击。
+    if (!t._id) return;
+    wx.navigateTo({ url: '/pages/tool-detail/tool-detail?id=' + t._id });
   },
 });
