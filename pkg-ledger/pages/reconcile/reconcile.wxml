@@ -14,7 +14,7 @@
         <text class="month">{{item.month}}</text>
         <text class="pill {{item._statusCls}}">{{item._status}}</text>
       </view>
-      <view wx:if="{{item.storeName || item.category}}" class="row"><text class="k">范围</text><text class="v">{{item.storeName || '全部仓库'}} · {{item.category || '全部类别'}}</text></view>
+      <view wx:if="{{item.storeName || item.category}}" class="row"><text class="k">范围</text><text class="v">{{item.storeName || '全部仓库'}} · {{item._cat || '全部类别'}}</text></view>
       <view class="row"><text class="k">器具总数</text><text class="v">{{item.total}}</text></view>
       <view class="row"><text class="k">差异项</text><text class="v bad">{{item.diff}}</text></view>
     </view>
@@ -69,7 +69,9 @@
   </view>
 
   <!-- #15 新建核对任务表单弹层 -->
-  <view wx:if="{{showCreateForm}}" class="mask" bindtap="onHideCreateForm">
+  <!-- 修复：mask 不绑 tap 关闭——picker 为原生组件，选择器弹层关闭瞬间触摸穿透会误触关闭；
+       关闭仅通过「取消」按钮，避免选择仓库/类别后弹窗自动消失 -->
+  <view wx:if="{{showCreateForm}}" class="mask">
     <view class="sheet" catchtap="">
       <view class="sheet-hd">
         <text>新建核对任务</text>

@@ -1,4 +1,6 @@
 {
-  "usingComponents": {},
+  "usingComponents": {
+    "search-picker": "/components/search-picker/index"
+  },
   "navigationBarTitleText": "标识牌生成"
 }

@@ -3,6 +3,7 @@
 const MAP = {
   qualified:    { text: '合格',   cls: 'success' },
   pending_test: { text: '待检',   cls: 'warning' },
+  in_use:       { text: '领用中', cls: 'primary' },
   expired:      { text: '超期',   cls: 'danger' },
   scrapped:     { text: '报废',   cls: 'dark' },
   maintaining:  { text: '维修中', cls: 'primary' },
@@ -23,7 +24,10 @@ Component({
   data: { cls: 'success', label: '合格' },
   observers: {
     'status,text': function (status, text) {
-      const m = MAP[status] || MAP.normal;
+      // 修复：status 可能为 null/undefined（老数据缺字段），归一化避免
+      // 「expected <string> but got null」类型告警；缺失状态显示「未知」而非误标「正常」
+      const s = status || '';
+      const m = MAP[s] || (s ? MAP.normal : { text: '未知', cls: 'info' });
       this.setData({ cls: m.cls, label: text || m.text });
     },
   },

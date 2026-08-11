@@ -8,7 +8,7 @@
     <view class="bar-ops">
       <text wx:if="{{hasUnread && !batchMode}}" class="mark-all" bindtap="onMarkAll">全部已读</text>
       <text wx:if="{{!batchMode}}" class="sub" bindtap="onSubscribe">订阅推送</text>
-      <text wx:if="{{!batchMode}}" class="gen" bindtap="onGenerate">生成预警</text>
+      <text wx:if="{{!batchMode && canGenerate}}" class="gen" bindtap="onGenerate">生成预警</text>
       <text class="manage-btn {{batchMode ? 'on' : ''}}" bindtap="onToggleBatchMode">{{batchMode ? '取消' : '管理'}}</text>
     </view>
   </view>

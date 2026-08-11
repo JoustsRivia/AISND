@@ -13,18 +13,47 @@
   <!-- ============ 组织架构 ============ -->
   <view class="card">
     <view class="head">
-      <text class="title">组织架构（所属单位 / 机构 / 班组）</text>
+      <text class="title">组织架构（单位 / 项目部 / 班组）</text>
       <text wx:if="{{orgPerm.canAdd}}" class="link" bindtap="onOrgSeed">恢复默认</text>
     </view>
     <view wx:for="{{tree}}" wx:key="_id" class="node" style="padding-left: {{item.depth * 32 + 8}}rpx;">
       <view class="row between">
-        <text class="name">{{item.name}}</text>
+        <view class="row-name">
+          <text class="kind-tag kind-{{item.kind}}">{{item.kind === 'unit' ? '单位' : item.kind === 'project' ? '项目部' : '班组'}}</text>
+          <text class="name">{{item.name}}</text>
+        </view>
         <view class="ops">
+          <!-- 优化#15：新增下级快捷入口（三级树按父级类型自动给默认子类型） -->
+          <text wx:if="{{item.canEditNode && item.kind !== 'team'}}" class="op" data-id="{{item._id}}" bindtap="onOrgAdd">新增下级</text>
+          <!-- 优化#16：库房管理纳入架构页——点击展开该组织库房 -->
+          <text class="op" data-id="{{item._id}}" data-name="{{item.name}}" bindtap="onStoreToggle">{{storePanel.orgId === item._id ? '收起库房' : '库房'}}</text>
           <text wx:if="{{item.canEditNode}}" class="op" data-id="{{item._id}}" bindtap="onOrgEdit">编辑</text>
           <text wx:if="{{item.canDeleteNode}}" class="op danger" data-id="{{item._id}}" bindtap="onOrgDelete">删除</text>
           <text wx:if="{{!item.canEditNode && !item.canDeleteNode}}" class="muted inline">只读</text>
         </view>
       </view>
+
+      <!-- 优化#16：该组织的库房列表（展开态） -->
+      <block wx:if="{{storePanel.orgId === item._id}}">
+        <view class="store-panel">
+          <view class="store-head">
+            <text class="store-title">🏬 {{item.name}} · 库房（{{storePanel.stores.length}}）</text>
+            <text class="op" data-orgid="{{item._id}}" bindtap="onStoreAdd">新增库房</text>
+          </view>
+          <view wx:if="{{storePanel.loading}}" class="muted">加载中…</view>
+          <view wx:elif="{{storePanel.stores.length === 0}}" class="muted">该组织暂无库房</view>
+          <view wx:for="{{storePanel.stores}}" wx:for-item="s" wx:key="_id" class="store-row">
+            <view class="store-info">
+              <text class="store-name">{{s.name}}</text>
+              <text class="store-sub">{{s.zone || '—'}}{{s.keeper ? ' · ' + s.keeper : ''}}</text>
+            </view>
+            <view class="ops">
+              <text class="op" data-id="{{s._id}}" bindtap="onStoreEdit">编辑</text>
+              <text class="op danger" data-id="{{s._id}}" bindtap="onStoreDelete">删除</text>
+            </view>
+          </view>
+        </view>
+      </block>
     </view>
     <view wx:if="{{tree.length === 0}}" class="muted">暂无组织数据，可点右上角「恢复默认」初始化</view>
   </view>
@@ -77,7 +106,7 @@
             <text class="op danger" data-id="{{item._id}}" bindtap="onUserDelete">删除</text>
           </view>
         </view>
-        <text class="umeta">单位/机构：{{item.orgId ? '已分配' : '未分配'}}　{{item.status === 'disabled' ? '已停用' : ''}}</text>
+        <text class="umeta">归属：{{item.orgText || '未分配'}}　{{item.status === 'disabled' ? '已停用' : ''}}</text>
       </view>
       <view wx:if="{{users.length === 0}}" class="muted">暂无用户</view>
     </view>
@@ -123,6 +152,25 @@
   <view wx:if="{{orgPerm.role !== 'admin'}}" class="card">
     <text class="title">用户管理</text>
     <text class="muted">用户账号管理仅限小程序管理员（admin）操作，如需调整人员请联系管理员。</text>
+  </view>
+
+  <!-- 优化#16：库房新增/编辑表单 -->
+  <view wx:if="{{showStoreForm}}" class="card">
+    <text class="title">{{storeForm.editingId ? '编辑库房' : '新增库房'}}</text>
+    <view class="row col">
+      <text class="label">库房名称</text>
+      <input class="input" placeholder="如：一号库房" value="{{storeForm.name}}" bindinput="onStoreName" />
+    </view>
+    <view class="row col">
+      <text class="label">分区</text>
+      <input class="input" placeholder="选填，如：A区" value="{{storeForm.zone}}" bindinput="onStoreZone" />
+    </view>
+    <view class="row col">
+      <text class="label">保管人</text>
+      <input class="input" placeholder="选填，姓名" value="{{storeForm.keeper}}" bindinput="onStoreKeeper" />
+    </view>
+    <button type="primary" loading="{{storeSubmitting}}" bindtap="onStoreSubmit">{{storeForm.editingId ? '保存库房' : '新增库房'}}</button>
+    <button bindtap="onStoreClose">取消</button>
   </view>
 
 </view>

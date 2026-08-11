@@ -1,0 +1,43 @@
+<!-- pages/archive/archive.wxml —— 我的档案（全面信息，与身份码简洁页互补） -->
+<view class="arch">
+  <view class="hero card">
+    <view class="avatar">{{avatarText}}</view>
+    <view class="info">
+      <text class="name">{{profile.nickname || profile.username || '未命名用户'}}</text>
+      <view class="sub-row">
+        <text class="role-pill">{{roleText}}</text>
+        <text wx:if="{{profile.employeeId}}" class="eid">工号 {{profile.employeeId}}</text>
+      </view>
+      <text wx:if="{{orgPathText}}" class="org">🏢 {{orgPathText}}</text>
+    </view>
+  </view>
+
+  <view class="card sec">
+    <text class="sec-title">基本信息</text>
+    <view wx:for="{{info}}" wx:key="label" class="row">
+      <text class="k">{{item.label}}</text>
+      <text class="v">{{item.value}}</text>
+    </view>
+  </view>
+
+  <stats-card wx:if="{{stats.length}}" items="{{stats}}" columns="3" />
+
+  <view wx:if="{{roleInfo}}" class="card sec">
+    <text class="sec-title">权限说明</text>
+    <view class="row col"><text class="k">数据范围</text><text class="v">{{roleInfo.scope}}</text></view>
+    <view class="row col">
+      <text class="k">可用功能</text>
+      <view class="v">
+        <text class="li" wx:for="{{roleInfo.functions}}" wx:key="*this">· {{item}}</text>
+      </view>
+    </view>
+    <view class="row col"><text class="k">审批链路</text><text class="v">{{roleInfo.approval}}</text></view>
+  </view>
+
+  <view class="btns">
+    <button type="primary" bindtap="goIdentity">🪪 查看我的身份码</button>
+    <button class="btn-plain" bindtap="goPermission">🔑 查看完整权限说明</button>
+  </view>
+
+  <view class="safe-bottom"></view>
+</view>

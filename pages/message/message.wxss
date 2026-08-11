@@ -1,5 +1,6 @@
 /* pages/message/message.wxss —— 消息中心 */
-.bar { display: flex; align-items: center; }
+/* #1 修复：tabs + 4 个操作按钮超出视口时换行展示，杜绝「管理」被挤出可视边界 */
+.bar { display: flex; align-items: center; flex-wrap: wrap; row-gap: var(--sp-2); }
 .mark-all { font-size: var(--fs-sm); color: var(--c-primary); padding: 0 var(--sp-3); flex-shrink: 0; }
 .sub { font-size: var(--fs-sm); color: var(--c-success); padding: 0 var(--sp-3); flex-shrink: 0; }
 .list { padding: 0 var(--sp-3); }
@@ -61,4 +62,4 @@
 .batch-left text { background: var(--c-bg); color: var(--c-text-sub); }
 .batch-right text { background: var(--c-primary-soft); color: var(--c-primary); margin-left: var(--sp-2); }
 .batch-right .batch-del { background: var(--c-danger-soft, #fde8e8); color: var(--c-danger); }
-.bar-ops { display: flex; align-items: center; gap: var(--sp-2); }
+.bar-ops { display: flex; align-items: center; gap: var(--sp-2); margin-left: auto; flex-wrap: wrap; }

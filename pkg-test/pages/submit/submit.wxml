@@ -2,7 +2,7 @@
 <view class="submit" wx:if="{{tool}}">
   <view class="card">
     <text class="name">{{tool.name}}</text>
-    <text class="muted">编号：{{tool.code}} · {{tool.category}}</text>
+    <text class="muted">编号：{{tool.code}} · {{tool.categoryName || tool.category}}</text>
   </view>
 
   <view class="card">

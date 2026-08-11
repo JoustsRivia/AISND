@@ -8,7 +8,7 @@
       <text class="name">{{item.name}}</text>
       <text class="tag {{item.overdue ? 'tag-danger' : 'tag-warn'}}">{{item.overdue ? '超期' : '到期预警'}}</text>
     </view>
-    <text class="muted">编号：{{item.code}} · {{item.category}}</text>
+    <text class="muted">编号：{{item.code}} · {{item.categoryText || item.category}}</text>
     <text class="muted">{{item.overdue ? '已超期' : '距到期'}} {{item.daysLeft}} 天 · 截止 {{item.expireAt}}</text>
   </view>
   <view wx:if="{{!loading && list.length === 0}}" class="muted card">暂无待检器具</view>

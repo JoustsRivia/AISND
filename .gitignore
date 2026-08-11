@@ -9,3 +9,8 @@
 node_modules/
 *.log
 .DS_Store
+
+# 本地开发环境（不入库）
+.claude/
+wechatide_files/
+工器具项目书.docx

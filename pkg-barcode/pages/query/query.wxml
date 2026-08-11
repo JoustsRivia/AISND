@@ -1,9 +1,14 @@
 <!-- pkg-barcode/pages/query/query.wxml —— M14.1.3 扫码查询 -->
-<view class="q">
+<view class="q page-pad">
   <view class="card">
     <view class="row"><text class="label">编码</text><input class="input" placeholder="输入或扫描" value="{{code}}" bindinput="onInput" /></view>
-    <button size="mini" type="primary" bindtap="onQuery">查询</button>
-    <button size="mini" bindtap="onScan">扫一扫</button>
+    <view class="btn-row">
+      <button size="mini" type="primary" bindtap="onQuery">查询</button>
+      <button size="mini" bindtap="onScan">扫一扫</button>
+    </view>
+    <!-- 器具联想：按名称/编号搜索直接核验 -->
+    <view class="row suggest-row"><text class="label">按器具搜索</text></view>
+    <search-picker placeholder="输入名称/编号，选中即核验" fetch="tools" bind:pick="onPickTool" />
   </view>
 
   <view wx:if="{{result}}" class="card">

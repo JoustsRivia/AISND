@@ -9,8 +9,19 @@
     <chart type="pie" series="{{statusPie}}" title="器具状态分布" />
     <chart type="line" series="{{trendSeries}}" title="近 7 日器具总量趋势" height="{{220}}" />
 
+    <!-- 六化达标（原独立页并入，仅管理角色可见） -->
+    <view wx:if="{{dims.length}}" class="card">
+      <text class="six-title">六化达标</text>
+      <view wx:for="{{dims}}" wx:key="key" class="dim">
+        <view class="dim-head">
+          <text class="dim-name">{{item.name}}</text>
+          <text class="dim-val">{{item.done}}/{{item.total}}（{{item.rate}}%）</text>
+        </view>
+        <view class="track"><view class="fill" style="width:{{item.rate}}%;"></view></view>
+      </view>
+    </view>
+
     <view class="row gap-2">
-      <button class="btn btn-outline flex-1" bindtap="goSix">六化达标</button>
       <button class="btn btn-outline flex-1" bindtap="goReport">报表导出</button>
       <button class="btn btn-outline flex-1" bindtap="goTeam">班组协作</button>
     </view>

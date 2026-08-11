@@ -9,10 +9,16 @@ const C = {
   missing: '#DC2626', scrapped: '#6B7280', primary: '#1A56DB',
 };
 
+// 六化达标区块可见角色：与服务端 stats/index.js 的 SENSITIVE_ROLES 同源对齐
+// （原独立页有 ensureRole 门控，合并进看板后由前端按同一词表显隐，不改变权限语义）
+// 与服务端 stats/index.js SENSITIVE_ROLES 同源（单位级及以上管理码）
+const SIX_ROLES = ['admin', 'a1', 'a2', 'b11', 'b12', 'c11', 'c12'];
+
 Page({
   data: {
     loading: true, items: [], trend: [], maxTrend: 1,
     statusPie: [], trendSeries: [], themeClass: '',
+    dims: [],   // 六化达标六项（原独立页并入看板区块）
   },
 
   onShow() {
@@ -48,9 +54,19 @@ Page({
     // 趋势折线
     const trendSeries = trend.map((x) => ({ name: x.date, value: x.total, color: C.primary }));
     this.setData({ trend, trendSeries, maxTrend, loading: false });
+    // 六化达标区块（原独立页已并入；后台加载不阻塞看板主体）
+    this.loadSix();
   },
 
-  goSix() { wx.navigateTo({ url: '/pkg-stats/pages/six-standard/six-standard' }); },
+  async loadSix() {
+    try {
+      const me = await api.getMyProfile();
+      if (!me || !SIX_ROLES.includes(me.role)) return;
+      const s = await api.getSixStandard();
+      if (s && s.dims) this.setData({ dims: s.dims });
+    } catch (e) { /* 六化区块非主流程，失败不打断看板 */ }
+  },
+
   goReport() { wx.navigateTo({ url: '/pkg-stats/pages/report/report' }); },
   goTeam() { wx.navigateTo({ url: '/pkg-stats/pages/team/team' }); },
 });

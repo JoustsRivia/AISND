@@ -18,6 +18,7 @@
 
   <scroll-view scroll-y style="max-height: 60vh;">
   <view class="card info">
+    <view class="row"><text class="k">台账层级</text><text class="v">{{tool.orgText || '—'}}</text></view>
     <view class="row"><text class="k">保管责任人</text><text class="v">{{tool.keeperDisplay || tool.keeper || '—'}}</text></view>
     <view class="row"><text class="k">存放库房</text><text class="v">{{tool.store || '—'}}</text></view>
     <view class="row"><text class="k">有效截止</text><text class="v {{tool.expired ? 'danger' : ''}}">{{tool.expireAt || '—'}}</text></view>
@@ -29,6 +30,12 @@
   <view class="card">
     <text class="card-title">使用状态</text>
     <flow-steps title="领用 → 归还" labels="{{flow.labels}}" current="{{flow.current}}" rejected="{{flow.rejected}}" />
+    <!-- 优化#17：领用责任人（操作领用的用户，borrowerName 由服务端按 openid 富化）；
+         仅领用中显示该行（用户确认：非领用中不展示，避免空行） -->
+    <view wx:if="{{tool.status === 'in_use'}}" class="row" style="margin-top: 16rpx;">
+      <text class="k">领用责任人</text>
+      <text class="v">{{tool.borrowerName || '—'}}</text>
+    </view>
   </view>
 
   <view class="card">
@@ -45,7 +52,7 @@
 
 <view wx:if="{{tool && actions.length}}" class="toolbar safe-bottom">
   <view wx:for="{{actions}}" wx:key="key"
-    class="act {{item.primary ? 'primary' : ''}}" data-key="{{item.key}}" bindtap="onAction">
+    class="act {{item.primary ? 'primary' : ''}} {{item.danger ? 'danger' : ''}}" data-key="{{item.key}}" bindtap="onAction">
     {{item.label}}
   </view>
 </view>

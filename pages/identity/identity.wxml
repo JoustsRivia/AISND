@@ -5,6 +5,7 @@
     <view class="id-meta">
       <text class="id-name">{{name}}</text>
       <text class="id-role">{{roleText}}{{employeeId ? ' · ' + employeeId : ''}}</text>
+      <text wx:if="{{orgText}}" class="id-org">🏢 {{orgText}}</text>
     </view>
   </view>
 
@@ -14,6 +15,8 @@
       <canvas type="2d" id="qr" class="qr-canvas"></canvas>
     </view>
     <view class="qr-hint">同事使用「扫一扫」扫描本码即可核验你的身份</view>
+    <text wx:if="{{stampText}}" class="qr-stamp">{{stampText}} · 点击下方按钮可刷新</text>
+    <button class="btn btn-outline btn-block" bindtap="onRefresh">刷新身份码</button>
     <button class="btn btn-outline btn-block" bindtap="onShare">分享 / 出示</button>
   </view>
 

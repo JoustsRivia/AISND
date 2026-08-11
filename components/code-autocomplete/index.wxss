@@ -1,0 +1,23 @@
+/* components/code-autocomplete/index.wxss */
+.ca { position: relative; flex: 1; }
+.ca-row {
+  display: flex; align-items: center; background: var(--c-bg, #f5f6f8);
+  border-radius: var(--r-pill, 40rpx); padding: 0 20rpx;
+}
+.ca-ico { font-size: 26rpx; margin-right: 12rpx; }
+.ca-input { flex: 1; height: 64rpx; font-size: 26rpx; }
+.ca-clear { font-size: 28rpx; color: var(--c-text-weak); padding: 0 8rpx; }
+.ca-list {
+  position: absolute; top: 72rpx; left: 0; right: 0; z-index: 50;
+  background: #fff; border-radius: 16rpx; box-shadow: 0 8rpx 24rpx rgba(0,0,0,0.12);
+  overflow: hidden;
+}
+.ca-item {
+  display: flex; align-items: center; padding: 20rpx 24rpx; gap: 16rpx;
+  border-bottom: 1rpx solid var(--c-divider, #eee);
+}
+.ca-item:last-child { border-bottom: none; }
+.ca-code { font-size: 26rpx; font-weight: 600; color: var(--c-primary, #1A56DB); }
+.ca-name { flex: 1; font-size: 24rpx; color: var(--c-text-sub); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.ca-status { font-size: 22rpx; color: var(--c-text-weak); }
+.ca-muted { color: var(--c-text-weak); justify-content: center; }

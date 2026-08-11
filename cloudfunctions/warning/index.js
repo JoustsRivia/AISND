@@ -1,6 +1,7 @@
 // cloudfunctions/warning/index.js —— M11 预警消息（纯业务，只引用 helpers）
 const db = require('./helpers/db');
 const { getOpenid } = require('./helpers/user');
+const { MGMT, UNIT_MGMT } = require('./helpers/roles');
 
 const { createRateLimiter } = require('./helpers/rateLimiter');
 const __limiter = createRateLimiter({ getOpenid });const _ = db._;
@@ -48,12 +49,17 @@ async function readAll() {
 }
 
 // 预警自动生成（M11.1）：扫描试验到期/超期、证书到期、隐患超期、报废异动，写入 warnings
-// generate 不加 RBAC（全量扫描），但写入 warnings 文档时透传被扫描对象的 orgId
+// 鉴权：全库扫描 + 批量写预警，仅系统管理员/平台安监/单位级管理可触发（与 del 同口径，防普通用户刷全表扫描）
 // R24：同时写入 toolCode/orgName/keeperName/refType，供前端列表富化展示与点击跳转
 async function generate() {
+  const me = await db.getCurrentUser(getOpenid());
+  if (!me || me.status === 'disabled') return fail('账号不可用', 403);
+  const isAdmin = me.role === 'admin' || me.role === 'a1' || UNIT_MGMT.includes(me.role);
+  if (!isAdmin) return fail('仅管理角色可生成预警', 403);
   const now = Date.now();
   const DAY = 86400000;
   const out = [];
+  const detail = {}; // 按类型统计本次新生成条数（前端明细反馈）
   // 预加载 orgs 和 users，用于富化 orgName / keeperName
   const orgs = await db.listAll('orgs');
   const users = await db.listAll('users');
@@ -70,6 +76,7 @@ async function generate() {
     if (await exists(w.type, w.refId)) return; // 同类型同对象不重复推送
     const a = await db.add('warnings', { ...w, orgId: orgId || '', orgName: orgNameOf[orgId] || '', read: false, createdAt: new Date() });
     out.push(a._id);
+    detail[w.type] = (detail[w.type] || 0) + 1;
   };
   try {
     // 试验到期前15天 / 超期（M4.1.2 / M4.1.4）
@@ -123,7 +130,7 @@ async function generate() {
       }
     }
   } catch (e) { /* 单类异常不影响其他类别生成 */ }
-  return ok({ generated: out.length });
+  return ok({ generated: out.length, detail });
 }
 
 // 删除预警（仅管理员或预警所属用户可删除）
@@ -134,7 +141,7 @@ async function del(payload) {
   // 权限校验：管理员可删任意；普通用户仅可删本组织内预警
   const me = await db.getCurrentUser(getOpenid());
   if (!me || me.status === 'disabled') return fail('账号不可用', 403);
-  const isAdmin = ['lead', 'supervisor', 'admin'].includes(me.role);
+  const isAdmin = me.role === 'admin' || me.role === 'a1' || UNIT_MGMT.includes(me.role);
   if (!isAdmin) {
     const orgs = (await db.listOrgs(500)).data || [];
     const allowed = db.allowedOrgIds(me, orgs, {});

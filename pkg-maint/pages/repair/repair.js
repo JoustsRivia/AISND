@@ -1,21 +1,32 @@
-// pkg-maint/pages/repair/repair.js —— M7 报修处理（通过 / 维修登记 / 复检）
+// pkg-maint/pages/repair/repair.js —— M7 报修处理（通过 / 维修登记 / 复检 / 归档 / 删除）
 const api = require('../../../utils/api');
+const auth = require('../../../utils/auth');
 const network = require('../../../utils/network');
+const { ROLE_FAMILIES } = require('../../../utils/constants');
 const { buildFlow } = require('../../../utils/flow');
+
+// 管理族判定（与服务端 maintenance requireApprover 同源：MGMT + admin）
+const isMgmt = () => {
+  const p = auth.getProfile();
+  return !!(p && (p.role === 'admin' || ROLE_FAMILIES.MGMT.includes(p.role)));
+};
 
 Page({
   data: {
-    list: [],        // [{ _id, toolId, fault, desc, status, reporter }]
+    list: [],        // [{ _id, toolId, toolName, toolCode, fault, desc, status, reporter }]
     selectedId: '',
     loading: true,
     acting: false,   // 操作按钮 loading 态，避免重复点击
+    canMgmt: false,  // 管理族：归档/删除按钮显隐（问题 #7）
   },
 
   async onLoad() {
+    this.setData({ canMgmt: isMgmt() });
     await this.reload();
   },
 
   async onShow() {
+    this.setData({ canMgmt: isMgmt() });
     await this.reload();
   },
 
@@ -85,6 +96,48 @@ Page({
       this.setData({ selectedId: '' });
       await this.reload();
     } catch (err) { wx.showToast({ title: '操作失败', icon: 'none' }); }
+    finally { this.setData({ acting: false }); }
+  },
+
+  // 归档（问题 #7）：已流转记录归档，列表默认隐藏
+  async onArchive() {
+    if (this.data.acting) return;
+    try { await network.requireOnline(); } catch (e) { return; }
+    const it = this.getSelected();
+    if (!it) return;
+    const ok = await new Promise((resolve) => wx.showModal({
+      title: '归档报修单', content: '归档后将从报修列表隐藏（数据保留可查）。确认归档？',
+      success: (r) => resolve(r.confirm),
+    }));
+    if (!ok) return;
+    this.setData({ acting: true });
+    try {
+      await api.archiveRepair(it._id);
+      wx.showToast({ title: '已归档', icon: 'success' });
+      this.setData({ selectedId: '' });
+      await this.reload();
+    } catch (err) { wx.showToast({ title: (err && err.message) || '操作失败', icon: 'none' }); }
+    finally { this.setData({ acting: false }); }
+  },
+
+  // 删除（问题 #7）：仅未流转（pending/rejected）可删，防审计断裂
+  async onDelete() {
+    if (this.data.acting) return;
+    try { await network.requireOnline(); } catch (e) { return; }
+    const it = this.getSelected();
+    if (!it) return;
+    const ok = await new Promise((resolve) => wx.showModal({
+      title: '删除报修单', content: '仅待审批/已驳回的报修单可删除，此操作不可恢复。确认删除？',
+      success: (r) => resolve(r.confirm),
+    }));
+    if (!ok) return;
+    this.setData({ acting: true });
+    try {
+      await api.deleteRepair(it._id);
+      wx.showToast({ title: '已删除', icon: 'success' });
+      this.setData({ selectedId: '' });
+      await this.reload();
+    } catch (err) { wx.showToast({ title: (err && err.message) || '操作失败', icon: 'none' }); }
     finally { this.setData({ acting: false }); }
   },
 });

@@ -21,6 +21,8 @@ Page({
 
   onTypeChange(e) { this.setData({ type: e.detail.value }); },
   bindToolId(e) { this.setData({ toolId: e.detail.value }); },
+  // 优化#12：编号联想选中回填（code-autocomplete 组件）
+  onPickCode(e) { this.setData({ toolId: e.detail.code || '' }); },
   bindContent(e) { this.setData({ content: e.detail.value }); },
   bindFault(e) { this.setData({ fault: e.detail.value }); },
   bindDesc(e) { this.setData({ desc: e.detail.value }); },

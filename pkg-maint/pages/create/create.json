@@ -1,4 +1,6 @@
 {
-  "usingComponents": {},
+  "usingComponents": {
+    "code-autocomplete": "/components/code-autocomplete/index"
+  },
   "navigationBarTitleText": "维保报修"
 }

@@ -5,6 +5,23 @@
 
 ---
 
+## 0. 云数据库集合创建（部署第一件事）
+
+> **云函数无法动态创建集合**（微信不提供 createCollection API），查询不存在的集合返回空不报错，
+> 但**写入（add/update/remove）不存在的集合会报「collection not exists」**。因此部署时必须在
+> 云开发控制台 → 数据库 → 手动创建以下全部集合（空集合即可，无需预置数据）：
+
+```
+users  orgs  tools  stores  warnings  borrow_records  certificates  hazards
+training_courses  training_records  scrap_records  repair_records  maintenance_records
+inbound_records  purchases  acceptances  spot_checks  inspections  assessments
+check_templates  briefings  reconcile_tasks  daily_stats  dicts  operation_logs  configs
+```
+
+共 26 个。漏建时对应功能会报「数据库集合不存在」——按报错提示到控制台补齐即可。
+
+---
+
 ## 1. 初始化首个管理员账号
 
 > 代码位置：`cloudfunctions/system/index.js` 的 `userManage`（op=add，仅现有管理员可操作）。

@@ -29,6 +29,13 @@ function displayEnum(enumKey, value) {
 }
 
 /**
+ * catName(code) —— 器具类别英文码 → 中文名（优化#13：统一入口，杜绝页面各自硬编码）
+ */
+function catName(code) {
+  return displayEnum('TOOL_CATEGORIES', code);
+}
+
+/**
  * displayDate(date)
  * 统一日期格式 YYYY-MM-DD
  */
@@ -109,6 +116,7 @@ async function formatEntityItemAsync(entityName, item) {
 
 module.exports = {
   displayEnum,
+  catName,
   displayDate,
   formatEntityItem,
   formatEntityItemAsync,

@@ -3,10 +3,8 @@ const api = require('../../utils/api');
 const auth = require('../../utils/auth');
 const network = require('../../utils/network');
 
-const ROLE_TEXT = {
-  lead: '专班负责人', project_lead: '项目部负责人', safety_officer: '专职安全员',
-  group_lead: '班组长', supervisor: '安监管理', worker: '作业人员', lease_admin: '租赁管理员',
-};
+const { ROLE_TEXT } = require('../../utils/constants');
+const { orgPathText } = require('../../utils/org-utils');
 
 Page({
   data: {
@@ -78,12 +76,22 @@ Page({
     const name = (p && p.n) || '未知用户';
     const eid = (p && p.e) || '';
     const role = ROLE_TEXT[(p && p.r)] || '成员';
-    wx.showModal({
+    // 归属：码内携带 orgId，扫码端用自身组织树解析（组织树全员可读；跨实例解析不到显示 —）
+    const orgId = (p && p.g) || '';
+    // 生成时间（#4 完善）：展示「生成于 HH:mm」，旧码/翻拍可辨识
+    const stamp = (p && p.t)
+      ? (() => { const d = new Date(p.t); const f = (n) => (n < 10 ? '0' + n : '' + n); return `${f(d.getHours())}:${f(d.getMinutes())}`; })()
+      : '';
+    const show = (org) => wx.showModal({
       title: '身份核验',
-      content: `姓名：${name}\n工号：${eid || '—'}\n角色：${role}`,
+      content: `姓名：${name}\n工号：${eid || '—'}\n角色：${role}\n归属：${org}${stamp ? `\n码生成于：${stamp}` : ''}`,
       showCancel: false,
       confirmText: '已核验',
     });
+    if (!orgId) return show('—');
+    api.getOrgTree()
+      .then((tree) => show(orgPathText(tree, orgId) || '—'))
+      .catch(() => show('—'));
   },
 
   onManual() {

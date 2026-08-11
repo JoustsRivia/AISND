@@ -24,9 +24,18 @@
   background: var(--c-bg-soft); border-radius: 14rpx;
   font-size: 28rpx;
 }
+.loading-tip { text-align: center; color: var(--c-text-weak); padding: 48rpx 0; font-size: 28rpx; }
+.tool-summary {
+  margin: 4rpx 0 20rpx; padding: 20rpx;
+  background: var(--c-primary-soft); border-radius: 14rpx;
+  display: flex; flex-direction: column; gap: 8rpx;
+  font-size: 26rpx; color: var(--c-text);
+}
 .btn-primary {
   margin-top: 8rpx;
-  background: linear-gradient(135deg, var(--c-primary), var(--c-primary-deep));
+  /* 修复：--c-primary-deep 全仓未定义，渐变第二色无效导致整条 background 声明失效，按钮回退纯白与背景同色；
+     改用 app.wxss 已定义的 --c-primary-grad 品牌渐变 */
+  background: var(--c-primary-grad);
   color: #fff; border-radius: 16rpx; font-size: 30rpx;
 }
 .btn-outline {
@@ -36,12 +45,13 @@
 .qr-card { display: flex; flex-direction: column; align-items: center; }
 .qr-title { font-size: 28rpx; font-weight: 600; color: var(--c-text); margin-bottom: 16rpx; }
 .qr-wrap {
-  width: 440rpx; height: 440rpx; padding: 20rpx;
+  width: 440rpx; padding: 20rpx;
   background: #fff; border-radius: 20rpx; border: 2rpx solid var(--c-border);
   display: flex; align-items: center; justify-content: center;
 }
 .qr-wrap .label { color: #1f2329; }
-.qr-canvas { width: 400rpx; height: 400rpx; }
+/* 高度 = 二维码区(400rpx) + 文字区(约 220rpx，5 行标签信息) */
+.qr-canvas { width: 400rpx; height: 620rpx; }
 .qr-meta { margin-top: 18rpx; display: flex; flex-direction: column; gap: 6rpx; font-size: 24rpx; color: var(--c-text-weak); text-align: center; }
 .label-prev .title { font-size: 28rpx; font-weight: 600; color: var(--c-text); margin-bottom: 16rpx; }
 .label-prev .kv { display: flex; justify-content: space-between; font-size: 26rpx; color: var(--c-text-weak); padding: 10rpx 0; border-bottom: 2rpx solid var(--c-border-weak); }

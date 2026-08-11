@@ -12,9 +12,12 @@ const TRAIN_STATUS = {
   completed: '已完成',
 };
 
+const { ROLE_FAMILIES } = require('../../../utils/constants');
+
 function isAdmin() {
   const role = getApp().globalData && getApp().globalData.role;
-  return role === 'admin' || role === 'lead';
+  // 培训管理 = 管理员或管理族（与云函数 training requireRole(...MGMT,'admin') 同语义）
+  return role === 'admin' || ROLE_FAMILIES.MGMT.includes(role);
 }
 
 Page({
@@ -53,7 +56,7 @@ Page({
   // 确认参训
   async onConfirm(e) {
     const item = e.currentTarget.dataset.item;
-    if (item.status !== 'assigned') return;
+    if (!item || item.status !== 'assigned') return; // 优化#2 空值守卫
     try { await network.requireOnline(); } catch (err) { return; }
     try {
       await api.confirmTraining(item._id);

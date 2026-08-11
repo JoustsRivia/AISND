@@ -11,7 +11,7 @@
 
     <view class="row col" style="align-items: flex-start;">
       <text class="label">器具编号</text>
-      <input class="inp" placeholder="请输入器具编号" value="{{toolId}}" bindinput="bindToolId" />
+      <code-autocomplete value="{{toolId}}" placeholder="输入器具编号，支持部分编号联想" bind:pick="onPickCode" />
     </view>
 
     <!-- 保养计划 -->

@@ -4,11 +4,8 @@ const auth = require('../../utils/auth');
 const theme = require('../../utils/theme');
 const app = getApp();
 
-const ROLE_TEXT = {
-  lead: '专班负责人', project_lead: '项目部负责人', safety_officer: '专职安全员',
-  group_lead: '班组长', supervisor: '安监管理', worker: '作业人员', lease_admin: '租赁管理员',
-  admin: '小程序管理员',
-};
+const { ROLE_TEXT } = require('../../utils/constants');
+const { orgPathText } = require('../../utils/org-utils');
 const ADMIN_ROLES = ['admin'];
 
 Page({
@@ -43,11 +40,17 @@ Page({
 
   async load() {
     const p = auth.getProfile();
+    // 归属单位/机构：users 无冗余 orgName，按 orgId 从组织树解析完整路径（问题 #2）
+    let orgName = '';
+    if (p && p.orgId) {
+      const tree = await api.getOrgTree().catch(() => []);
+      orgName = orgPathText(tree, p.orgId);
+    }
     this.setData({
       profile: p,
       roleText: p ? (ROLE_TEXT[p.role] || p.role || '成员') : '',
       avatarText: (p && (p.nickname || p.username)) ? (p.nickname || p.username).charAt(0).toUpperCase() : '我',
-      orgName: p && p.orgName ? p.orgName : '',
+      orgName,
     });
 
     const s = await api.getMyStats().catch(() => null);
@@ -57,7 +60,13 @@ Page({
       stats.push({ label: '点检次数', value: s.checkCount, color: 'var(--c-primary)' });
       stats.push({ label: '达标率', value: (s.qualifiedRate || 0) + '%', color: 'var(--c-success)' });
     }
-    const certBadge = s ? (s.todo || 0) : 0;
+    // 证书即将到期徽标（口径修正：30 天内到期的有效证书数，替代原 s.todo「未读预警+待试验」误用）
+    let certBadge = 0;
+    const certs = await api.myCerts().catch(() => []);
+    if (Array.isArray(certs)) {
+      const soon = Date.now() + 30 * 24 * 3600 * 1000;
+      certBadge = certs.filter((c) => c.expireAt && new Date(c.expireAt).getTime() <= soon && c.status !== 'expired').length;
+    }
     this.setData({
       stats,
       groups: [
@@ -65,6 +74,7 @@ Page({
           title: '账户与资质',
           items: [
             { key: 'profile', icon: '👤', label: '我的档案', value: p ? (ROLE_TEXT[p.role] || p.role) : '', arrow: true },
+            { key: 'identity', icon: '🪪', label: '我的身份码', arrow: true },
             { key: 'permission', icon: '🔑', label: '我的权限', arrow: true },
             { key: 'cert', icon: '📜', label: '持证管理', arrow: true },
             { key: 'cert-expire', icon: '⏰', label: '证书即将到期', badge: certBadge ? String(certBadge) : '', arrow: true },
@@ -90,6 +100,8 @@ Page({
   onSelect(e) {
     const key = e.detail.key;
     if (key === 'logout') return this.onLogout();
+    if (key === 'profile') { wx.navigateTo({ url: '/pages/archive/archive' }); return; }   // 问题 #5：我的档案
+    if (key === 'identity') { wx.navigateTo({ url: '/pages/identity/identity' }); return; } // 问题 #5：我的身份码
     if (key === 'permission') { wx.navigateTo({ url: '/pages/permission/permission' }); return; }
     if (key === 'about') { wx.showModal({ title: '关于系统', content: '善工智管 V1.0\n助力电力工器具全生命周期安全管控。', showCancel: false }); return; }
     if (key === 'system') { wx.navigateTo({ url: '/pkg-system/pages/org/org' }); return; }

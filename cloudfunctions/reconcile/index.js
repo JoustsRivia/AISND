@@ -1,5 +1,6 @@
 // cloudfunctions/reconcile/index.js —— M1.4 账物核对（纯业务，只引用 helpers）
 const { getOpenid } = require('./helpers/user');
+const { MGMT, UNIT_MGMT } = require('./helpers/roles');
 
 const { createRateLimiter } = require('./helpers/rateLimiter');
 const __limiter = createRateLimiter({ getOpenid });const db = require('./helpers/db');
@@ -11,8 +12,7 @@ const now = () => new Date();
 async function requireMgmt() {
   const u = await db.getCurrentUser(getOpenid());
   if (!u || u.status === 'disabled') return { err: fail('账号不可用', 403) };
-  const MGMT = ['lead', 'supervisor', 'project_lead', 'safety_officer', 'admin'];
-  if (!MGMT.includes(u.role)) return { err: fail('无操作权限', 403) };
+  if (![...MGMT, 'admin'].includes(u.role)) return { err: fail('无操作权限', 403) };
   return { u };
 }
 
@@ -170,6 +170,11 @@ exports.main = __limiter.wrap(async (event) => {
       default: return fail('未知 action: ' + action);
     }
   } catch (e) {
-    return fail(e.message || '服务异常');
+    const msg = (e && (e.message || e.errMsg)) || '服务异常';
+    // 集合不存在（云函数无法动态创建集合，微信错误码 -502005）：给明确指引而非英文报错
+    if (/collection[ _-]?not[ _-]?exist|DATABASE_COLLECTION_NOT_EXIST|-502005/i.test(String(msg))) {
+      return fail('数据库集合不存在：请在云开发控制台创建 stores / reconcile_tasks 集合后重试', 500);
+    }
+    return fail(msg);
   }
 }, 'reconcile');

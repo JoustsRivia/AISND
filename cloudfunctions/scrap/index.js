@@ -1,6 +1,7 @@
 // cloudfunctions/scrap/index.js
 // 业务逻辑层（M8 报废 P0）：只引用 ./helpers，绝不直接 cloud.database()/getWXContext()。
 const { getOpenid } = require('./helpers/user');
+const { MGMT, UNIT_MGMT } = require('./helpers/roles');
 
 const { createRateLimiter } = require('./helpers/rateLimiter');
 const __limiter = createRateLimiter({ getOpenid });
@@ -12,8 +13,8 @@ const {
 const ok = (data) => ({ code: 0, data });
 const fail = (message, code = 1) => ({ code, message });
 
-// 服务端角色鉴权（S1）：仅安全员/项目部负责人/专班可审批报废
-const ROLE_APPROVE = ['safety_officer', 'project_lead', 'lead'];
+// 服务端角色鉴权（S1）：仅管理族（MGMT：单位级+项目级安全/管理码）可审批报废
+const ROLE_APPROVE = [...MGMT];
 async function requireApprover() {
   const u = await getCurrentUser(getOpenid());
   if (!u || u.status === 'disabled') return { err: fail('账号不可用', 403) };

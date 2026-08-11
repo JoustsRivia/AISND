@@ -53,9 +53,12 @@ const getCurrentUser = async (openid) => {
 };
 
 // ── RBAC 数据范围原语（纯函数，可被所有业务函数复用，迁移零改动）──
-// 全局角色：看全部；单位级角色：看整个单位子树；机�?/班组级：仅看本机构子树�?
-const GLOBAL_ROLES = ['admin', 'lead', 'supervisor'];
-const UNIT_ROLES = ['project_lead', 'safety_officer', 'lease_admin'];
+// 全局角色：看全部；单位级角色：看整个单位子树；机构/班组级：仅看本机构子树。
+// 词表统一（2026-08-08）：档位只认三级树码 + admin；a1 平台安监=全局（平台级），
+// 单位级管理码=a2/b11/b12/c11/c12；其余树码（b21~b24/c21~c24）走 org 档，
+// 语义由注册端 _orgKindMap 强制绑定对应层级节点保证（绑定节点子树=管辖范围）。
+const GLOBAL_ROLES = ['admin', 'a1'];
+const UNIT_ROLES = ['a2', 'b11', 'b12', 'c11', 'c12'];
 
 // 组织子树推导：返�? rootId 及其全部后代 ID（含自身�?
 function subtreeIds(orgs, rootId) {

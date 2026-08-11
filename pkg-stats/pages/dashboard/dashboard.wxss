@@ -1,3 +1,13 @@
 /* pkg-stats/pages/dashboard/dashboard.wxss */
 .dashboard { padding-bottom: 40rpx; }
 .muted { color: var(--c-text-weak); font-size: 24rpx; padding: 12rpx 0; }
+
+/* 六化达标区块（原独立页样式并入） */
+.six-title { display: block; font-size: 30rpx; font-weight: 600; color: var(--c-text); margin-bottom: var(--sp-3); }
+.dim { margin-bottom: var(--sp-3); }
+.dim:last-child { margin-bottom: 0; }
+.dim-head { display: flex; justify-content: space-between; align-items: baseline; font-size: 26rpx; color: var(--c-text); }
+.dim-name { flex: 1; margin-right: 16rpx; }
+.dim-val { color: var(--c-text-muted); font-size: 24rpx; }
+.track { height: 12rpx; border-radius: 999rpx; background: var(--c-surface); margin-top: 8rpx; overflow: hidden; }
+.fill { height: 100%; border-radius: 999rpx; background: var(--c-primary); }

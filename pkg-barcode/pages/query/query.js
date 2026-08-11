@@ -1,4 +1,5 @@
 // pkg-barcode/pages/query/query.js —— M14.1.3 扫码查询（防伪/状态）
+// 2026-08-09：新增器具联想辅助——按名称/编号搜索后直接核验，避免记不住完整编码时无法查询
 const api = require('../../../utils/api');
 const network = require('../../../utils/network');
 
@@ -16,6 +17,14 @@ Page({
   async onQuery() {
     if (!this.data.code) { wx.showToast({ title: '请输入或扫描编码', icon: 'none' }); return; }
     this.query(this.data.code);
+  },
+
+  // 联想选中 → 直接用该器具编码核验
+  onPickTool(e) {
+    const v = e.detail && e.detail.value;
+    if (!v || !v.code) return;
+    this.setData({ code: v.code });
+    this.query(v.code);
   },
 
   async query(code) {

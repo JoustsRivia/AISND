@@ -1,6 +1,9 @@
 // cloudfunctions/tool/index.js
 // 业务逻辑层（M1 台账/档案/租赁/条码）：只引用 ./helpers，绝不直接 cloud.database()/getWXContext()。
 const { getOpenid } = require('./helpers/user');
+const { MGMT, UNIT_MGMT } = require('./helpers/roles');
+// 台账管理操作角色：管理族 + 管理员（含项目部负责人 b21/c21）
+const TOOL_MGMT = [...MGMT, 'admin'];
 
 const { createRateLimiter } = require('./helpers/rateLimiter');
 const __limiter = createRateLimiter({ getOpenid });
@@ -13,11 +16,11 @@ const ok = (data) => ({ code: 0, data });
 const fail = (message, code = 1) => ({ code, message });
 
 // R15 器具编号自动生成：GL-{年度末两位}-{类别缩写}-{4位流水}，如 GL-26-GJ-0001
-// 类别缩写映射（与 utils/constants.js TOOL_CATEGORIES 对应）：
-//   工具 GJ / 设备 SB / 仪器 YQ / 仪表 YB / 其他 QT
+// 类别缩写映射（与 utils/constants.js TOOL_CATEGORIES 对应）
+// 优化#14：改为「类别名称前两字拼音缩写」（临时配电配套 → LS），替代旧的 GL/类别字母混排
 const CAT_ABBR = {
-  insulation: 'YQ', motor: 'SB', manual: 'GJ', lifting: 'SB',
-  height: 'GJ', measure: 'YB', temp_power: 'SB', lease: 'SB',
+  insulation: 'JY', motor: 'SC', manual: 'TY', lifting: 'QZ',
+  height: 'GK', measure: 'JL', temp_power: 'LS', lease: 'DX',
 };
 // 高危专项类别：绝缘 / 高空 / 起重承压
 const HIGH_RISK_CATS = ['insulation', 'height', 'lifting'];
@@ -55,10 +58,11 @@ function catAbbr(category) { return CAT_ABBR[category] || 'QT'; }
 function escapeRegExp(s) { return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
 
 // 某类别下当前最大流水号（基于现有 code 前缀），保证同类自增且不重复
+// 优化#14：前缀 = {缩写}{YY}（如 LS26），5 位流水（00001）；旧格式 GL-26-GJ-0001 不再生成但保留可读
 async function nextSeq(category) {
   const yy = String(new Date().getFullYear()).slice(-2);
-  const prefix = `GL-${yy}-${catAbbr(category)}-`;
-  const re = new RegExp('^' + escapeRegExp(prefix) + '(\\d{4})$');
+  const prefix = `${catAbbr(category)}${yy}`;
+  const re = new RegExp('^' + escapeRegExp(prefix) + '(\\d{5})$');
   const res = await listTools({ code: regExp('^' + escapeRegExp(prefix)) }, 200, 0);
   let max = 0;
   for (const t of (res.data || [])) {
@@ -68,20 +72,20 @@ async function nextSeq(category) {
   return max + 1;
 }
 
-// R15 生成器具编号：GL-{YY}-{类别缩写}-{4位流水}；流水号在同类别下自增，从 0001 起。
-// 防并发碰撞：若生成码已存在则顺延至下一个空闲号。
+// R15 生成器具编号：{类别缩写}{YY}{5位流水}（示例 LS2600001），无连字符；
+// 流水号在同类别下自增，从 00001 起。防并发碰撞：若生成码已存在则顺延至下一个空闲号。
 async function generateToolCode(category) {
   const yy = String(new Date().getFullYear()).slice(-2);
   const abbr = catAbbr(category);
   let seq = await nextSeq(category);
   // 防碰撞顺延
-  for (let guard = 0; guard < 9999; guard++) {
-    const code = `GL-${yy}-${abbr}-${String(seq).padStart(4, '0')}`;
+  for (let guard = 0; guard < 99999; guard++) {
+    const code = `${abbr}${yy}${String(seq).padStart(5, '0')}`;
     const exist = await listTools({ code }, 1, 0);
     if (!exist.data || !exist.data.length) return code;
     seq++;
   }
-  return `GL-${yy}-${abbr}-${String(seq).padStart(4, '0')}`;
+  return `${abbr}${yy}${String(seq).padStart(5, '0')}`;
 }
 
 // 数据范围过滤（S2 / 问题4 RBAC）：
@@ -131,19 +135,24 @@ async function list(payload = {}) {
 
 // R18 履历操作人姓名：优先使用 write 时已写入的 operatorName（由 borrow/return 同步写入），
 // 若无则回退到通过 byOpenid / by(openid) 查 users 表映射（兼容历史数据）。
+// 优化#17：同时富化领用责任人 borrowerName（borrower 为 openid → 姓名+工号，供档案「使用状态」展示）
 async function enrichOperatorNames(t) {
   const ops = (t && t.operations) || [];
   // 过滤出需要回退查询的操作记录（无 operatorName）
   const needLookup = ops.filter((o) => !o.operatorName);
-  if (!needLookup.length) return;
   // 收集需要查询的 openid：优先 byOpenid，回退 by（历史数据存 openid）
   const ids = [...new Set(needLookup.map((o) => o.byOpenid || o.by).filter(Boolean))];
+  if (t && t.borrower) ids.push(t.borrower); // 领用责任人一并解析
   if (!ids.length) return;
   // 拉取关联用户
   const users = (await listBy('users', {}, 200)).data || [];
   const nameOf = {};
   users.forEach((u) => { nameOf[u.openid] = u.nickname || u.username || ''; });
   needLookup.forEach((o) => { o.operatorName = nameOf[o.byOpenid || o.by] || ''; });
+  if (t && t.borrower) {
+    const u = users.find((x) => x.openid === t.borrower);
+    t.borrowerName = u ? `${u.nickname || u.username || ''}${u.employeeId ? '（' + u.employeeId + '）' : ''}` : '';
+  }
 }
 
 // 器具详情（一物一档：内嵌 operations / testRecords）
@@ -154,7 +163,7 @@ async function detail(payload) {
   if (!res.data) return fail('器具不存在', 404);
   // R11 跨组织隔离：校验调用者是否有权查看该器具
   const me = await getCurrentUser(getOpenid());
-  if (me && me.role !== 'admin' && me.role !== 'lead' && me.role !== 'supervisor') {
+  if (me && !TOOL_MGMT.includes(me.role)) {
     const orgs = (await listOrgs(500)).data || [];
     const ids = allowedOrgIds(me, orgs, {});
     if (ids !== null && !ids.includes('__unbound__') && !ids.includes(res.data.orgId)) {
@@ -182,7 +191,7 @@ async function create(payload) {
   const openid = getOpenid();
   const u = await getCurrentUser(openid);
   if (!u || u.status === 'disabled') return fail('账号不可用', 403);
-  const isAdmin = u.role === 'lead' || u.role === 'supervisor' || u.role === 'admin';
+  const isAdmin = TOOL_MGMT.includes(u.role);
   // 跨机构建档：非管理员只能落到自身绑定机构，显式 orgId 与自身不一致则拒绝
   if (payload.orgId && payload.orgId !== u.orgId && !isAdmin) return fail('无权为其他机构建档', 403);
   const orgId = (isAdmin && payload.orgId) ? payload.orgId : (u.orgId || '');
@@ -213,7 +222,8 @@ async function create(payload) {
     operatorCert: payload.operatorCert || '', // S5/P1：现场操作人持证编号落库
     status: 'qualified',
     orgId,
-    operations: [],
+    // 优化#11：建档即写履历「入库建档」记录（原 operations 恒为空，时间线看不到源头）
+    operations: [{ type: 'created', ts: new Date(), by: createdByName, note: '台账建档录入' }],
     testRecords: [],
     createdBy: createdByName,
     createdByOpenid: openid,
@@ -228,7 +238,7 @@ async function update(payload) {
   const { id, ...rest } = payload;
   const u = await getCurrentUser(getOpenid());
   if (!u || u.status === 'disabled') return fail('账号不可用', 403);
-  const isAdmin = u.role === 'lead' || u.role === 'supervisor' || u.role === 'admin';
+  const isAdmin = TOOL_MGMT.includes(u.role);
   const cur = await findTool(id);
   if (!cur.data) return fail('器具不存在', 404);
   // D14：已报废器具不可再编辑（仅管理员可例外修改 status/备注字段）
@@ -247,17 +257,6 @@ async function update(payload) {
   return ok(derive(res.data)); // S2/P0：派生 expired + categoryName
 }
 
-// 租赁机具专项列表（M1.3.7）
-async function leaseList() {
-  const res = await listTools({ source: 'lease' }, 50);
-  return ok(res.data || []);
-}
-
-// 租赁机具登记（来源固定 lease，含检测合格证）
-async function leaseCreate(payload) {
-  return create({ ...payload, source: 'lease' });
-}
-
 // 台账批量导入（问题5）：按模板解析后的行批量建档，orgId 取当前用户机构（或显式覆盖）
 async function importTools(payload) {
   const { rows = [] } = payload;
@@ -265,6 +264,16 @@ async function importTools(payload) {
   const me = await findUser(getOpenid());
   const u = me.data && me.data[0];
   const orgId = (u && u.orgId) || payload.orgId || '';
+  // 优化#8：保管责任人/现场操作人按工号匹配——CSV 对应列填工号，
+  // 批量映射为该用户 openid（档案页解析显示姓名+工号），匹配不到则原样保存并提示
+  const eids = [...new Set(rows.flatMap((r) => [(r.keeper || '').trim(), (r.operator || '').trim()]).filter(Boolean))];
+  const byEid = {};
+  const unmatched = [];
+  if (eids.length) {
+    const users = await listBy('users', { employeeId: _.in(eids) }, Math.min(eids.length, 100));
+    (users.data || []).forEach((x) => { if (x && x.employeeId && x.openid) byEid[x.employeeId] = x.openid; });
+    eids.forEach((e) => { if (!byEid[e]) unmatched.push(e); }); // 未匹配工号回传前端提示
+  }
   const added = [];
   for (const r of rows) {
     if (!r || !r.name) continue; // 名称必填，跳过空行
@@ -279,14 +288,15 @@ async function importTools(payload) {
       lastTestDate: r.lastTestDate || '',
       expireAt: r.expireAt || '',
       store: r.store || '',
-      keeper: r.keeper || '',
+      keeper: (r.keeper && byEid[r.keeper.trim()]) || r.keeper || '',
       source: r.source || 'self',
       leaseUnit: r.leaseUnit || '',
       certNo: r.certNo || '',
-      operator: r.operator || '',
+      operator: (r.operator && byEid[r.operator.trim()]) || r.operator || '',
       status: 'qualified',
       orgId,
-      operations: [],
+      // 优化#11：批量导入同样写「入库建档」履历
+      operations: [{ type: 'created', ts: new Date(), by: u ? `${u.username || u.nickname || ''}${u.employeeId ? '（' + u.employeeId + '）' : ''}` : '', note: '批量导入建档' }],
       testRecords: [],
       createdBy: u ? `${u.username || u.nickname || ''}${u.employeeId ? '（' + u.employeeId + '）' : ''}` : '',
       createdByOpenid: getOpenid(),
@@ -295,7 +305,7 @@ async function importTools(payload) {
     const a = await addTool(doc);
     added.push(a._id);
   }
-  return ok({ count: added.length });
+  return ok({ count: added.length, unmatched });
 }
 
 // 台账统计卡（M1.1.4）—— 复用 RBAC 范围推导，支持管理员按 unitId/orgId 下钻分台账
@@ -348,7 +358,7 @@ async function exportLedger(payload = {}) {
   const LIST = (t) => (t || []);
   const rows = LIST(res.data).map((t) => ({
     code: t.code, name: t.name, category: t.category, spec: t.spec || '',
-    status: t.status, source: t.source || 'self', store: t.store || '', keeper: t.keeper || '',
+    status: t.status || '', source: t.source || 'self', store: t.store || '', keeper: t.keeper || '',
     expireAt: t.expireAt || '', lastTestDate: t.lastTestDate || '', purchaseDate: t.purchaseDate || '',
   }));
   return ok({ count: rows.length, rows });
@@ -401,7 +411,7 @@ async function del(payload) {
   // 鉴权：仅 admin/lead/supervisor 可删除
   const me = await getCurrentUser(openid);
   if (!me || me.status === 'disabled') return fail('账号不可用', 403);
-  const isAdmin = me.role === 'admin' || me.role === 'lead' || me.role === 'supervisor';
+  const isAdmin = TOOL_MGMT.includes(me.role);
 
   // 非管理员只能删除自身绑定机构的器具
   if (!isAdmin && t.orgId !== me.orgId) return fail('无权删除其他机构器具', 403);
@@ -422,8 +432,6 @@ exports.main = __limiter.wrap(async (event) => {
       case 'detail': return detail(payload);
       case 'create': return create(payload);
       case 'update': return update(payload);
-      case 'leaseList': return leaseList(payload);
-      case 'leaseCreate': return leaseCreate(payload);
       case 'import': return importTools(payload);
       case 'ledgerStats': return ledgerStats(payload);
       case 'export': return exportLedger(payload);

@@ -126,7 +126,38 @@ async function records(payload = {}) {
   }
 
   const res = await listBorrow(where, 50);
-  return ok(res.data || []);
+  const rows = res.data || [];
+  // 优化#5：by 为 openid，批量映射为「姓名 + 工号」，前端不再展示裸 openid
+  const openids = [...new Set(rows.map((r) => r.by).filter(Boolean))];
+  let who = {};
+  if (openids.length) {
+    const users = await listBy('users', { openid: _.in(openids) }, Math.min(openids.length, 100));
+    (users.data || []).forEach((u) => {
+      if (u && u.openid) who[u.openid] = { name: u.nickname || u.username || '', eid: u.employeeId || '' };
+    });
+  }
+  // 优化#6：批量富化器具库房/保管人（borrow_records 只存 toolId/code/name），支撑按库房/保管人筛选
+  const toolIds = [...new Set(rows.map((r) => r.toolId).filter(Boolean))];
+  let toolInfo = {};
+  if (toolIds.length) {
+    const tools = await listBy('tools', { _id: _.in(toolIds) }, Math.min(toolIds.length, 100));
+    (tools.data || []).forEach((t) => { if (t && t._id) toolInfo[t._id] = { store: t.store || '', keeper: t.keeper || '' }; });
+  }
+  const out = rows.map((r) => {
+    const w = who[r.by] || {};
+    const ti = toolInfo[r.toolId] || {};
+    return { ...r, byName: w.name || '未知用户', byEid: w.eid || '', store: ti.store || '', keeper: ti.keeper || '' };
+  });
+  // 优化#6 筛选：器具编号/名称/库房/保管人 四选一，关键词命中即返回全部匹配（≤50 上限）
+  const kwMap = { code: payload.code, name: payload.name, store: payload.store, keeper: payload.keeper };
+  const kwKey = Object.keys(kwMap).find((k) => kwMap[k]);
+  if (kwKey) {
+    const kw = String(kwMap[kwKey] || '').trim().toLowerCase();
+    if (kw) return ok(out.filter((r) => String(r[kwKey] || '').toLowerCase().includes(kw)));
+    return ok(out);
+  }
+  // 优化#6 默认不全部展示：仅最近 20 条（feed 式），需要更多用筛选检索
+  return ok(out.slice(0, 20));
 }
 
 // 批量领用（FEAT-05）：逐件校验资格，失败项单独标记不阻塞成功项

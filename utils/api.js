@@ -23,7 +23,6 @@ const FN = {
   file: 'file',
   cert: 'cert',
   reconcile: 'reconcile',
-  performance: 'performance',
 };
 
 // ── 统一请求封装（transport 抽象层） ──────────────────────────────────
@@ -57,13 +56,26 @@ const signin = (data) => invoke(FN.auth, 'signin', data);
 
 // ── 台账 M1 ──────────────────────────────────────────────────────────
 const getToolList = (params) => invoke(FN.tool, 'list', params);
+// 分页拉全量器具（云函数单次 limit 有上限）：条码生成三级联动 / 批量作业等本地过滤场景使用
+const getAllTools = async (params = {}) => {
+  const all = [];
+  let page = 1;
+  const size = 100;
+  for (;;) {
+    const r = await invoke(FN.tool, 'list', { ...params, page, size });
+    const list = (r && r.list) || [];
+    all.push(...list);
+    if (list.length < size) break;
+    page++;
+  }
+  return all;
+};
 const getToolDetail = (id) => invoke(FN.tool, 'detail', { id });
 const createTool = (data) => invoke(FN.tool, 'create', data);
 const updateTool = (id, data) => invoke(FN.tool, 'update', { id, ...data });
+const deleteTool = (id) => invoke(FN.tool, 'delete', { id }); // 优化#7：档案删除（云函数注册的是 case 'delete'，此前写成 'del' 导致「未知 action」）
 const getLedgerStats = (params) => invoke(FN.tool, 'ledgerStats', params);
 const exportLedger = (params) => invoke(FN.tool, 'export', params);
-const getLeaseList = (params) => invoke(FN.tool, 'leaseList', params);
-const createLease = (data) => invoke(FN.tool, 'leaseCreate', data);
 const importTools = (data) => invoke(FN.tool, 'import', data);
 
 // ── 周期试验 M4 ───────────────────────────────────────────────────────
@@ -86,6 +98,8 @@ const reportRepair = (data) => invoke(FN.maintenance, 'report', data);
 const approveRepair = (id) => invoke(FN.maintenance, 'approve', { id });
 const recordRepair = (data) => invoke(FN.maintenance, 'record', data);
 const recheckRepair = (id) => invoke(FN.maintenance, 'recheck', { id });
+const archiveRepair = (id) => invoke(FN.maintenance, 'archive', { id });
+const deleteRepair = (id) => invoke(FN.maintenance, 'delete', { id });
 const getRepairList = (params) => invoke(FN.maintenance, 'list', params);
 const listMaintenancePlans = (params) => invoke(FN.maintenance, 'listPlan', params);
 const execMaintenancePlan = (data) => invoke(FN.maintenance, 'execPlan', data);
@@ -107,6 +121,7 @@ const getPurchaseList = (params) => invoke(FN.purchase, 'list', params);
 
 // ── 库房 M3 ──────────────────────────────────────────────────────────
 const registerStore = (data) => invoke(FN.store, 'register', data);
+const updateStore = (id, data) => invoke(FN.store, 'update', { id, ...data }); // 优化#16：架构页编辑库房
 const inbound = (data) => invoke(FN.store, 'inbound', data).then((r) => { logOperation({ type: 'store', action: 'inbound', target: data && data.code }); return r; });
 const getInboundRecords = (params) => invoke(FN.store, 'records', params);
 // R14：库房列表（供器具录入页选择存放库房）
@@ -162,18 +177,28 @@ const getHomeStatus = () => invoke(FN.stats, 'homeStatus');
 
 // ── 系统管理 M13 ──────────────────────────────────────────────────────
 // R06：组织树缓存失效机制——版本号不匹配或 forceRefresh 时强制拉取新树
+// 修复（2026-08-08）：原实现在有缓存时无条件 resolve 旧缓存，后台版本校验发现不一致
+// 只写 storage 不更新返回值，导致「数据库已更新、前端树不刷新」。现改为：
+//   有缓存 → 请求一次版本校验，一致返回缓存（省传输），不一致返回新树并更新缓存；
+//   网络失败 → 回退缓存（保留弱网/离线可用设计）。
 const getOrgTree = (forceRefresh = false) => {
   const cached = (() => { try { return wx.getStorageSync('orgTree'); } catch (_) { return null; } })();
   const cachedVer = (() => { try { return wx.getStorageSync('orgTreeVersion') || 0; } catch (_) { return 0; } })();
   if (!forceRefresh && cached && cached.length) {
-    // 有缓存时先返回，后台静默校验版本号
-    invoke(FN.system, 'orgTree').then((r) => {
-      if (r && r.version != null && Number(r.version) !== Number(cachedVer)) {
-        wx.setStorageSync('orgTree', r.list || []);
-        wx.setStorageSync('orgTreeVersion', r.version);
-      }
-    }).catch(() => {});
-    return Promise.resolve(cached);
+    return invoke(FN.system, 'orgTree')
+      .then((r) => {
+        const fresh = (r && r.list) || r || [];
+        if (r && r.version != null) {
+          wx.setStorageSync('orgTreeVersion', r.version);
+          if (Number(r.version) !== Number(cachedVer)) {
+            // 版本不一致：管理员新增/编辑组织后前端立即拿到新树
+            wx.setStorageSync('orgTree', fresh);
+            return fresh;
+          }
+        }
+        return cached;
+      })
+      .catch(() => cached); // 弱网/离线：回退缓存
   }
   return invoke(FN.system, 'orgTree').then((r) => {
     const list = (r && r.list) || r || [];
@@ -236,14 +261,6 @@ const confirmReconcileItem = (data) => invoke(FN.reconcile, 'confirmItem', data)
 const finishReconcileTask = (id) => invoke(FN.reconcile, 'finishTask', { id });
 const getReconcileDiff = (params) => invoke(FN.reconcile, 'diff', params);
 
-// ── 人员考核 M10.3 ────────────────────────────────────────────────────
-const scorePerformance = (data) => invoke(FN.performance, 'score', data);
-const getPerformanceList = (params) => invoke(FN.performance, 'list', params);
-const getPerformanceRank = (params) => invoke(FN.performance, 'rank', params);
-const getPerformanceSummary = (params) => invoke(FN.performance, 'summary', params);
-const addReward = (data) => invoke(FN.performance, 'rewardAdd', data);
-const getRewardList = (params) => invoke(FN.performance, 'rewardList', params);
-
 // ── 文件上传（封装 wx.cloud.uploadFile，调用方不直接接触） ──────────────
 function uploadFile(filePath, type = 'image') {
   return new Promise((resolve, reject) => {
@@ -281,21 +298,21 @@ module.exports = {
   // 账户
   login, getMyProfile, updateProfile, bindAccount, register, signin,
   // 台账
-  getToolList, getToolDetail, createTool, updateTool, getLedgerStats, exportLedger,
-  getLeaseList, createLease, importTools,
+  getToolList, getAllTools, getToolDetail, createTool, updateTool, deleteTool, getLedgerStats, exportLedger,
+  importTools,
   // 试验
   getTestDueList, submitTest, verifyTestTag,
   // 领用归还
   borrowTool, returnTool, getBorrowRecords, batchBorrowTools, batchReturnTools,
   // 维保
-  createMaintenance, reportRepair, approveRepair, recordRepair, recheckRepair, getRepairList,
+  createMaintenance, reportRepair, approveRepair, recordRepair, recheckRepair, archiveRepair, deleteRepair, getRepairList,
   listMaintenancePlans, execMaintenancePlan,
   // 报废
   autoScrapCheck, judgeScrap, getScrapList, submitScrap, approveScrap, recordScrapDisposal,
   // 采购
   createPurchase, approvePurchase, createAcceptance, getPurchaseList,
   // 库房
-  registerStore, inbound, getInboundRecords, getStoreList, deleteStore,
+  registerStore, updateStore, inbound, getInboundRecords, getStoreList, deleteStore,
   // 现场
   getSpotCheckTask, submitSpotCheck, getOpGuide, recordBriefing, getDailyCheck,
   // 培训
@@ -317,8 +334,6 @@ module.exports = {
   certList, myCerts, upsertCert, deleteCert, checkCert,
   // 账物核对
   createReconcileTask, getReconcileList, getReconcileTask, confirmReconcileItem, finishReconcileTask, getReconcileDiff,
-  // 人员考核
-  scorePerformance, getPerformanceList, getPerformanceRank, getPerformanceSummary, addReward, getRewardList,
   // 文件/日志
   uploadFile, logOperation, getOperationLogs, cleanupLogs,
 };

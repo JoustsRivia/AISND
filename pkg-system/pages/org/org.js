@@ -1,44 +1,31 @@
 // pkg-system/pages/org/org.js —— M13 组织架构与用户管理
-// R09：组织权限按树分发（admin/lead/project_lead 可编辑，supervisor 只读）
+// R09：组织权限按树分发（admin/a1 全量、单位级管理本单位子树、b21/c21 项目部子树，其余只读）
 // R10：人员列表分类检索（角色筛选 + 关键字搜索）
+// 词表统一（2026-08-08）：角色清单/筛选项/进入权限全部为三级树码 + admin
 const api = require('../../../utils/api');
 const auth = require('../../../utils/auth');
 const network = require('../../../utils/network');
-const { ROLES, ROLE_ORDER } = require('../../../utils/constants');
+const { ROLES, ROLE_ORDER, ROLE_FAMILIES, ROLE_TEXT } = require('../../../utils/constants');
+const { orgPathText, subtreeIds } = require('../../../utils/org-utils'); // 优化#15：移动防环
+const { getRoleMeta } = require('../../../utils/role-tree');
 
-// 可分配角色（与 cloudfunctions/system ROLE_WHITE 同源；D1：补充安监/专班角色预建能力）
-const ROLE_OPTIONS = [
-  { value: ROLES.WORKER, name: '普通作业人员' },
-  { value: ROLES.GROUP_LEAD, name: '班组长/班组安全员' },
-  { value: ROLES.SAFETY_OFFICER, name: '项目部专职安全员' },
-  { value: ROLES.LEASE_ADMIN, name: '租赁机具管理员' },
-  { value: ROLES.PROJECT_LEAD, name: '项目部负责人' },
-  { value: ROLES.SUPERVISOR, name: '安监部管理人员' },
-  { value: ROLES.LEAD, name: '工作专班负责人' },
-  { value: ROLES.ADMIN, name: '小程序管理员（最高权限）' },
-];
+// 可分配角色（与 cloudfunctions/system ROLE_ADMIN_ASSIGNABLE 同源：三级树 14 码 + admin）
+const ROLE_OPTIONS = ROLE_ORDER.map((v) => ({ value: v, name: ROLE_TEXT[v] || v }))
+  .concat([{ value: 'admin', name: ROLE_TEXT.admin }]);
 const KIND_OPTIONS = [
   { value: 'unit', name: '所属单位' },
   { value: 'project', name: '项目部' },
   { value: 'team', name: '机构/班组' },
 ];
-const ROLE_TEXT = {
-  lead: '专班负责人', project_lead: '项目部负责人', safety_officer: '专职安全员',
-  group_lead: '班组长', supervisor: '安监管理', worker: '作业人员', lease_admin: '租赁管理员',
-  admin: '小程序管理员',
-};
 
-// R10：检索用角色筛选项（含「全部」选项）
+// R10：检索用角色筛选项（含「全部」选项；admin 服务端指派亦列出）
 const ROLE_FILTER_OPTIONS = [
   { value: '', name: '全部角色' },
-].concat(
-  ROLE_ORDER.map((r) => ({ value: r, name: ROLE_TEXT[r] || r }))
-    .concat([{ value: ROLES.LEASE_ADMIN, name: ROLE_TEXT[ROLES.LEASE_ADMIN] }])
-    .concat([{ value: ROLES.ADMIN, name: ROLE_TEXT[ROLES.ADMIN] }])
-);
+].concat(ROLE_ORDER.map((r) => ({ value: r, name: ROLE_TEXT[r] || r })))
+ .concat([{ value: 'admin', name: ROLE_TEXT.admin }]);
 
-// R09：可进入组织管理页的角色（supervisor 只读，其余可编辑）
-const ORG_VIEW_ROLES = [ROLES.ADMIN, ROLES.LEAD, ROLES.PROJECT_LEAD, ROLES.SUPERVISOR];
+// R09：可进入组织管理页的角色（平台级 a1 / 单位级管理 / 项目部负责人 b21/c21；其余不可进）
+const ORG_VIEW_ROLES = [ROLES.ADMIN, 'a1', ...ROLE_FAMILIES.UNIT_MGMT, 'b21', 'c21'];
 
 Page({
   data: {
@@ -67,6 +54,11 @@ Page({
     userPageSize: 50,
     userTotal: 0,
     loading: false,
+    // 优化#16：库房管理（架构页内联）
+    storePanel: { orgId: '', orgName: '', stores: [], loading: false },
+    showStoreForm: false,
+    storeSubmitting: false,
+    storeForm: { editingId: '', orgId: '', name: '', zone: '', keeper: '' },
   },
 
   onShow() {
@@ -110,18 +102,18 @@ Page({
     };
     list.filter((n) => !n.parentId).forEach((n) => walk(n, 0));
     const units = list.filter((o) => o.level === 0);
-    // 父级候选项（用于新增组织时选择上级）
-    const parentOptions = [{ _id: '', name: '（根节点 / 所属单位）' }].concat(
-      list.map((o) => ({ _id: o._id, name: (o.kind === 'unit' ? '单位·' : o.kind === 'project' ? '项目部·' : '班组·') + o.name }))
+    // 父级候选项（用于新增组织时选择上级；优化#15：附 kind 供三级树类型联动校验）
+    const parentOptions = [{ _id: '', kind: '', name: '（根节点 / 所属单位）' }].concat(
+      list.map((o) => ({ _id: o._id, kind: o.kind, name: (o.kind === 'unit' ? '单位·' : o.kind === 'project' ? '项目部·' : '班组·') + o.name }))
     );
     this.setData({
       tree: flat, orgs: list, units, parentOptions,
       orgPerm: perm,
     }, () => this.refreshOrgOptions());
-    // 用户列表
+    // 用户列表（问题 #6：组织显示完整路径，替代「已分配/未分配」粗显示）
     const users = (usersRes && usersRes.list) || (Array.isArray(usersRes) ? usersRes : []);
     this.setData({
-      users: users.map((u) => ({ ...u, roleText: ROLE_TEXT[u.role] || u.role })),
+      users: users.map((u) => ({ ...u, roleText: ROLE_TEXT[u.role] || u.role, orgText: orgPathText(list, u.orgId) })),
       userTotal: (usersRes && usersRes.total) || users.length,
     });
   },
@@ -157,26 +149,43 @@ Page({
   onKeywordInput(e) { this.setData({ keyword: e.detail.value }); },
   onKeywordClear() { this.setData({ keyword: '' }); },
 
-  // 用户表单：根据所选单位，构建机构/班组候选项（带路径）
+  // 用户表单：根据所选单位 + 角色 orgKind，构建组织候选项（问题 #6：与注册端 ORG_KIND_MAP / role-tree orgKind 同源约束）
+  //   unit 角色 → 仅单位节点本身；project 角色 → 仅项目部节点；team 角色 → 仅班组节点；无 orgKind → 全部后代
   refreshOrgOptions() {
     const { orgs, units, userForm } = this.data;
     const unit = units[userForm.unitIndex];
+    if (!unit) {
+      // 单位索引越界（单位列表变更后旧索引失效）：归零重取，避免提交时静默丢组织
+      this.setData({ orgOptions: [], 'userForm.unitIndex': 0, 'userForm.orgIndex': 0 }, () => this.refreshOrgOptions());
+      return;
+    }
+    const role = (this.data.roleOptions[userForm.roleIndex] || {}).value;
+    const meta = role ? getRoleMeta(role) : null;
+    const orgKind = meta ? meta.orgKind : null;
     const idMap = {};
     orgs.forEach((o) => { idMap[o._id] = o; });
     const options = [];
-    if (unit) {
+    if (orgKind === 'unit') {
+      // 单位级角色：候选 = 该单位节点本身（子树内不存在 unit 类型节点）
+      options.push({ _id: unit._id, label: '单位·' + unit.name, unitId: unit._id });
+    } else if (unit) {
       orgs.forEach((o) => {
         if (o._id === unit._id) return;
         let p = o.parentId, ok = false;
         while (p) { if (p === unit._id) { ok = true; break; } p = idMap[p] ? idMap[p].parentId : null; }
         if (!ok) return;
+        if (orgKind && o.kind !== orgKind) return; // project/team 类型约束
         const path = [];
         let cur = o;
         while (cur) { path.unshift(cur.name); cur = idMap[cur.parentId]; }
-        options.push({ _id: o._id, label: path.join(' / '), unitId: unit._id });
+        options.push({
+          _id: o._id,
+          label: (o.kind === 'project' ? '项目部·' : '班组·') + path.join(' / '),
+          unitId: unit._id,
+        });
       });
     }
-    // 修正越界
+    // 修正越界（候选随角色约束变少时，旧 orgIndex 归零）
     let orgIndex = userForm.orgIndex;
     if (orgIndex >= options.length) orgIndex = 0;
     this.setData({ orgOptions: options, ['userForm.orgIndex']: orgIndex });
@@ -184,8 +193,29 @@ Page({
 
   // ── 组织：表单输入 ──
   onOrgName(e) { this.setData({ 'orgForm.name': e.detail.value }); },
-  onOrgParent(e) { this.setData({ 'orgForm.parentIndex': +e.detail.value }); },
+  // 优化#15：切换上级时按三级树架构自动纠正类型（unit 挂根 / project 挂 unit / team 挂 project）
+  onOrgParent(e) {
+    const idx = +e.detail.value;
+    const parent = this.data.parentOptions[idx] || {};
+    const ALLOWED = { '': ['unit'], unit: ['project'], project: ['team'], team: [] };
+    const allowed = ALLOWED[parent.kind || ''] || [];
+    const kindIndex = allowed.length
+      ? Math.max(0, this.data.kindOptions.findIndex((k) => k.value === allowed[0]))
+      : this.data.kindIndex;
+    this.setData({ 'orgForm.parentIndex': idx, 'orgForm.kindIndex': kindIndex });
+  },
   onOrgKind(e) { this.setData({ 'orgForm.kindIndex': +e.detail.value }); },
+
+  // 优化#15：树行「新增下级」——预填父级并打开表单
+  onOrgAdd(e) {
+    const id = e.currentTarget.dataset.id;
+    const parentIndex = Math.max(0, this.data.parentOptions.findIndex((p) => p._id === id));
+    // 按父级类型给默认子类型：unit → project；project → team；team 已是最末层
+    const parent = this.data.parentOptions[parentIndex] || {};
+    const kindIndex = parent.kind === 'unit' ? 1 : parent.kind === 'project' ? 2 : 0;
+    this.setData({ orgForm: { name: '', parentIndex, kindIndex, editingId: '' } });
+    wx.pageScrollTo({ scrollTop: 0, duration: 200 });
+  },
 
   async onOrgSubmit() {
     const { orgForm, parentOptions, kindOptions, orgPerm } = this.data;
@@ -201,10 +231,23 @@ Page({
       wx.showToast({ title: '该节点无编辑权限', icon: 'none' }); return;
     }
     if (!orgForm.name) { wx.showToast({ title: '请填写组织名称', icon: 'none' }); return; }
+    // 优化#15 移动子树防环（前端预检，服务端仍权威校验）：目标父级不能位于自身子树内
+    if (orgForm.editingId) {
+      const parentId = (parentOptions[orgForm.parentIndex] || {})._id || '';
+      if (parentId) {
+        const subs = subtreeIds(this.data.orgs, orgForm.editingId);
+        if (subs.includes(parentId)) {
+          wx.showToast({ title: '不能移动到自身下级组织下', icon: 'none' });
+          return;
+        }
+      }
+    }
     try { await network.requireOnline(); } catch (e) { return; }
     this.setData({ loading: true });
     try {
-      const parent = parentOptions[orgForm.parentIndex];
+      // 优化#2 空值守卫：parentIndex 越界/组织树加载失败时 parent 为 undefined，此前直接抛；
+      // parent._id 为 '' 是合法的「根节点」默认值（parentIndex 0），不可拦截
+      const parent = parentOptions[orgForm.parentIndex] || {};
       const kind = kindOptions[orgForm.kindIndex].value;
       if (orgForm.editingId) {
         await api.manageOrg({ op: 'update', id: orgForm.editingId, data: { name: orgForm.name, parentId: parent._id, kind } });
@@ -283,7 +326,10 @@ Page({
 
   // ── 用户：表单输入 ──
   onUserInput(e) { this.setData({ ['userForm.' + e.currentTarget.dataset.f]: e.detail.value }); },
-  onUserRole(e) { this.setData({ 'userForm.roleIndex': +e.detail.value }); },
+  onUserRole(e) {
+    // 角色变化 → 按 orgKind 刷新组织候选（问题 #6）并重置已选组织
+    this.setData({ 'userForm.roleIndex': +e.detail.value, 'userForm.orgIndex': 0 }, () => this.refreshOrgOptions());
+  },
   onUserUnit(e) { this.setData({ 'userForm.unitIndex': +e.detail.value }, () => this.refreshOrgOptions()); },
   onUserOrg(e) { this.setData({ 'userForm.orgIndex': +e.detail.value }); },
 
@@ -357,4 +403,83 @@ Page({
 
   // 子功能入口：数据字典 / 操作日志
   onGo(e) { wx.navigateTo({ url: e.currentTarget.dataset.url }); },
+
+  // ═══ 优化#16：库房管理纳入架构页（树节点下挂库房） ═══
+  // 展开/收起某组织的库房列表
+  async onStoreToggle(e) {
+    const orgId = e.currentTarget.dataset.id;
+    const orgName = e.currentTarget.dataset.name || '';
+    if (this.data.storePanel && this.data.storePanel.orgId === orgId) {
+      this.setData({ storePanel: { orgId: '', orgName: '', stores: [], loading: false } });
+      return;
+    }
+    this.setData({ storePanel: { orgId, orgName, stores: [], loading: true } });
+    const stores = await api.getStoreList({ orgId }).catch(() => []);
+    this.setData({ storePanel: { orgId, orgName, stores: stores || [], loading: false } });
+  },
+
+  // 打开新增库房表单（预填所属组织）
+  onStoreAdd(e) {
+    const orgId = e.currentTarget.dataset.orgid || e.currentTarget.dataset.id || '';
+    this.setData({
+      showStoreForm: true,
+      storeForm: { editingId: '', orgId, name: '', zone: '', keeper: '' },
+    });
+  },
+
+  // 打开编辑库房表单
+  onStoreEdit(e) {
+    const s = (this.data.storePanel.stores || []).find((x) => x._id === e.currentTarget.dataset.id);
+    if (!s) return;
+    this.setData({
+      showStoreForm: true,
+      storeForm: { editingId: s._id, orgId: s.orgId || '', name: s.name || '', zone: s.zone || '', keeper: s.keeper || '' },
+    });
+  },
+
+  onStoreName(e) { this.setData({ 'storeForm.name': e.detail.value }); },
+  onStoreZone(e) { this.setData({ 'storeForm.zone': e.detail.value }); },
+  onStoreKeeper(e) { this.setData({ 'storeForm.keeper': e.detail.value }); },
+  onStoreClose() { this.setData({ showStoreForm: false }); },
+
+  // 新增/保存库房（服务端校验 orgId 可编辑范围；编辑时 orgId 不可变更）
+  async onStoreSubmit() {
+    const { storeForm } = this.data;
+    if (!storeForm.name) { wx.showToast({ title: '请填写库房名称', icon: 'none' }); return; }
+    try { await network.requireOnline(); } catch (err) { return; }
+    this.setData({ storeSubmitting: true });
+    try {
+      if (storeForm.editingId) {
+        await api.updateStore(storeForm.editingId, { name: storeForm.name, zone: storeForm.zone, keeper: storeForm.keeper });
+      } else {
+        await api.registerStore({ name: storeForm.name, zone: storeForm.zone, keeper: storeForm.keeper, orgId: storeForm.orgId });
+      }
+      wx.showToast({ title: storeForm.editingId ? '已保存' : '已新增', icon: 'success' });
+      this.setData({ showStoreForm: false });
+      // 刷新当前展开组织的库房
+      if (this.data.storePanel.orgId) this.onStoreToggle({ currentTarget: { dataset: { id: this.data.storePanel.orgId, name: this.data.storePanel.orgName } } });
+    } catch (err) {
+      wx.showToast({ title: (err && err.message) || '保存失败', icon: 'none' });
+    } finally {
+      this.setData({ storeSubmitting: false });
+    }
+  },
+
+  // 删除库房（二次确认；服务端校验：库房下仍有器具时拒绝）
+  async onStoreDelete(e) {
+    const id = e.currentTarget.dataset.id;
+    const ok = await new Promise((resolve) => wx.showModal({
+      title: '删除库房', content: '确认删除该库房？库房下仍有器具时无法删除。',
+      success: (r) => resolve(r.confirm),
+    }));
+    if (!ok) return;
+    try { await network.requireOnline(); } catch (err) { return; }
+    try {
+      await api.deleteStore(id);
+      wx.showToast({ title: '已删除', icon: 'success' });
+      if (this.data.storePanel.orgId) this.onStoreToggle({ currentTarget: { dataset: { id: this.data.storePanel.orgId, name: this.data.storePanel.orgName } } });
+    } catch (err) {
+      wx.showToast({ title: (err && err.message) || '删除失败', icon: 'none' });
+    }
+  },
 });

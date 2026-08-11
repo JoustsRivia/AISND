@@ -1,3 +1,6 @@
 {
+  "usingComponents": {
+    "search-picker": "/components/search-picker/index"
+  },
   "navigationBarTitleText": "批量生成条码"
 }

@@ -8,3 +8,22 @@
 .tag { font-size: 22rpx; padding: 2rpx 14rpx; border-radius: 8rpx; }
 .tag-b { background: var(--c-info-bg); color: var(--c-primary); }
 .tag-r { background: var(--c-success-bg); color: var(--c-success); }
+
+/* 问题 #4：扫码领用/归还入口 */
+.scan-btn { margin: 20rpx var(--sp-3) 0; font-size: 28rpx; }
+
+/* 优化#6：筛选条 */
+.filter { margin: 16rpx var(--sp-3) 0; }
+.kw-types { display: flex; gap: 12rpx; margin-bottom: 12rpx; }
+.kw-t {
+  font-size: 24rpx; padding: 6rpx 20rpx; border-radius: var(--r-pill);
+  background: var(--c-bg, #f5f6f8); color: var(--c-text-sub);
+}
+.kw-t.on { background: var(--c-primary); color: #fff; }
+.kw-row {
+  display: flex; align-items: center; background: var(--c-bg, #f5f6f8);
+  border-radius: var(--r-pill); padding: 0 20rpx;
+}
+.kw-ico { font-size: 26rpx; margin-right: 12rpx; }
+.kw-input { flex: 1; height: 64rpx; font-size: 26rpx; }
+.kw-clear { font-size: 28rpx; color: var(--c-text-weak); padding: 0 8rpx; }

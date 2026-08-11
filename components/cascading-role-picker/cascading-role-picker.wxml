@@ -10,6 +10,7 @@
       class="crp-picker"
       value="{{pickerValue}}"
       indicator-style="height: 88rpx;"
+      bindcolumnchange="onColumnChange"
       bindchange="onColumnChange"
     >
       <!-- 第一列：安监/总包/分包 -->

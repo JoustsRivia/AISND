@@ -26,30 +26,10 @@ const TOOL_STATUS_LABELS = {
   [TOOL_STATUS.FORBIDDEN]: '已禁用',
 };
 
-const ROLES = {
-  LEAD: 'lead',                       // 工作专班负责人
-  PROJECT_LEAD: 'project_lead',       // 项目部负责人
-  SAFETY_OFFICER: 'safety_officer', // 项目部专职安全员
-  GROUP_LEAD: 'group_lead',           // 班组长/班组安全员
-  SUPERVISOR: 'supervisor',           // 安监部管理人员
-  WORKER: 'worker',                   // 普通作业人员
-  LEASE_ADMIN: 'lease_admin',         // 租赁机具管理员
-  ADMIN: 'admin',                     // 小程序管理员（拥有小程序全部数据管理权限）
-};
-
-// 角色展示顺序（单一源）：所有角色选择器（注册页 / 组织成员列表 / 筛选器）统一引用此顺序，
-// 避免出现各自硬编码导致顺序不一致。admin 为服务端指派、不在此列表中（注册页亦不展示）。
-const ROLE_ORDER = [
-  ROLES.WORKER,        // 普通作业人员
-  ROLES.GROUP_LEAD,    // 班组长/班组安全员
-  ROLES.SAFETY_OFFICER,// 项目部专职安全员
-  ROLES.PROJECT_LEAD,  // 项目部负责人
-  ROLES.SUPERVISOR,    // 安监部管理人员
-  ROLES.LEAD,          // 专班负责人
-];
-
-// 新角色树三级角色码（一级：安监a/总包b/分包c；二级：管理/现场；三级：具体岗位）
-// 这些角色码由 utils/role-tree.js 的 ROLE_TREE 单一源定义，此处仅声明常量映射供引用。
+// 三级角色树角色码（唯一业务词表，2026-08-08 统一：旧扁平码已移除）：
+// 一级：安监 a / 总包 b / 分包 c；二级：管理 / 现场；三级：具体岗位。
+// 树的层级与 orgKind 语义由 utils/role-tree.js 的 ROLE_TREE 单一源定义，此处仅声明常量映射供引用。
+// 服务端白名单/档位同源见 shared/roles.js 与 shared/dbBase.js。
 const ROLE_TREE_CODES = {
   // 安监 (a)
   SAFETY_PLATFORM: 'a1',        // 平台安监人员
@@ -71,6 +51,43 @@ const ROLE_TREE_CODES = {
   SUBCONTRACTOR_GROUP_LEAD: 'c23',       // 分包班组班长/安全员
   SUBCONTRACTOR_WORKER: 'c24',           // 分包作业人员
 };
+
+// 角色引用常量（兼容旧 ROLES.* 语法；值为三级树码 + admin）
+const ROLES = { ...ROLE_TREE_CODES, ADMIN: 'admin' };
+
+// 角色族（与 shared/roles.js 的 MGMT / UNIT_MGMT 同源语义）：
+// 前端权限判定统一用族判定，避免散点硬编码单个角色码。
+const ROLE_FAMILIES = {
+  // 管理族：单位级 + 项目级管理角色（建档/编辑/审批/评分等业务管理动作）
+  MGMT: ['a1', 'a2', 'b11', 'b12', 'b21', 'b22', 'c11', 'c12', 'c21', 'c22'],
+  // 单位级管理族（注册端强制绑定 unit 节点；数据档位 UNIT_ROLES 同源）
+  UNIT_MGMT: ['a2', 'b11', 'b12', 'c11', 'c12'],
+  // 全部三级叶子码（模块全员可见等场景用）
+  ALL: Object.values(ROLE_TREE_CODES),
+};
+
+// 角色中文名（唯一前端角色名映射，替代各页面重复的 ROLE_TEXT 表）
+const ROLE_TEXT = {
+  a1: '平台安监人员',
+  a2: '总包安监人员',
+  b11: '公司负责人',
+  b12: '部门经理',
+  b21: '项目部负责人',
+  b22: '项目部专职安全员',
+  b23: '自有班组班长/安全员',
+  b24: '自有作业人员',
+  c11: '分包负责人',
+  c12: '分包部门经理',
+  c21: '分包项目部负责人',
+  c22: '分包项目部专职安全员',
+  c23: '分包班组班长/安全员',
+  c24: '分包作业人员',
+  admin: '小程序管理员',
+};
+
+// 角色展示顺序（单一源）：所有角色选择器（组织成员列表 / 筛选器）统一引用此顺序。
+// 按三级树深度优先顺序。admin 为服务端指派、不在此列表中。
+const ROLE_ORDER = Object.values(ROLE_TREE_CODES);
 
 const TOOL_CATEGORIES = [
   { code: 'insulation', name: '绝缘安全工器具' },
@@ -125,6 +142,7 @@ const WARNING_LEVEL = { NOTICE: 'notice', IMPORTANT: 'important', URGENT: 'urgen
 
 module.exports = {
   TOOL_STATUS, TOOL_STATUS_LABELS, TOOL_SOURCES, ROLES, ROLE_ORDER, ROLE_TREE_CODES,
+  ROLE_FAMILIES, ROLE_TEXT,
   TOOL_CATEGORIES, DICT_TYPE, HAZARD_LEVEL, WARNING_LEVEL,
   SPECIAL_EQUIP_CATEGORIES, CERT_TYPES, CERT_TO_CATEGORY, SUBSCRIBE_TMPL_ID,
 };

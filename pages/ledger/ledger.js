@@ -1,8 +1,9 @@
 // pages/ledger/ledger.js —— 台账列表（统计 + 筛查 + 卡片列表 + 分页 + 分台账 + 录入/导入）
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
-const { TOOL_CATEGORIES } = require('../../utils/constants');
+const { TOOL_CATEGORIES, ROLE_FAMILIES } = require('../../utils/constants');
 const { subtreeIds } = require('../../utils/org-utils');
+const { catName } = require('../../utils/display'); // 优化#13：类别中文
 const net = require('../../utils/network');
 
 const STATUS_TABS = [
@@ -42,6 +43,10 @@ Page({
   onShow() {
     // 问题1：未登录拦截
     if (!auth.isLoggedIn()) { wx.reLaunch({ url: '/pages/login/login' }); return; }
+    // 修复：切回台账页时强制刷新——器具状态（合格→待检等）在别的页变更后须及时可见；
+    // 首次 onShow 由 onLoad 的 reload 覆盖，跳过避免双请求；离线时 cacheThenNetwork 回退缓存
+    if (this._inited) this.reload();
+    this._inited = true;
   },
 
   onLoad() {
@@ -66,7 +71,8 @@ Page({
     tree.forEach((o) => { byId[o._id] = o; });
     const p = auth.getProfile();
     let opts = tree;
-    if (p && p.orgId && !(p.role === 'lead' || p.role === 'supervisor')) {
+    // 全局(admin/a1)与单位级管理可全选；其余仅自身子树（词表统一：三级树码）
+    if (p && p.orgId && !(p.role === 'admin' || p.role === 'a1' || ROLE_FAMILIES.UNIT_MGMT.includes(p.role))) {
       const set = new Set(subtreeIds(tree, p.orgId));
       opts = tree.filter((o) => set.has(o._id));
     }
@@ -139,7 +145,11 @@ Page({
     if (activeChips.length) params.category = activeChips[0];
     if (highRisk) params.highRisk = true; // M1.3.6 高危专项台账
     const res = await api.getToolList(params).catch(() => []);
-    const list = Array.isArray(res) ? res : (res.list || []);
+    const list = (Array.isArray(res) ? res : (res.list || [])).map((t) => ({
+      ...t,
+      // 优化#13 通病整改：tool-card 组件读 categoryText，服务端 list 返回英文码
+      categoryText: catName(t.category),
+    }));
     const total = Array.isArray(res) ? res.length : (res.total || 0);
     // 边界修正：当本页拉满且仍有下一页（page*PAGE_SIZE < total）才允许加载更多；
     // 去掉原 `|| total === 0` 兜底，避免末页恰好满页时误判 hasMore=true 触发多余空请求。
@@ -195,7 +205,7 @@ Page({
     const lines = [headers.join(',')];
     res.rows.forEach((r) => {
       lines.push([
-        r.code, r.name, r.category, r.spec, STATUS[r.status] || r.status, r.source,
+        r.code, r.name, catName(r.category), r.spec, STATUS[r.status] || r.status, r.source, // 优化#13：类别导出中文
         r.store, r.keeper, r.expireAt, r.lastTestDate, r.purchaseDate,
       ].map(esc).join(','));
     });
@@ -205,10 +215,33 @@ Page({
     fs.writeFile({
       filePath: path, data: csv, encoding: 'utf8',
       success: () => {
-        wx.setClipboardData({
-          data: csv,
-          success: () => wx.showModal({ title: '导出成功', content: `已生成 ${res.rows.length} 条台账（CSV）。\n文件已保存，CSV 文本已复制到剪贴板，可粘贴到 Excel。`, showCancel: false }),
-          fail: () => wx.showToast({ title: `已生成 ${res.rows.length} 条`, icon: 'none' }),
+        // 优化#9：文件下载方式替代剪贴板——保存到手机文件 或 发送文件（文件传输助手）
+        wx.showActionSheet({
+          itemList: ['💾 保存到手机文件', '📤 发送文件（发到文件传输助手）'],
+          success: (r) => {
+            if (r.tapIndex === 0) {
+              if (!wx.saveFileToDisk) {
+                wx.showToast({ title: '当前微信版本不支持，请改用发送文件', icon: 'none' });
+                return;
+              }
+              wx.saveFileToDisk({
+                filePath: path,
+                success: () => wx.showToast({ title: `已保存 ${res.rows.length} 条台账`, icon: 'success' }),
+                fail: () => wx.showModal({
+                  title: '保存失败',
+                  content: '请在「设置-通用-存储空间/权限」中允许保存到手机文件，或改用发送文件',
+                  showCancel: false,
+                }),
+              });
+            } else {
+              wx.shareFileMessage({
+                filePath: path,
+                success: () => wx.showToast({ title: '已发送，可在聊天中保存文件', icon: 'success' }),
+                fail: () => wx.showToast({ title: '发送失败', icon: 'none' }),
+              });
+            }
+          },
+          fail: () => { /* 用户取消，静默 */ },
         });
       },
       fail: () => wx.showToast({ title: '导出失败', icon: 'none' }),
@@ -245,9 +278,7 @@ Page({
   },
 
   onTapItem(e) {
-    const t = (e && e.detail && e.detail.tool) || {};
-    // 列表过渡期可能传入空工具对象，无 _id 则无从跳转详情页，直接忽略点击。
-    if (!t._id) return;
-    wx.navigateTo({ url: '/pages/tool-detail/tool-detail?id=' + t._id });
+    const t = e.detail.tool;
+    wx.navigateTo({ url: '/pages/tool-detail/tool-detail?id=' + (t._id || '') });
   },
 });

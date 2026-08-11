@@ -31,35 +31,51 @@ test('subtreeIds: 空根/无组织返回空', () => {
   assert.deepStrictEqual(base.subtreeIds([], 'u1'), []);
 });
 
-test('roleScope: 三档角色映射', () => {
+// 词表统一（2026-08-08）：档位只认三级树码 + admin。
+//   global = ['admin','a1']（a1 平台安监跨单位全量）
+//   unit   = ['a2','b11','b12','c11','c12']（单位级管理，绑单位节点=整单位子树）
+//   org    = 其余树码（b21~b24/c21~c24，绑节点子树=管辖范围）
+test('roleScope: 三档角色映射（三级树码 + admin）', () => {
   assert.strictEqual(base.roleScope('admin'), 'global');
-  assert.strictEqual(base.roleScope('lead'), 'global');
-  assert.strictEqual(base.roleScope('supervisor'), 'global');
-  assert.strictEqual(base.roleScope('project_lead'), 'unit');
-  assert.strictEqual(base.roleScope('safety_officer'), 'unit');
-  assert.strictEqual(base.roleScope('lease_admin'), 'unit');
-  assert.strictEqual(base.roleScope('worker'), 'org');
-  assert.strictEqual(base.roleScope('group_lead'), 'org');
+  assert.strictEqual(base.roleScope('a1'), 'global');
+  assert.strictEqual(base.roleScope('a2'), 'unit');
+  assert.strictEqual(base.roleScope('b11'), 'unit');
+  assert.strictEqual(base.roleScope('b12'), 'unit');
+  assert.strictEqual(base.roleScope('c11'), 'unit');
+  assert.strictEqual(base.roleScope('c12'), 'unit');
+  assert.strictEqual(base.roleScope('b21'), 'org');
+  assert.strictEqual(base.roleScope('b22'), 'org');
+  assert.strictEqual(base.roleScope('b23'), 'org');
+  assert.strictEqual(base.roleScope('b24'), 'org');
+  assert.strictEqual(base.roleScope('c21'), 'org');
+  assert.strictEqual(base.roleScope('c24'), 'org');
 });
 
-test('allowedOrgIds: 全局角色不过滤（null），可下钻子树', () => {
+test('allowedOrgIds: 全局角色（admin/a1）不过滤（null），可下钻子树', () => {
   const admin = { role: 'admin', orgId: 't2' };
   assert.strictEqual(base.allowedOrgIds(admin, ORGS), null); // 全量
   assert.deepStrictEqual(base.allowedOrgIds(admin, ORGS, { orgId: 'u1' }).sort(), ['p1', 't1', 't2', 'u1']);
+  const a1 = { role: 'a1', orgId: '' };
+  assert.strictEqual(base.allowedOrgIds(a1, ORGS), null); // 平台安监：全平台全量
 });
 
-test('allowedOrgIds: 单位级角色看整单位子树', () => {
-  const lead = { role: 'project_lead', orgId: 'p1' };
-  assert.deepStrictEqual(base.allowedOrgIds(lead, ORGS).sort(), ['p1', 't1', 't2']);
+test('allowedOrgIds: 单位级角色（绑单位节点）看整单位子树', () => {
+  const head = { role: 'b11', orgId: 'u1' };
+  assert.deepStrictEqual(base.allowedOrgIds(head, ORGS).sort(), ['p1', 't1', 't2', 'u1']);
+});
+
+test('allowedOrgIds: 项目部负责人（b21 绑项目部节点）看项目部子树', () => {
+  const pl = { role: 'b21', orgId: 'p1' };
+  assert.deepStrictEqual(base.allowedOrgIds(pl, ORGS).sort(), ['p1', 't1', 't2']);
 });
 
 test('allowedOrgIds: 机构/班组级仅看本机构子树', () => {
-  const worker = { role: 'worker', orgId: 't1' };
+  const worker = { role: 'b24', orgId: 't1' };
   assert.deepStrictEqual(base.allowedOrgIds(worker, ORGS), ['t1']);
 });
 
 test('allowedOrgIds: 越权 orgId 被忽略（防越界），仅下钻范围内', () => {
-  const worker = { role: 'worker', orgId: 't1' };
+  const worker = { role: 'b24', orgId: 't1' };
   // 请求 t2（不在 t1 子树）→ 忽略，回退本机构
   assert.deepStrictEqual(base.allowedOrgIds(worker, ORGS, { orgId: 't2' }), ['t1']);
   // 请求 t1（在范围内）→ 生效
@@ -67,6 +83,6 @@ test('allowedOrgIds: 越权 orgId 被忽略（防越界），仅下钻范围内'
 });
 
 test('allowedOrgIds: 未绑定机构 / 无用户 → 无可见数据', () => {
-  assert.deepStrictEqual(base.allowedOrgIds({ role: 'worker', orgId: '' }, ORGS), ['__unbound__']);
+  assert.deepStrictEqual(base.allowedOrgIds({ role: 'b24', orgId: '' }, ORGS), ['__unbound__']);
   assert.deepStrictEqual(base.allowedOrgIds(null, ORGS), ['__unbound__']);
 });

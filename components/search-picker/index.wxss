@@ -1,10 +1,13 @@
 .sp { margin: var(--sp-1) 0; }
-.sp-label { font-size: 26rpx; color: var(--c-muted, #999); margin-bottom: 4rpx; }
-.sp-row { display: flex; justify-content: space-between; align-items: center; padding: 16rpx; border: 1rpx solid var(--c-border, #d0d5dd); border-radius: var(--r-sm); }
-.sp-val { font-size: 28rpx; }
-.sp-clr { color: var(--c-danger, #e34d59); font-size: 36rpx; padding: 0 12rpx; }
-.sp-inp { border: 1rpx solid var(--c-border, #d0d5dd); border-radius: var(--r-sm); padding: 16rpx; font-size: 28rpx; }
-.sp-opt { max-height: 360rpx; overflow-y: auto; border: 1rpx solid var(--c-border, #e5e6eb); border-radius: var(--r-sm); margin-top: 4rpx; background: var(--c-card, #fff); }
-.sp-it { padding: 20rpx; border-bottom: 1rpx solid var(--c-bg, #f2f2f2); font-size: 28rpx; }
-.sp-it:active { background: var(--c-bg, #f5f7fa); }
-.sp-empty { padding: 20rpx; color: var(--c-muted, #999); font-size: 26rpx; }
+.sp-label { font-size: 26rpx; color: var(--c-text-weak); margin-bottom: 4rpx; }
+.sp-row { display: flex; justify-content: space-between; align-items: center; padding: 16rpx 20rpx; border: 1rpx solid var(--c-border); border-radius: var(--r-sm); background: var(--c-bg-soft); }
+.sp-val { font-size: 28rpx; color: var(--c-text); }
+.sp-clr { color: var(--c-danger); font-size: 36rpx; padding: 0 12rpx; }
+.sp-inp { border: 1rpx solid var(--c-border); border-radius: var(--r-sm); padding: 16rpx 20rpx; font-size: 28rpx; background: var(--c-bg-soft); }
+.sp-opt { max-height: 420rpx; overflow-y: auto; border: 1rpx solid var(--c-border); border-radius: var(--r-sm); margin-top: 8rpx; background: var(--c-card); }
+.sp-it { padding: 20rpx; border-bottom: 1rpx solid var(--c-divider); }
+.sp-it:active { background: var(--c-surface); }
+.sp-it-name { display: block; font-size: 28rpx; color: var(--c-text); font-weight: 500; }
+.sp-it-code { display: inline-block; margin-left: 12rpx; font-size: 24rpx; color: var(--c-primary); font-family: SNDNum, monospace; }
+.sp-it-sub { display: block; margin-top: 6rpx; font-size: 24rpx; color: var(--c-text-weak); }
+.sp-empty { padding: 20rpx; color: var(--c-text-weak); font-size: 26rpx; }

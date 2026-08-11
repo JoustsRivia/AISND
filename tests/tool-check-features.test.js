@@ -24,37 +24,38 @@ beforeEach(() => {
 });
 
 // ───────────────────────── R15 器具编号自动生成 ─────────────────────────
-test('R15 tool.create: 不传 code 时自动生成 GL-{YY}-{缩写}-{0001}', async () => {
-  mock.__store.users = [{ _id: 'u1', openid: 'test_openid', role: 'lead', orgId: 'o1', status: 'active' }];
+// 优化#14：编号规则改为「类别前两字缩写+年份后两位+5位序号」无连字符，如 TY2600001
+test('R15 tool.create: 不传 code 时自动生成 {缩写}{YY}{00001}', async () => {
+  mock.__store.users = [{ _id: 'u1', openid: 'test_openid', role: 'b11', orgId: 'o1', status: 'active' }];
   const r = await tool.main({ action: 'create', payload: { name: '扳手', category: 'manual', orgId: 'o1' } });
   assert.strictEqual(r.code, 0);
-  assert.match(r.data.code, /^GL-\d{2}-GJ-0001$/); // manual → 工具 GJ
+  assert.match(r.data.code, /^TY\d{2}00001$/); // manual → 通用 TY
 });
 
-test('R15 tool.create: 危险类别映射正确（insulation → YQ）', async () => {
-  mock.__store.users = [{ _id: 'u1', openid: 'test_openid', role: 'lead', orgId: 'o1', status: 'active' }];
+test('R15 tool.create: 危险类别映射正确（insulation → JY）', async () => {
+  mock.__store.users = [{ _id: 'u1', openid: 'test_openid', role: 'b11', orgId: 'o1', status: 'active' }];
   const r = await tool.main({ action: 'create', payload: { name: '绝缘杆', category: 'insulation', orgId: 'o1' } });
   assert.strictEqual(r.code, 0);
-  assert.match(r.data.code, /^GL-\d{2}-YQ-0001$/);
+  assert.match(r.data.code, /^JY\d{2}00001$/);
 });
 
 test('R15 tool.create: 同类别第二次创建流水号 +1', async () => {
-  mock.__store.users = [{ _id: 'u1', openid: 'test_openid', role: 'lead', orgId: 'o1', status: 'active' }];
+  mock.__store.users = [{ _id: 'u1', openid: 'test_openid', role: 'b11', orgId: 'o1', status: 'active' }];
   await tool.main({ action: 'create', payload: { name: '扳手1', category: 'manual', orgId: 'o1' } });
   const r2 = await tool.main({ action: 'create', payload: { name: '扳手2', category: 'manual', orgId: 'o1' } });
   assert.strictEqual(r2.code, 0);
-  assert.match(r2.data.code, /^GL-\d{2}-GJ-0002$/);
+  assert.match(r2.data.code, /^TY\d{2}00002$/);
 });
 
 test('R15 tool.create: 显式传入 code 时原样保留', async () => {
-  mock.__store.users = [{ _id: 'u1', openid: 'test_openid', role: 'lead', orgId: 'o1', status: 'active' }];
+  mock.__store.users = [{ _id: 'u1', openid: 'test_openid', role: 'b11', orgId: 'o1', status: 'active' }];
   const r = await tool.main({ action: 'create', payload: { name: '扳手', category: 'manual', orgId: 'o1', code: 'CUSTOM-001' } });
   assert.strictEqual(r.code, 0);
   assert.strictEqual(r.data.code, 'CUSTOM-001');
 });
 
 test('R15 tool.import: 每行未传 code 时按类别自增生成', async () => {
-  mock.__store.users = [{ _id: 'u1', openid: 'test_openid', role: 'lead', orgId: 'o1', status: 'active' }];
+  mock.__store.users = [{ _id: 'u1', openid: 'test_openid', role: 'b11', orgId: 'o1', status: 'active' }];
   const r = await tool.main({ action: 'import', payload: { rows: [
     { name: '钳子', category: 'manual' },
     { name: '螺丝刀', category: 'manual' },
@@ -62,8 +63,8 @@ test('R15 tool.import: 每行未传 code 时按类别自增生成', async () => 
   assert.strictEqual(r.code, 0);
   assert.strictEqual(r.data.count, 2);
   const codes = mock.__store.tools.map((t) => t.code).sort();
-  assert.match(codes[0], /^GL-\d{2}-GJ-0001$/);
-  assert.match(codes[1], /^GL-\d{2}-GJ-0002$/);
+  assert.match(codes[0], /^TY\d{2}00001$/);
+  assert.match(codes[1], /^TY\d{2}00002$/);
 });
 
 // ───────────────────────── R18 履历操作人姓名 ─────────────────────────
@@ -80,9 +81,31 @@ test('R18 tool.detail: 履历操作人 by(openid) 解析为 operatorName', async
   assert.strictEqual(op.operatorName, '张三'); // 非 openid，为可读姓名
 });
 
+// 优化#17：使用状态「领用责任人」——borrower(openid) 富化为姓名+工号
+test('R18 tool.detail: 领用中器具返回 borrowerName（姓名+工号）', async () => {
+  mock.__store.users = [
+    { _id: 'u1', openid: 'opener_x', nickname: '张三', username: 'zhang' },
+    { _id: 'u2', openid: 'borrower_y', nickname: '李四', username: 'li', employeeId: 'W008' },
+  ];
+  mock.__store.tools = [{
+    _id: 't1', code: 'GL-26-GJ-0001', name: '扳手', category: 'manual', status: 'in_use',
+    borrower: 'borrower_y', orgId: 'o1', operations: [], testRecords: [],
+  }];
+  const r = await tool.main({ action: 'detail', payload: { id: 't1' } });
+  assert.strictEqual(r.code, 0);
+  assert.strictEqual(r.data.borrowerName, '李四（W008）');
+  // 归还后（borrower 清空）不再有责任人（重建数组避免 mock 共享引用污染）
+  mock.__store.tools = [{
+    _id: 't1', code: 'GL-26-GJ-0001', name: '扳手', category: 'manual', status: 'qualified',
+    borrower: '', orgId: 'o1', operations: [], testRecords: [],
+  }];
+  const r2 = await tool.main({ action: 'detail', payload: { id: 't1' } });
+  assert.strictEqual(r2.data.borrowerName, undefined);
+});
+
 // ───────────────────────── R19 点检异常同步器具状态 ─────────────────────────
 test('R19 check.reportHazard: 关联器具的隐患上报 → 器具状态置为 maintaining', async () => {
-  mock.__store.users = [{ _id: 'u1', openid: 'test_openid', role: 'safety_officer', orgId: 'o1', status: 'active' }];
+  mock.__store.users = [{ _id: 'u1', openid: 'test_openid', role: 'b22', orgId: 'o1', status: 'active' }];
   mock.__store.tools = [{ _id: 't1', code: 'GL-26-GJ-0001', name: '扳手', status: 'qualified', orgId: 'o1' }];
   const r = await check.main({ action: 'reportHazard', payload: { desc: '绝缘破损', toolId: 't1', orgId: 'o1' } });
   assert.strictEqual(r.code, 0);
@@ -90,7 +113,7 @@ test('R19 check.reportHazard: 关联器具的隐患上报 → 器具状态置为
 });
 
 test('R19 check.reportHazard: 无 toolId 的通用隐患不改动器具状态', async () => {
-  mock.__store.users = [{ _id: 'u1', openid: 'test_openid', role: 'safety_officer', orgId: 'o1', status: 'active' }];
+  mock.__store.users = [{ _id: 'u1', openid: 'test_openid', role: 'b22', orgId: 'o1', status: 'active' }];
   mock.__store.tools = [{ _id: 't1', status: 'qualified' }];
   const r = await check.main({ action: 'reportHazard', payload: { desc: '环境隐患', orgId: 'o1' } });
   assert.strictEqual(r.code, 0);

@@ -2,7 +2,7 @@
 const api = require('../../../utils/api');
 const network = require('../../../utils/network');
 const auth = require('../../../utils/auth');
-const { ROLES, TOOL_STATUS } = require('../../../utils/constants');
+const { ROLE_FAMILIES, TOOL_STATUS } = require('../../../utils/constants');
 const { buildFlow } = require('../../../utils/flow');
 
 // 强制报废 7 项判定（与 cloudfunctions/scrap/index.js SCRAP_RULES 对应）
@@ -30,7 +30,7 @@ Page({
 
   async onLoad() {
     const p = auth.getProfile();
-    const canApprove = p && [ROLES.LEAD, ROLES.SUPERVISOR, ROLES.PROJECT_LEAD, ROLES.SAFETY_OFFICER].includes(p.role);
+    const canApprove = p && (p.role === 'admin' || ROLE_FAMILIES.MGMT.includes(p.role));
     this.setData({ canApprove: !!canApprove });
 
     const r = await api.autoScrapCheck().catch(() => null);

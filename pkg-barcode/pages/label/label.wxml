@@ -1,20 +1,15 @@
-<!-- pkg-barcode/pages/label/label.wxml -->
+<!-- pkg-barcode/pages/label/label.wxml —— 标识牌生成 -->
 <view class="page-pad">
   <view class="section-head"><view class="section-title">标识牌生成</view><view class="section-sub">仅生成文件，不接打印硬件</view></view>
   <view class="card">
-    <view class="form-row">
-      <text class="form-label">器具</text>
-      <picker range="{{tools}}" range-key="name" value="{{idx}}" bindchange="onPick">
-        <view class="form-value">{{idx >= 0 ? (tools[idx].name || '请选择') : '请选择'}} ›</view>
-      </picker>
-    </view>
+    <search-picker label="器具" placeholder="输入名称/编号/库房/保管人搜索" fetch="tools" bind:pick="onPickTool" />
     <button class="btn btn-primary btn-block" bindtap="onGen">生成标识牌文件</button>
   </view>
 
   <view wx:if="{{label}}" class="card">
     <view class="kv"><text class="k">名称</text><text class="v">{{label.name || '—'}}</text></view>
     <view class="kv"><text class="k">编号</text><text class="v">{{label.code || '—'}}</text></view>
-    <view class="kv"><text class="k">类别</text><text class="v">{{label.category || '—'}}</text></view>
+    <view class="kv"><text class="k">类别</text><text class="v">{{label.categoryText || label.category || '—'}}</text></view>
     <view class="kv"><text class="k">规格</text><text class="v">{{label.spec || '—'}}</text></view>
     <view class="kv"><text class="k">上次试验</text><text class="v">{{label.lastTestDate || '—'}}</text></view>
     <view class="kv"><text class="k">有效截止</text><text class="v">{{label.expireAt || '—'}}</text></view>

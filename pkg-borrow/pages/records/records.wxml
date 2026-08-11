@@ -1,7 +1,20 @@
-<!-- pkg-borrow/pages/records/records.wxml —— M5 领用归还记录 -->
+<!-- pkg-borrow/pages/records/records.wxml —— M5 领用归还记录（问题 #4：扫码领用/归还；优化#6：筛选） -->
 <view class="rec">
+  <button class="scan-btn" type="primary" bindtap="onScan">📷 扫码领用 / 归还</button>
   <view class="tabs">
     <view wx:for="{{tabs}}" wx:key="v" class="tab {{type === item.v ? 'on' : ''}}" data-v="{{item.v}}" bindtap="onTab">{{item.n}}</view>
+  </view>
+
+  <!-- 优化#6 筛选：默认仅展示最近 20 条，按编号/名称/库房/保管人检索全量匹配 -->
+  <view class="filter">
+    <view class="kw-types">
+      <text wx:for="{{kwTypes}}" wx:key="v" class="kw-t {{kwType === item.v ? 'on' : ''}}" data-v="{{item.v}}" bindtap="onKwType">{{item.n}}</text>
+    </view>
+    <view class="kw-row">
+      <text class="kw-ico">🔍</text>
+      <input class="kw-input" placeholder="{{kwType === 'code' ? '输入器具编号' : kwType === 'name' ? '输入器具名称' : kwType === 'store' ? '输入库房' : '输入保管人'}}" value="{{kw}}" bindinput="onKwInput" confirm-type="search" />
+      <text wx:if="{{kw}}" class="kw-clear" bindtap="onKwClear">✕</text>
+    </view>
   </view>
 
   <view wx:if="{{loading}}" class="muted card">加载中…</view>
@@ -10,7 +23,7 @@
       <text>{{item.name}}</text>
       <text class="tag {{item.type === 'borrow' ? 'tag-b' : 'tag-r'}}">{{item.type === 'borrow' ? '领用' : '归还'}}</text>
     </view>
-    <text class="muted">编号：{{item.code}} · 领用人：{{item.by}}</text>
+    <text class="muted">编号：{{item.code}} · 领用人：{{item.byName}}{{item.byEid ? '（' + item.byEid + '）' : ''}}</text>
     <text class="muted">{{item.ts}} <text wx:if="{{item.appearance}}">· 外观：{{item.appearance}}</text></text>
   </view>
   <view wx:if="{{!loading && list.length === 0}}" class="muted card">暂无记录</view>

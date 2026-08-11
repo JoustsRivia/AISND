@@ -1,5 +1,6 @@
 // cloudfunctions/maintenance/index.js —— M7 维保报修（纯业务，只引用 helpers）
 const { getOpenid } = require('./helpers/user');
+const { MGMT, UNIT_MGMT } = require('./helpers/roles');
 
 const { createRateLimiter } = require('./helpers/rateLimiter');
 const __limiter = createRateLimiter({ getOpenid });const db = require('./helpers/db');
@@ -9,8 +10,8 @@ const ok = (data) => ({ code: 0, data });
 const fail = (message, code = 1) => ({ code, message });
 const now = () => new Date();
 
-// 服务端角色鉴权（S1）：仅工作专班负责人/项目部负责人/专职安全员/安监部/管理员可审批与变更台账状态
-const ROLE_APPROVE = ['lead', 'project_lead', 'safety_officer', 'supervisor', 'admin'];
+// 服务端角色鉴权（S1）：仅管理族（MGMT）+ 管理员可审批与变更台账状态
+const ROLE_APPROVE = [...MGMT, 'admin'];
 async function requireApprover() {
   const openid = getOpenid();
   if (!openid) return { err: fail('未登录', 401) };
@@ -101,14 +102,69 @@ async function record(payload) {
 }
 
 // 报修/维修列表（item 1：RBAC 按组织子树收窄）
+// 问题 #7：默认排除已归档记录（显式传 status 可查）；并富化器具来源信息供列表展示
 async function list(payload = {}) {
   const { toolId, status } = payload;
   const where = {};
   if (toolId) where.toolId = toolId;
   if (status) where.status = status;
+  else where.status = db._.neq('archived'); // 默认不显示归档记录
   Object.assign(where, await scopeOf(payload));
   const res = await db.listBy('repair_records', where, 50);
-  return ok(res.data || []);
+  const list = res.data || [];
+  // 富化器具信息（工具不存在或已删时置 '—'，字段只增不改，兼容旧调用方）
+  const enriched = await Promise.all(list.map(async (it) => {
+    if (!it.toolId) return it;
+    const t = await db.getById('tools', it.toolId).catch(() => null);
+    const tool = t && t.data;
+    return {
+      ...it,
+      toolName: (tool && tool.name) || '—',
+      toolCode: (tool && tool.code) || '—',
+      category: (tool && tool.category) || '',
+      source: (tool && tool.source) || '',
+      leaseUnit: (tool && tool.leaseUnit) || '',
+    };
+  }));
+  return ok(enriched);
+}
+
+// 归档报修记录（问题 #7）：管理族可归档；归档后列表默认隐藏（显式传 status 可查）
+async function archive(payload) {
+  const g = await requireApprover();
+  if (g.err) return g.err;
+  const { id } = payload;
+  const r = await db.getById('repair_records', id);
+  if (!r.data) return fail('报修单不存在', 404);
+  if (r.data.status === 'archived') return fail('该记录已归档', 409);
+  if (r.data.status === 'pending') return fail('待审批报修不可归档，请先审批或删除', 409);
+  await db.update('repair_records', id, { status: 'archived', archivedAt: now(), archivedBy: g.u.openid });
+  return ok({ id, status: 'archived' });
+}
+
+// 删除报修记录（问题 #7）：管理族可删，仅限未流转状态（pending/rejected），防审计断裂
+async function remove(payload) {
+  const g = await requireApprover();
+  if (g.err) return g.err;
+  const { id } = payload;
+  const r = await db.getById('repair_records', id);
+  if (!r.data) return fail('报修单不存在', 404);
+  if (!['pending', 'rejected'].includes(r.data.status)) {
+    return fail(`仅待审批/已驳回的报修单可删除，当前状态「${r.data.status}」不可删（防审计断裂）`, 409);
+  }
+  // 删除报修单：若报修时已把器具置为维修中，回滚为合格（仅当器具当前仍是 maintaining，避免覆盖其他路径状态）
+  if (r.data.toolId) {
+    try {
+      const t = await db.getById('tools', r.data.toolId);
+      if (t.data && t.data.status === 'maintaining') {
+        await db.updateTool(r.data.toolId, { status: 'qualified' });
+      }
+    } catch (e) {
+      console.error('[maint] remove updateTool failed', e);
+    }
+  }
+  await db.remove('repair_records', id);
+  return ok({ id, deleted: true });
 }
 
 // 保养计划列表（M7.1，item 1：RBAC 按组织子树收窄）
@@ -174,6 +230,8 @@ exports.main = __limiter.wrap(async (event) => {
       case 'approve': return approve(payload);
       case 'record': return record(payload);
       case 'recheck': return recheck(payload);
+      case 'archive': return archive(payload);
+      case 'delete': return remove(payload);
       default: return fail('未知 action: ' + action);
     }
   } catch (e) {

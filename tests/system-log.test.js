@@ -65,7 +65,7 @@ test('system.log: 留存期按类型可配置（user=365 天，默认 180 天）
 
 // ───────────────────────── listLog：鉴权 ─────────────────────────
 test('system.listLog: 非管理员仅见自身（字段级权限，不报错）', async () => {
-  mock.__store.users = [{ _id: 'u2', openid: 'test_openid', role: 'worker', status: 'active', bound: true }];
+  mock.__store.users = [{ _id: 'u2', openid: 'test_openid', role: 'b24', status: 'active', bound: true }];
   mock.__store.operation_logs = [
     { _id: 'a', type: 'borrow', operator: 'test_openid', operatorName: '我', ts: Date.parse('2026-01-01') },
     { _id: 'b', type: 'borrow', operator: 'other', operatorName: '他人', ts: Date.parse('2026-02-01') },
@@ -133,7 +133,7 @@ test('system.listLog: 服务端分页 skip/limit/total/hasMore', async () => {
 
 // ───────────────────────── listLog：字段级权限（Item 3）─────────────────────────
 test('system.listLog: 非管理员强制 scope=mine 仅见自身（请求 all 也收窄）', async () => {
-  mock.__store.users = [{ _id: 'u2', openid: 'test_openid', role: 'worker', status: 'active', bound: true }];
+  mock.__store.users = [{ _id: 'u2', openid: 'test_openid', role: 'b24', status: 'active', bound: true }];
   mock.__store.operation_logs = [
     { _id: 'a', type: 'borrow', operator: 'test_openid', operatorName: '我', ts: Date.parse('2026-01-01') },
     { _id: 'b', type: 'borrow', operator: 'other_openid', operatorName: '他人', ts: Date.parse('2026-02-01') },
@@ -175,7 +175,7 @@ test('system.cleanupLogs: 删除 retainedUntil 到期记录，保留未到期', 
 
 test('system.cleanupLogs: 定时器触发(triggerName)免管理员校验', async () => {
   // 非管理员 + 定时器触发（无 action，由 triggerName 路由）
-  mock.__store.users = [{ _id: 'u2', openid: 'x', role: 'worker', status: 'active', bound: true }];
+  mock.__store.users = [{ _id: 'u2', openid: 'x', role: 'b24', status: 'active', bound: true }];
   const past = new Date('2020-01-01');
   mock.__store.operation_logs = [
     { _id: 'old1', type: 'borrow', operator: 'o1', retainedUntil: past },
@@ -187,7 +187,7 @@ test('system.cleanupLogs: 定时器触发(triggerName)免管理员校验', async
 
 // ───────────────── listLog：字段级脱敏（Item 4）─────────────────
 test('system.listLog: 非管理员列表脱敏 operator（仅留 operatorName）', async () => {
-  mock.__store.users = [{ _id: 'u2', openid: 'test_openid', role: 'worker', status: 'active', bound: true }];
+  mock.__store.users = [{ _id: 'u2', openid: 'test_openid', role: 'b24', status: 'active', bound: true }];
   mock.__store.operation_logs = [
     { _id: 'a', type: 'borrow', operator: 'test_openid', operatorName: '我', ts: Date.parse('2026-01-01') },
   ];
@@ -251,7 +251,7 @@ test('system.retention: 管理员 set 更新策略后日志按新值留存', asy
 });
 
 test('system.retention: 非管理员 set 被拒（403）', async () => {
-  mock.__store.users = [{ _id: 'u2', openid: 'test_openid', role: 'worker', status: 'active', bound: true }];
+  mock.__store.users = [{ _id: 'u2', openid: 'test_openid', role: 'b24', status: 'active', bound: true }];
   const r = await system.main({ action: 'retention', payload: { op: 'set', policy: { user: 999 } } });
   assert.strictEqual(r.code, 403);
 });
@@ -272,7 +272,7 @@ test('system.rateLimit: set 非法形状被拒（400）', async () => {
 });
 
 test('system.rateLimit: 非管理员 set 被拒（403）', async () => {
-  mock.__store.users = [{ _id: 'u2', openid: 'test_openid', role: 'worker', status: 'active', bound: true }];
+  mock.__store.users = [{ _id: 'u2', openid: 'test_openid', role: 'b24', status: 'active', bound: true }];
   const r = await system.main({ action: 'rateLimit', payload: { op: 'set', policy: { default: { window: 60000, max: 5 } } } });
   assert.strictEqual(r.code, 403);
 });

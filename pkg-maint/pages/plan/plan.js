@@ -34,7 +34,7 @@ Page({
 
   onExec(e) {
     const cur = this.data.list[e.currentTarget.dataset.idx];
-    if (cur.status === 'done') return;
+    if (!cur || cur.status === 'done') return; // 优化#2 空值守卫：列表刷新后下标可能越界
     this.setData({ showExec: true, cur, execDetail: '' });
   },
 

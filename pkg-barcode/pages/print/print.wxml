@@ -1,21 +1,19 @@
 <!-- pkg-barcode/pages/print/print.wxml —— M14 打印文件输出 -->
-<view class="print">
+<view class="print page-pad">
   <view class="card">
-    <view class="row"><text class="label">选择器具</text>
-      <picker mode="selector" range="{{list}}" range-key="name" value="{{idx}}" bindchange="onPick">
-        <view class="picker">{{list.length ? (list[idx].name + '（' + (list[idx].code || '') + '）') : '请选择器具'}}▾</view>
-      </picker>
-    </view>
-    <button size="mini" type="primary" bindtap="onPrint">生成打印文件</button>
+    <search-picker label="器具" placeholder="输入名称/编号/库房/保管人搜索" fetch="tools" bind:pick="onPickTool" />
+    <button class="btn btn-primary btn-block" bindtap="onPrint">生成打印文件</button>
   </view>
 
   <view wx:if="{{label}}" class="card label-prev">
-    <text class="title">标签打印预览</text>
-    <text>名称：{{label.name}}</text>
-    <text>编号：{{label.code}}</text>
-    <text>类别：{{label.category}} · 规格：{{label.spec}}</text>
-    <text>上次试验：{{label.lastTestDate}} · 有效期至：{{label.expireAt}}</text>
-    <text>存放：{{label.store}} · 保管：{{label.keeperDisplay || label.keeper}}</text>
-    <button type="primary" bindtap="onDoPrint">打印</button>
+    <view class="title">标签打印预览</view>
+    <view class="kv"><text class="k">名称</text><text class="v">{{label.name || '—'}}</text></view>
+    <view class="kv"><text class="k">编号</text><text class="v">{{label.code || '—'}}</text></view>
+    <view class="kv"><text class="k">类别 · 规格</text><text class="v">{{label.categoryText || label.category || '—'}} · {{label.spec || '—'}}</text></view>
+    <view class="kv"><text class="k">上次试验</text><text class="v">{{label.lastTestDate || '—'}}</text></view>
+    <view class="kv"><text class="k">有效期至</text><text class="v">{{label.expireAt || '—'}}</text></view>
+    <view class="kv"><text class="k">存放 · 保管</text><text class="v">{{label.store || '—'}} · {{label.keeperDisplay || label.keeper || '—'}}</text></view>
+    <button class="btn btn-outline btn-block" bindtap="onDoPrint">打印</button>
   </view>
+  <view class="safe-bottom"></view>
 </view>

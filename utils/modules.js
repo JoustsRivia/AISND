@@ -1,11 +1,13 @@
 // utils/modules.js
 // 模块菜单（九宫格工作台数据源）。按角色权限动态展示：roles 含 'all' 表示全员可见，
 // 否则仅当登录角色命中 roles 才展示。页面只读取过滤后的列表，权限判断集中在此。
-const { ROLES } = require('./constants');
+// 词表统一（2026-08-08）：roles 数组只使用三级树码 + 角色族（ROLE_FAMILIES），旧扁平码已移除。
+const { ROLES, ROLE_FAMILIES } = require('./constants');
 
-// 角色可见性快捷：管理类角色（业务管理，非系统管理员）
-const ADMIN = [ROLES.LEAD, ROLES.SUPERVISOR, ROLES.ADMIN];
-const MGMT = [ROLES.LEAD, ROLES.SUPERVISOR, ROLES.PROJECT_LEAD, ROLES.SAFETY_OFFICER];
+// 角色可见性快捷：管理族（业务管理，非系统管理员）；班组级补充码（原 group_lead 语义）
+const MGMT = ROLE_FAMILIES.MGMT;
+const MGMT_TEAM = [...MGMT, 'b23', 'c23']; // 管理族 + 班组长（采购/库房/条码类操作）
+const ALL_ROLES = ROLE_FAMILIES.ALL;       // 三级树全员（admin 有专属系统管理入口）
 
 // 模块分类（九宫格按分类分组展示）
 const CATEGORIES = [
@@ -25,20 +27,19 @@ const MODULES = [
 
   { key: 'borrow',   label: '领用归还', icon: '🔄', url: '/pkg-borrow/pages/records/records', roles: ['all'], category: 'use' },
   { key: 'test',     label: '周期试验', icon: '🧪', url: '/pkg-test/pages/due-list/due-list',  roles: ['all'], category: 'use' },
-  { key: 'site',     label: '现场点检', icon: '✅', url: '/pkg-site/pages/daily-check/daily-check', roles: ['worker', 'group_lead', 'safety_officer', 'lease_admin', 'supervisor', 'lead', 'project_lead'], category: 'use' },
+  { key: 'site',     label: '现场点检', icon: '✅', url: '/pkg-site/pages/spot-check/spot-check', roles: ALL_ROLES, category: 'use' },
   { key: 'maint',    label: '维保报修', icon: '🔧', url: '/pkg-maint/pages/repair/repair', roles: ['all'], category: 'use' },
   { key: 'mplan',    label: '保养计划', icon: '🗓️', url: '/pkg-maint/pages/plan/plan', roles: ['all'], category: 'use' },
   { key: 'scrap',    label: '报废管理', icon: '🗑️', url: '/pkg-scrap/pages/apply/apply', roles: ['all'], category: 'use' },
 
-  { key: 'purchase', label: '采购验收', icon: '🛒', url: '/pkg-purchase/pages/apply/apply', roles: ['safety_officer', 'group_lead', 'project_lead', 'lead', 'supervisor'], category: 'supply' },
-  { key: 'store',    label: '库房管理', icon: '🏬', url: '/pkg-store/pages/register/register', roles: ['safety_officer', 'lease_admin', 'group_lead', 'project_lead', 'lead'], category: 'supply' },
+  { key: 'purchase', label: '采购验收', icon: '🛒', url: '/pkg-purchase/pages/apply/apply', roles: MGMT_TEAM, category: 'supply' },
+  { key: 'store',    label: '库房管理', icon: '🏬', url: '/pkg-store/pages/register/register', roles: MGMT_TEAM, category: 'supply' },
 
   { key: 'check',    label: '监督检查', icon: '🔍', url: '/pkg-check/pages/hazard/hazard', roles: ['all'], category: 'supervise' },
-  { key: 'perf',     label: '人员考核', icon: '🏅', url: '/pkg-check/pages/performance/performance', roles: MGMT, category: 'supervise' },
   { key: 'train',    label: '培训管理', icon: '🎓', url: '/pkg-train/pages/courses/courses', roles: ['all'], category: 'supervise' },
 
-  { key: 'barcode',  label: '条码管理', icon: '🔖', url: '/pkg-barcode/pages/gen/gen', roles: ['safety_officer', 'group_lead', 'lease_admin', 'project_lead', 'lead'], category: 'code' },
-  { key: 'label',    label: '标识牌',   icon: '🏷️', url: '/pkg-barcode/pages/label/label', roles: ['safety_officer', 'group_lead', 'lease_admin', 'project_lead', 'lead'], category: 'code' },
+  { key: 'barcode',  label: '条码管理', icon: '🔖', url: '/pkg-barcode/pages/gen/gen', roles: MGMT_TEAM, category: 'code' },
+  { key: 'label',    label: '标识牌',   icon: '🏷️', url: '/pkg-barcode/pages/label/label', roles: MGMT_TEAM, category: 'code' },
 
   { key: 'stats',    label: '统计驾驶舱', icon: '📊', url: '/pkg-stats/pages/dashboard/dashboard', roles: MGMT, category: 'analysis' },
 
@@ -62,4 +63,4 @@ function moduleGroups(role) {
   })).filter((g) => g.items.length);
 }
 
-module.exports = { MODULES, visibleModules, moduleGroups, CATEGORIES, ADMIN, MGMT };
+module.exports = { MODULES, visibleModules, moduleGroups, CATEGORIES, ADMIN: MGMT, MGMT };

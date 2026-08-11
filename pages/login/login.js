@@ -69,7 +69,11 @@ Page({
         if (unitKeywords.some((kw) => (u.name || '').includes(kw) || (u.kind || '').includes(kw))) { matchedUnit = u; break; }
       }
       if (!matchedUnit) matchedUnit = orgTree.find((o) => o.level === 0);
-      if (matchedUnit && orgKeywords.length) {
+      // 单位级角色（orgKind='unit'）：直接绑定单位节点——单位子树内不存在 unit 类型节点，
+      // 在子树中查找会回退到项目部节点，被服务端 ORG_KIND_MAP 校验拒绝（"所选组织节点与角色不匹配"）
+      if (matchedUnit && roleMeta.orgKind === 'unit') {
+        matchedOrg = matchedUnit;
+      } else if (matchedUnit && orgKeywords.length) {
         const subtree = orgTree.filter((o) => {
           if (o._id === matchedUnit._id) return false;
           let p = o.parentId;

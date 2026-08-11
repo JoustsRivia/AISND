@@ -1,7 +1,0 @@
-{
-  "name": "performance",
-  "version": "1.0.0",
-  "description": "云函数（performance）：M10.3 人员考核管理 helpers 隔离层",
-  "main": "index.js",
-  "dependencies": { "wx-server-sdk": "~2.6.3" }
-}

@@ -2,7 +2,7 @@
 const api = require('../../utils/api');
 const auth = require('../../utils/auth');
 const net = require('../../utils/network');
-const { SUBSCRIBE_TMPL_ID } = require('../../utils/constants');
+const { SUBSCRIBE_TMPL_ID, ROLE_FAMILIES } = require('../../utils/constants');
 
 const LEVEL_META = {
   urgent:   { label: '紧急', cls: 'danger', icon: '⛔' },
@@ -35,10 +35,15 @@ Page({
     // #14 批量管理
     batchMode: false,
     checkedIds: [],
+    // #1 生成预警权限（与服务端 generate 同口径：admin/a1/单位级管理）
+    canGenerate: false,
   },
 
   async onLoad() {
     if (!(await auth.requireServerLogin())) return;
+    const p = auth.getProfile();
+    const role = (p && p.role) || '';
+    this.setData({ canGenerate: role === 'admin' || role === 'a1' || ROLE_FAMILIES.UNIT_MGMT.includes(role) });
     this.load();
   },
   onPullDownRefresh() { this.load().then(() => wx.stopPullDownRefresh()).catch(() => wx.stopPullDownRefresh()); },
@@ -121,12 +126,24 @@ Page({
   },
 
   // 触发预警自动生成（M11.1）：扫描试验到期/超期、证书到期、隐患超期、报废异动
+  // #1 完善：服务端已加管理角色鉴权（403 携带原因）；生成后按类别明细反馈，按钮仅管理可见
   async onGenerate() {
     wx.showLoading({ title: '生成预警中' });
-    const r = await api.generateWarnings().catch(() => ({ generated: 0 }));
+    const r = await api.generateWarnings().catch((e) => ({ error: (e && e.message) || '生成失败' }));
     wx.hideLoading();
+    if (r.error) { wx.showToast({ title: r.error, icon: 'none' }); return; }
     const n = (r && r.generated) || 0;
-    wx.showToast({ title: n > 0 ? `新生成 ${n} 条预警` : '暂无新增预警', icon: n > 0 ? 'success' : 'none' });
+    if (n > 0) {
+      const LABELS = {
+        test_overdue: '试验超期', test_due: '试验到期',
+        cert_due: '证书到期', hazard_overdue: '隐患超期', scrap_inuse: '报废在库',
+      };
+      const detail = (r && r.detail) || {};
+      const lines = Object.keys(detail).filter((k) => detail[k]).map((k) => `${LABELS[k] || k} ${detail[k]} 条`);
+      wx.showModal({ title: `新生成 ${n} 条预警`, content: lines.join('\n'), showCancel: false });
+    } else {
+      wx.showToast({ title: '暂无新增预警', icon: 'none' });
+    }
     this.load();
   },
 

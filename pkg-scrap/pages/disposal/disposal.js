@@ -17,6 +17,7 @@ Page({
 
   openForm(e) {
     const cur = this.data.list.find((x) => x._id === e.currentTarget.dataset.id);
+    if (!cur) return; // 优化#2 空值守卫：find 无命中时不向 data 注入 undefined
     this.setData({ showForm: true, cur });
   },
   onMethod(e) { this.setData({ mIdx: +e.detail.value }); },

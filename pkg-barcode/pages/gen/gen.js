@@ -1,25 +1,60 @@
 // pkg-barcode/pages/gen/gen.js —— M14.1 真实二维码图形生成 + 标签输出
+// 器具选择：库房 → 类别 → 编号 三级联动（2026-08-09），编号选项按序排列并带名称/类别/库房特征，便于分辨同类型器具
 const api = require('../../../utils/api');
 const qrcode = require('../../utils/qrcode.js');
 const { resolveUser } = require('../../../utils/user-utils');
+const { catName } = require('../../../utils/display'); // 优化#13：类别中文
+const { TOOL_CATEGORIES } = require('../../../utils/constants');
 
 Page({
   data: {
-    list: [], idx: 0,
+    stores: [], cats: [], filtered: [], // 三级选项（filtered 为当前库房+类别下的器具）
+    storeIdx: 0, catIdx: 0, toolIdx: -1,
+    loading: true,
     code: null, label: null, rendered: false, saving: false,
   },
 
   async onLoad() {
-    const r = await api.getToolList({ size: 100 }).catch(() => []);
-    const list = (Array.isArray(r) ? r : (r.list || [])).filter(Boolean);
-    this.setData({ list, idx: list.length ? 0 : -1 });
+    this.setData({ loading: true });
+    // 库房列表 + 全量器具（分页）并行拉取；全量存实例属性，避免大数组进 setData 超限
+    const [storeList, tools] = await Promise.all([
+      api.getStoreList({}).catch(() => []),
+      api.getAllTools().catch(() => []),
+    ]);
+    this._allTools = tools || [];
+    const stores = [{ code: '', name: '全部库房' }, ...(storeList || []).map((s) => ({ code: s._id, name: s.name }))];
+    const cats = [{ code: '', name: '全部类别' }, ...TOOL_CATEGORIES];
+    this.setData({ stores, cats, loading: false });
+    this._applyFilter();
   },
 
-  onPick(e) { this.setData({ idx: +e.detail.value, code: null, label: null, rendered: false }); },
+  // ── 三级联动 ──
+  onStorePick(e) {
+    this.setData({ storeIdx: +e.detail.value, toolIdx: -1, code: null, label: null, rendered: false });
+    this._applyFilter();
+  },
+  onCatPick(e) {
+    this.setData({ catIdx: +e.detail.value, toolIdx: -1, code: null, label: null, rendered: false });
+    this._applyFilter();
+  },
+  onToolPick(e) { this.setData({ toolIdx: +e.detail.value, code: null, label: null, rendered: false }); },
+
+  _applyFilter() {
+    const { stores, cats, storeIdx, catIdx } = this.data;
+    const store = stores[storeIdx];
+    const cat = cats[catIdx];
+    let f = this._allTools || [];
+    if (store && store.code) f = f.filter((t) => (t.store || '') === store.name);
+    if (cat && cat.code) f = f.filter((t) => t.category === cat.code);
+    // 编号升序排列，「最后选编号」一目了然
+    f = f.slice().sort((a, b) => String(a.code || '').localeCompare(String(b.code || '')));
+    f = f.map((t) => ({ ...t, categoryText: catName(t.category) }));
+    this.setData({ filtered: f, toolIdx: f.length ? 0 : -1 });
+  },
 
   async onGen() {
-    const t = this.data.list[this.data.idx];
-    if (!t) { wx.showToast({ title: '请选择器具', icon: 'none' }); return; }
+    const t = this.data.filtered[this.data.toolIdx];
+    if (!t) { wx.showToast({ title: '请选择器具（当前组合无匹配）', icon: 'none' }); return; }
     const r = await api.generateBarcode(t._id).catch(() => null);
     const f = await api.getBarcodeFile(t._id).catch(() => null);
     let label = (f && f.fields) || null;
@@ -28,11 +63,20 @@ Page({
       label = { ...label, keeperDisplay: await resolveUser(label.keeper).catch(() => label.keeper) };
     }
     this.setData({ code: r, label });
-    this.renderQR((r && (r.code || t.code)) || '');
+    this.renderQR((r && (r.code || t.code)) || '', {
+      name: (r && r.name) || t.name || '',
+      code: (r && r.code) || t.code || '',
+      category: t.category || '',
+      expireAt: (r && r.expireAt) || '',
+      store: (r && r.store) || '',
+      keeperDisplay: (r && r.keeperDisplay) || '',
+    });
   },
 
   // 真实可扫码二维码（qrcode-generator，纯 JS，无 DOM 依赖）
-  renderQR(text) {
+  // 修复：单 canvas 绘制完整标签 = 二维码 + 编号/名称/类别/有效期/保管人 文字信息，
+  // 保存图片时文字随图导出（原只导出二维码区，附加信息缺失）
+  renderQR(text, meta) {
     if (!text) return;
     let qr;
     try {
@@ -49,20 +93,35 @@ Page({
         if (!res || !res[0] || !res[0].node) return;
         const canvas = res[0].node;
         const ctx = canvas.getContext('2d');
-        const dpr = (wx.getWindowInfo && wx.getWindowInfo().pixelRatio) || wx.getSystemInfoSync().pixelRatio || 2;
-        const size = res[0].width;
-        canvas.width = size * dpr;
-        canvas.height = size * dpr;
+        const dpr = wx.getWindowInfo().pixelRatio || 2; // lib 3.0.0 必有 getWindowInfo，getSystemInfoSync 已弃用
+        const W = res[0].width;   // 逻辑宽（CSS px）
+        const H = res[0].height;  // 逻辑高
+        canvas.width = W * dpr;
+        canvas.height = H * dpr;
         ctx.scale(dpr, dpr);
-        const cell = size / count;
+        // 白底整卡
         ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, size, size);
+        ctx.fillRect(0, 0, W, H);
+        // 二维码（占满宽度，顶部）
+        const cell = W / count;
         ctx.fillStyle = '#0F2B5B';
         for (let r = 0; r < count; r++) {
           for (let c = 0; c < count; c++) {
             if (qr.isDark(r, c)) ctx.fillRect(c * cell, r * cell, cell, cell);
           }
         }
+        // 文字信息区（二维码下方）：名称 / 编号 / 类别 / 有效期 / 保管人
+        const m = meta || {};
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#1f2329';
+        ctx.font = 'bold 16px sans-serif';
+        ctx.fillText(m.name || '', W / 2, W + 22);
+        ctx.fillStyle = '#374151';
+        ctx.font = '13px sans-serif';
+        ctx.fillText('编号：' + (m.code || ''), W / 2, W + 40);
+        ctx.fillText('类别：' + (catName(m.category) || '—'), W / 2, W + 56);
+        ctx.fillText('有效期：' + (m.expireAt || '—'), W / 2, W + 72);
+        ctx.fillText('保管：' + (m.keeperDisplay || '—'), W / 2, W + 88);
         this._canvas = canvas;
         this.setData({ rendered: true });
       });

@@ -2,7 +2,7 @@
 
 > 本文档在既有 `app.wxss` 统一设计系统（"深蓝科技感 + 卡片化层次"）基础上**拓展为更完整、更有意图的工业安全语言**。
 > 设计方向：**工业安全仪表盘风**——稳重、可信、状态可读；把"后端能力"翻译成用户一眼能懂的视觉信号。
-> 适用约束：小程序 WXSS 为 CSS 子集（支持 CSS 变量、渐变、关键帧动画、`tabular-nums`；**不支持** `container query` / `clamp()` 流体 / 部分 `oklch`；自定义字体需 `wx.loadFontFace`）。
+> 适用约束：小程序 WXSS 为 CSS 子集（支持 CSS 变量、渐变、关键帧动画、`tabular-nums`；**不支持** `container query` / `clamp()` 流体 / 部分 `oklch`；自定义字体走 `@font-face` base64（见 `styles/fonts.wxss`）或可选 `wx.loadFontFace`）。
 
 ---
 
@@ -10,7 +10,7 @@
 
 1. **状态即信息**：颜色首先服务"安全状态语义"（合格/在用/待检/异常/停用），而非品牌装饰。每个卡片/列表项用**左侧状态轨**表达状态。
 2. **拒绝 emoji 图标**：emoji 是第一 AI-slop 标志。统一使用线性图标（Iconfont 字体或内联 SVG 组件），九宫格与工具栏立即高级。
-3. **数字即仪表**：指标/计数使用等宽数字（`tabular-nums`）+ 展示字体（DIN / IBM Plex Mono 类，经 `wx.loadFontFace` 加载），呈现"仪表盘"质感。
+3. **数字即仪表**：指标/计数使用等宽数字（`tabular-nums`）+ 展示字体（SNDNum，`styles/fonts.wxss` 包内 base64 `@font-face`），呈现"仪表盘"质感。
 4. **克制动效**：状态切换用 `ease-out-quart/expo`，不回弹；进场错峰 `fadeIn`。绝不动画化布局属性（width/height/top/left）。
 5. **节奏而非堆砌**：用变化的间距创造呼吸感，避免"万物皆卡片、卡片套卡片"。分区之间用更大留白与细分隔线。
 6. **可见即可用**：高频任务首屏可达；任何需要后端数据的入口都显示实时状态，让用户感知"系统在干活"。
@@ -52,7 +52,7 @@
 
 ### 2.3 字体
 - 正文：沿用系统字体栈（`PingFang SC`）。
-- 展示/数字：`.t-display`（等宽数字字体，经 `wx.loadFontFace` 加载 `@font/IBM-Plex-Mono` 或本地 DIN），配合 `.t-num` 的 `tabular-nums`。
+- 展示/数字：`.t-display`（等宽数字字体，`styles/fonts.wxss` 内嵌 SNDNum），配合 `.t-num` 的 `tabular-nums`。
 - 字号新增 `--fs-hero` `72rpx`（Hero 大数）、`--fs-display` `56rpx`（看板指标）。
 
 ---
@@ -127,6 +127,6 @@
 4. **[P1]** 统计驾驶舱图表化。**已完成（实现与原文偏差）**：原文指定 ec-canvas，但为规避其 ~1MB 依赖 + 外链网络/离线风险（现场弱网工具不宜引入），改用**原生 canvas 2d 自建 `components/chart` 组件**（支持 bar/line/pie，配色取自状态令牌，无第三方依赖）。`pkg-stats/pages/dashboard` 用 `getDashboard()` 状态分布 → pie（合格/待检/维修中/缺失/报废），近 7 日 `getTrend()` → line；移除旧 CSS 趋势占位。
 5. **[P2]** 图标字体替换 emoji；展示字体加载；夜间主题。**已完成**：
    - 夜间主题：`utils/theme.js`（`auto`/`dark` 持久化）+ `@media (prefers-color-scheme: dark)`（自动，覆盖全部页面）与 `.theme-dark` 手动类（profile 开关持久化，覆盖 opted-in 页面根视图）；`app.wxss` 双份令牌块（内容与作用域一致）。
-   - 字体脚手架：`utils/fonts.js` 用 `wx.loadFontFace` 静默加载 `SNDNum`（等宽数字，默认 jsdelivr `@fontsource/roboto-mono`，失败回退系统等宽栈）+ 可选 `SNDIcon`（图标字体，`ICONFONT_URL` 留空即跳过）；`app.onLaunch` 调用；`app.wxss` 新增 `--font-num` 令牌与 `.font-num`/`.font-display`/`.iconfont` 类。**emoji 图标暂保留**，图标字体接入路径见 `utils/fonts.js` 顶部注释（iconfont.cn 导出 .ttf → 填 URL → wxml 改 `.iconfont` 文本）。
+   - 字体脚手架：`SNDNum` 等宽数字由 `app.wxss` `@import styles/fonts.wxss` 以包内 base64 `@font-face` 提供（2026-08-08 改版：原 jsdelivr 网络加载在国内 DNS 不可达，且 `wx.loadFontFace` 不支持包内路径、Data URL 需基础库 ≥3.7.9；base64 免合法域名白名单、离线可用，代价为主包 +21KB），失败自动回退系统等宽栈；`utils/fonts.js` 现仅保留可选 `SNDIcon`（图标字体，`ICONFONT_URL` 留空即跳过）；`app.onLaunch` 调用；`app.wxss` 已有 `--font-num` 令牌与 `.font-num`/`.font-display`/`.iconfont` 类。**emoji 图标暂保留**，图标字体接入路径见 `utils/fonts.js` 顶部注释（iconfont.cn 导出 .ttf → 填 URL → wxml 改 `.iconfont` 文本）。
 
 > 所有页面/组件只引用令牌与工具类，**禁止硬编码色值**（除一次性渐变），换肤/调性只需改 `app.wxss`。

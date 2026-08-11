@@ -19,17 +19,23 @@ function ensureLogin() {
   return openid;
 }
 // 角色：敏感汇总/导出需具备指定角色（缺省仅要求登录）
-async function ensureRole(roles = []) {
-  const openid = ensureLogin();
-  const user = await db.getUser(openid);
-  if (!user) throw new Error('用户不存在或无权限');
-  if (roles.length && (!user.role || !roles.includes(user.role))) {
+// 定时快照场景无微信用户上下文：可由 snapshot 传入已解析用户（SYSTEM_USER），跳过 openid 依赖
+async function ensureRole(roles = [], user = null) {
+  let u = user;
+  if (!u) {
+    const openid = ensureLogin();
+    u = await db.getUser(openid);
+  }
+  if (!u) throw new Error('用户不存在或无权限');
+  if (roles.length && (!u.role || !roles.includes(u.role))) {
     throw new Error('无权限：需要管理员/负责人角色');
   }
-  return user;
+  return u;
 }
-// 敏感操作允许的角色
-const SENSITIVE_ROLES = ['admin', 'manager', 'system'];
+// 敏感操作允许的角色（词表统一 2026-08-08：单位级及以上管理码；'manager'/'system' 幽灵码已移除）
+const SENSITIVE_ROLES = ['admin', 'a1', 'a2', 'b11', 'b12', 'c11', 'c12'];
+// 定时快照专用系统身份（无微信上下文）：按 admin 档采集全平台指标
+const SYSTEM_USER = { openid: '__timer__', role: 'admin', orgId: '' };
 
 // ── CSV 安全转义（防公式注入 =/+/-/@，及逗号/引号/换行） ─────────────────
 function csvCell(v) {
@@ -42,8 +48,8 @@ function csvCell(v) {
 const csvRow = (arr) => arr.map(csvCell).join(',');
 
 // 总览驾驶舱 / 项目部看板（同一口径按组织子树过滤，item 1 RBAC 数据范围）
-async function dashboard(payload = {}) {
-  ensureLogin();
+async function dashboard(payload = {}, user = null) {
+  if (!user) ensureLogin();
   // 项目部看板按组织子树收窄：全局角色看全量、单位看整单位子树、机构/班组看本机构子树，越权下钻被忽略
   const scope = await db.scopeWhere({ orgId: payload.orgId });
   const [total, qualified, pending, scrapped, maintaining, missing, expiring, warns] = await Promise.all([
@@ -89,8 +95,8 @@ async function myStats() {
 }
 
 // 六化达标（真实口径，按组织子树收窄，不同等级角色看不同范围）
-async function sixStandard() {
-  await ensureRole(SENSITIVE_ROLES);
+async function sixStandard(user = null) {
+  await ensureRole(SENSITIVE_ROLES, user);
   const scope = await db.scopeWhere({});
   const [t, q, c, h, hc, cer, u, tools, scrapped, disposed] = await Promise.all([
     db.scopedCount('tools', scope),
@@ -155,7 +161,7 @@ async function exportReport(payload = {}) {
 // 注意：定时器无微信用户上下文，此处不强制 requireLogin，否则定时任务会失败。
 async function snapshot() {
   const today = ymd(new Date());
-  const [d, s] = await Promise.all([dashboard({}), sixStandard()]);
+  const [d, s] = await Promise.all([dashboard({}, SYSTEM_USER), sixStandard(SYSTEM_USER)]);
   // P0 守卫：d.data / s.data 可能为 null，避免 Cannot read 'total' of undefined
   const dData = (d && d.data) || {};
   const sData = (s && s.data) || {};
@@ -229,7 +235,7 @@ exports.main = __limiter.wrap(async (event) => {
       case 'dashboard': return await dashboard(payload);
       case 'project': return await dashboard(payload);
       case 'myStats': return await myStats(payload);
-      case 'sixStandard': return await sixStandard(payload);
+      case 'sixStandard': return await sixStandard(); // 六化达标不接收 payload；user 参数供定时快照注入系统身份
       case 'exportReport': return await exportReport(payload);
       case 'snapshot': return await snapshot();
       case 'trend': return await trend(payload);

@@ -7,6 +7,7 @@ const c = collection;
 const add = (name, data) => c(name).add({ data });
 const getById = (name, id) => c(name).doc(id).get();
 const update = (name, id, data) => c(name).doc(id).update({ data });
+const remove = (name, id) => c(name).doc(id).remove();
 const listBy = (name, filter = {}, size = 50) =>
   c(name).where(filter).orderBy('createdAt', 'desc').limit(size).get();
 const updateTool = (id, data) => c('tools').doc(id).update({ data });
@@ -17,7 +18,7 @@ const getCurrentUser = base.getCurrentUser;
 const listOrgs = (size = 200) => collection('orgs').limit(size).get();
 
 module.exports = {
-  collection, _, add, getById, update, listBy, updateTool, findUser, getCurrentUser, listOrgs,
+  collection, _, add, getById, update, remove, listBy, updateTool, findUser, getCurrentUser, listOrgs,
   // RBAC 数据范围原语（透出，供 index.js 复用，迁移零改动）
   subtreeIds, roleScope, allowedOrgIds, scopeFilter,
 };

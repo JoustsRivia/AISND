@@ -1,14 +1,14 @@
 // utils/auth.js
-// 登录态、角色、权限判断与授权封装。只依赖 api.js �? wx 基础能力，不触碰云开�? DB/云函�? API�?
+// 登录态、角色、权限判断与授权封装。只依赖 api.js �? wx 基础能力，不触碰云开�? DB/云函�? API�?
 const api = require('./api');
-const { ROLES } = require('./constants');
+const { ROLES, ROLE_FAMILIES } = require('./constants');
 const eventBus = require('./eventBus');
 
 let _profile = null;
 
-// ���� R12 �Ự�־û����󶨵�ǰ΢�����ݣ�����
-// ��¼̬�� openid Ϊê��д�뱾�ش洢���������ɻָ�������� signin ���� openid У�飬
-// �������˺������޷��ӹܣ�ȷ�����Ự == ��ǰ΢�����ݡ���
+// ���� R12 �Ự�־û����󶨵�ǰ΢�����ݣ�����
+// ��¼̬�� openid Ϊê��д�뱾�ش洢���������ɻָ�������� signin ���� openid У�飬
+// �������˺������޷��ӹܣ�ȷ�����Ự == ��ǰ΢�����ݡ���
 const SESSION_KEY = 'session';
 function saveSession(p) {
   if (!p) return;
@@ -17,10 +17,10 @@ function saveSession(p) {
       openid: p.openid, role: p.role, username: p.username, nickname: p.nickname,
       profile: p,
     });
-  } catch (e) { /* �洢�����ú��� */ }
+  } catch (e) { /* �洢�����ú��� */ }
 }
 function clearSession() {
-  try { wx.removeStorageSync(SESSION_KEY); } catch (e) { /* ���� */ }
+  try { wx.removeStorageSync(SESSION_KEY); } catch (e) { /* ���� */ }
 }
 function loadSession() {
   try { return wx.getStorageSync(SESSION_KEY) || null; } catch (e) { return null; }
@@ -30,8 +30,8 @@ function loadSession() {
 async function ensureLogin() {
   if (_profile) return _profile;
   const session = loadSession();
-  const profile = await api.login(); // 云函�? auth.login 内部�? helpers/user.js �? openid
-  // ����˵������ȣ�����/�����쳣ʱ���˱��ػỰ����������������������ҳ���� requireServerLogin ���ˣ�
+  const profile = await api.login(); // 云函�? auth.login 内部�? helpers/user.js �? openid
+  // ����˵������ȣ�����/�����쳣ʱ���˱��ػỰ����������������������ҳ���� requireServerLogin ���ˣ�
   _profile = profile || (session && session.profile) || null;
   saveSession(_profile);
   return _profile;
@@ -41,8 +41,8 @@ function getProfile() { return _profile; }
 
 function setProfile(p) { _profile = p; saveSession(_profile); }
 
-// ���� ��������㲥��Item 4����ɫ/��֯�����ʵʱˢ�� permission/profile ��ҳ�棩����
-// ͬ���� app.globalData �����¼����߹㲥 'profile:changed'�����ķ��ݴ�ˢ�£�������ѯ��
+// ���� ��������㲥��Item 4����ɫ/��֯�����ʵʱˢ�� permission/profile ��ҳ�棩����
+// ͬ���� app.globalData �����¼����߹㲥 'profile:changed'�����ķ��ݴ�ˢ�£�������ѯ��
 function emitProfileChanged(profile) {
   const next = profile || _profile;
   try {
@@ -52,29 +52,29 @@ function emitProfileChanged(profile) {
       app.globalData.role = (next && next.role) || null;
       app.globalData.orgId = (next && next.orgId) || null;
     }
-  } catch (e) { /* getApp ��ĳЩʱ������δ���������� */ }
+  } catch (e) { /* getApp ��ĳЩʱ������δ���������� */ }
   eventBus.emit('profile:changed', next);
 }
 
 function onProfileChanged(cb) { return eventBus.on('profile:changed', cb); }
 function offProfileChanged(cb) { eventBus.off('profile:changed', cb); }
 
-// �ӷ����������ȡ�������㲥�������ҳ������ˢ�µ��ã�
+// �ӷ����������ȡ�������㲥�������ҳ������ˢ�µ��ã�
 async function refreshProfile() {
   try {
     const p = await api.getMyProfile();
     if (p) { _profile = p; saveSession(_profile); }
-  } catch (e) { /* ��ȡʧ�ܱ������� */ }
+  } catch (e) { /* ��ȡʧ�ܱ������� */ }
   emitProfileChanged(_profile);
   return _profile;
 }
 
-// 是否已真正登录（auto 建档默认 bound:false，须完成注册/绑定才算登录�?
+// 是否已真正登录（auto 建档默认 bound:false，须完成注册/绑定才算登录�?
 function isLoggedIn() {
   return !!(_profile && _profile.bound);
 }
 
-// 登录守卫：未登录则跳转登录页，返�? false；已登录返回 true
+// 登录守卫：未登录则跳转登录页，返�? false；已登录返回 true
 function requireLogin() {
   if (!isLoggedIn()) {
     wx.reLaunch({ url: '/pages/login/login' });
@@ -83,9 +83,9 @@ function requireLogin() {
   return true;
 }
 
-// 服务端校验登录态：调用 auth.getProfile 拉取云端档案，确认已绑定账号�?
-// 用于敏感�? onLoad，避免仅依赖内存态（冷启�?/被清缓存时误判为已登录）�?
-// 未登�?/档案不存在时跳转登录页并返回 false。成功则刷新内存态�?
+// 服务端校验登录态：调用 auth.getProfile 拉取云端档案，确认已绑定账号�?
+// 用于敏感�? onLoad，避免仅依赖内存态（冷启�?/被清缓存时误判为已登录）�?
+// 未登�?/档案不存在时跳转登录页并返回 false。成功则刷新内存态�?
 async function requireServerLogin() {
   let profile = null;
   try {
@@ -117,7 +117,7 @@ async function bindAccount(data) {
   return _profile;
 }
 
-// 凭证登录（核对账�?+密码，确认本 openid 已注册身份）
+// 凭证登录（核对账�?+密码，确认本 openid 已注册身份）
 async function signin(data) {
   const profile = await api.signin(data);
   _profile = profile || _profile;
@@ -128,16 +128,18 @@ async function signin(data) {
 
 function hasRole(role) {
   if (!_profile) return false;
-  // 仅小程序管理�?(admin)拥有全部权限；其余按 role 精确匹配
+  // 仅小程序管理�?(admin)拥有全部权限；其余按 role 精确匹配
   if (_profile.role === ROLES.ADMIN) return true;
   return _profile.role === role;
 }
 
-function isLead() { return hasRole(ROLES.LEAD); }
-function isSafety() { return _profile && (hasRole(ROLES.SAFETY_OFFICER) || hasRole(ROLES.PROJECT_LEAD)); }
+// 管理族判定（词表统一 2026-08-08：与 shared/roles.js MGMT 同源语义）
+function isLead() { return !!( _profile && (_profile.role === 'admin' || ROLE_FAMILIES.MGMT.includes(_profile.role))); }
+// 安全员/安监判定：平台与总包安监 + 项目/单位级安全员 + 项目部负责人（原 safety_officer/project_lead 语义）
+function isSafety() { return !!(_profile && ['a1', 'a2', 'b21', 'b22', 'c21', 'c22'].includes(_profile.role)); }
 
 // 操作级权限：结合角色与器具状态（如「合格且在有效期」才可领用）
-// can(action, tool) 的判定规则集中在此，页面只调用结果�?
+// can(action, tool) 的判定规则集中在此，页面只调用结果�?
 function can(action, tool) {
   if (!_profile) return false;
   switch (action) {
@@ -152,7 +154,7 @@ function can(action, tool) {
   }
 }
 
-// 位置授权（隐患上报用�?
+// 位置授权（隐患上报用�?
 function ensureLocationAuth() {
   return new Promise((resolve) => {
     wx.getSetting({

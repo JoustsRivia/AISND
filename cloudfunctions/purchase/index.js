@@ -1,5 +1,6 @@
 // cloudfunctions/purchase/index.js —— M2 采购验收（纯业务，只引用 helpers）
 const { getOpenid } = require('./helpers/user');
+const { MGMT, UNIT_MGMT } = require('./helpers/roles');
 
 const { createRateLimiter } = require('./helpers/rateLimiter');
 const __limiter = createRateLimiter({ getOpenid });const db = require('./helpers/db');
@@ -35,7 +36,7 @@ async function create(payload) {
 
 // 审批（S1：项目部负责人/安全员/专班）
 async function approve(payload) {
-  const g = await requireRole('project_lead', 'safety_officer', 'lead');
+  const g = await requireRole(...MGMT);
   if (g.err) return g.err;
   // 兼容 api 透传的 pass；同时保留旧的 approve 字段（前端驳回传 pass=false）
   const { id, pass, approve: approveArg, remark = '' } = payload;

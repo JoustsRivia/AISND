@@ -40,4 +40,6 @@
   font-size: 28rpx; font-weight: 600; background: var(--c-surface); color: var(--c-text-sub);
 }
 .act.primary { background: var(--c-primary-grad); color: #fff; box-shadow: var(--sh-float); }
+/* 优化#7：删除按钮危险色 */
+.act.danger { background: #FDECEC; color: #E5484D; }
 .loading { text-align: center; }

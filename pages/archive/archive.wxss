@@ -1,0 +1,31 @@
+/* pages/archive/archive.wxss —— 我的档案（主题令牌，与 profile 页同风格） */
+.arch { padding: 24rpx var(--sp-3) 0; }
+
+.hero { display: flex; align-items: center; padding: 32rpx; }
+.avatar {
+  width: 108rpx; height: 108rpx; border-radius: 50%;
+  background: var(--c-primary); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 44rpx; font-weight: 700; flex-shrink: 0;
+}
+.info { margin-left: 24rpx; min-width: 0; }
+.name { font-size: 36rpx; font-weight: 700; color: var(--c-text); }
+.sub-row { display: flex; align-items: center; gap: 12rpx; margin-top: 8rpx; flex-wrap: wrap; }
+.role-pill {
+  font-size: 24rpx; padding: 4rpx 16rpx; border-radius: 999rpx;
+  background: var(--c-primary-bg, rgba(26, 86, 219, 0.1)); color: var(--c-primary);
+}
+.eid { font-size: 24rpx; color: var(--c-text-sub); }
+.org { display: block; margin-top: 10rpx; font-size: 24rpx; color: var(--c-text-sub); }
+
+.sec { margin-top: 20rpx; padding: 24rpx 28rpx; }
+.sec-title { font-size: 26rpx; font-weight: 600; color: var(--c-text-sub); display: block; margin-bottom: 16rpx; }
+.row { display: flex; justify-content: space-between; padding: 12rpx 0; gap: 24rpx; }
+.row.col { flex-direction: column; gap: 8rpx; }
+.k { font-size: 26rpx; color: var(--c-text-weak); flex-shrink: 0; }
+.v { font-size: 26rpx; color: var(--c-text); text-align: right; word-break: break-all; }
+.row.col .v { text-align: left; }
+.li { display: block; padding: 4rpx 0; }
+
+.btns { margin-top: 28rpx; display: flex; flex-direction: column; gap: 16rpx; }
+.btn-plain { background: var(--c-bg-2, #f2f4f8); color: var(--c-primary); border: none; }

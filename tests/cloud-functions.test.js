@@ -36,8 +36,8 @@ test('auth.register: 拒绝越权角色 admin（403）', async () => {
 });
 
 test('auth.register: 合法角色成功建档且口令被哈希（非明文）', async () => {
-  mock.__store.users = [{ _id: 'u1', openid: 'test_openid', role: 'worker', bound: false, orgId: '' }];
-  const r = await auth.main({ action: 'register', payload: { role: 'worker', orgId: 'o1', username: 'alice', nickname: 'A', password: 'secret123' } });
+  mock.__store.users = [{ _id: 'u1', openid: 'test_openid', role: 'b24', bound: false, orgId: '' }];
+  const r = await auth.main({ action: 'register', payload: { role: 'b24', orgId: 'o1', username: 'alice', nickname: 'A', password: 'secret123' } });
   assert.strictEqual(r.code, 0);
   const u = mock.__store.users.find((x) => x.username === 'alice');
   assert.ok(u, '应在 users 集合写入用户');
@@ -52,13 +52,13 @@ test('auth.register: 用户名重复被拒（409）', async () => {
     { _id: 'u1', openid: 'other', username: 'alice', bound: true },
     { _id: 'u2', openid: 'test_openid', bound: false },
   ];
-  const r = await auth.main({ action: 'register', payload: { role: 'worker', orgId: 'o1', username: 'alice', password: 'x' } });
+  const r = await auth.main({ action: 'register', payload: { role: 'b24', orgId: 'o1', username: 'alice', password: 'x' } });
   assert.strictEqual(r.code, 409);
 });
 
 test('auth.register: 缺少所属机构被拒（400）', async () => {
   mock.__store.users = [{ _id: 'u1', openid: 'test_openid', bound: false }];
-  const r = await auth.main({ action: 'register', payload: { role: 'worker', orgId: '', username: 'bob', password: 'x' } });
+  const r = await auth.main({ action: 'register', payload: { role: 'b24', orgId: '', username: 'bob', password: 'x' } });
   assert.strictEqual(r.code, 400);
 });
 
@@ -73,7 +73,7 @@ test('auth.signin: 密码错误拒绝（401）', async () => {
 test('auth.signin: 凭证正确只返回对应账户档案，不会误登其他账户（R12）', async () => {
   mock.__store.users = [
     { _id: 'admin1', openid: 'x', username: 'admin', password: hashPwd('adminpwd'), bound: true, role: 'admin' },
-    { _id: 'bob1', openid: 'x', username: 'bob', password: hashPwd('bobpwd'), bound: true, role: 'worker' },
+    { _id: 'bob1', openid: 'x', username: 'bob', password: hashPwd('bobpwd'), bound: true, role: 'b24' },
   ];
   const r = await auth.main({ action: 'signin', payload: { username: 'bob', password: 'bobpwd' } });
   assert.strictEqual(r.code, 0);
@@ -83,7 +83,7 @@ test('auth.signin: 凭证正确只返回对应账户档案，不会误登其他�
 });
 
 test('auth.signin: 账号未绑定微信 → 首次登录绑定当前身份并返回档案', async () => {
-  mock.__store.users = [{ _id: 'u1', openid: '', username: 'bob', password: hashPwd('right'), bound: true, role: 'worker' }];
+  mock.__store.users = [{ _id: 'u1', openid: '', username: 'bob', password: hashPwd('right'), bound: true, role: 'b24' }];
   const r = await auth.main({ action: 'signin', payload: { username: 'bob', password: 'right' } });
   assert.strictEqual(r.code, 0);
   assert.strictEqual(r.data.username, 'bob');
@@ -91,14 +91,14 @@ test('auth.signin: 账号未绑定微信 → 首次登录绑定当前身份并�
 });
 
 test('auth.signin: 同一微信身份可正常登录自己的账号', async () => {
-  mock.__store.users = [{ _id: 'u1', openid: 'test_openid', username: 'bob', password: hashPwd('right'), bound: true, role: 'worker' }];
+  mock.__store.users = [{ _id: 'u1', openid: 'test_openid', username: 'bob', password: hashPwd('right'), bound: true, role: 'b24' }];
   const r = await auth.main({ action: 'signin', payload: { username: 'bob', password: 'right' } });
   assert.strictEqual(r.code, 0);
   assert.strictEqual(r.data.username, 'bob');
 });
 
 test('auth.signin: 账号已绑定其他微信身份也能登录并切换到当前身份（换设备/重装）', async () => {
-  mock.__store.users = [{ _id: 'u1', openid: 'other_wechat', username: 'bob', password: hashPwd('right'), bound: true, role: 'worker' }];
+  mock.__store.users = [{ _id: 'u1', openid: 'other_wechat', username: 'bob', password: hashPwd('right'), bound: true, role: 'b24' }];
   const r = await auth.main({ action: 'signin', payload: { username: 'bob', password: 'right' } });
   assert.strictEqual(r.code, 0);
   assert.strictEqual(r.data.username, 'bob'); // 仍只返回凭证对应的 bob
@@ -107,7 +107,7 @@ test('auth.signin: 账号已绑定其他微信身份也能登录并切换到当�
 
 // ───────────────────────── purchase：审批态流转 ─────────────────────────
 test('purchase.approve: pass=false → rejected', async () => {
-  mock.__store.users = [{ _id: 'u1', openid: 'test_openid', role: 'project_lead', orgId: 'o1' }];
+  mock.__store.users = [{ _id: 'u1', openid: 'test_openid', role: 'b11', orgId: 'o1' }];
   mock.__store.purchases = [{ _id: 'p1', status: 'pending', name: '钳形表', qty: 2, orgId: 'o1' }];
   const r = await purchase.main({ action: 'approve', payload: { id: 'p1', pass: false, remark: '规格不符' } });
   assert.strictEqual(r.code, 0);
@@ -116,7 +116,7 @@ test('purchase.approve: pass=false → rejected', async () => {
 });
 
 test('purchase.approve: pass=true → approved', async () => {
-  mock.__store.users = [{ _id: 'u1', openid: 'test_openid', role: 'project_lead', orgId: 'o1' }];
+  mock.__store.users = [{ _id: 'u1', openid: 'test_openid', role: 'b11', orgId: 'o1' }];
   mock.__store.purchases = [{ _id: 'p1', status: 'pending', name: '钳形表', qty: 2, orgId: 'o1' }];
   const r = await purchase.main({ action: 'approve', payload: { id: 'p1', pass: true } });
   assert.strictEqual(r.code, 0);
@@ -124,14 +124,14 @@ test('purchase.approve: pass=true → approved', async () => {
 });
 
 test('purchase.approve: 非授权角色被拒（403）', async () => {
-  mock.__store.users = [{ _id: 'u1', openid: 'test_openid', role: 'worker', orgId: 'o1' }];
+  mock.__store.users = [{ _id: 'u1', openid: 'test_openid', role: 'b24', orgId: 'o1' }];
   mock.__store.purchases = [{ _id: 'p1', status: 'pending' }];
   const r = await purchase.main({ action: 'approve', payload: { id: 'p1', pass: true } });
   assert.strictEqual(r.code, 403);
 });
 
 test('purchase.create: 缺名称被拒（400）', async () => {
-  mock.__store.users = [{ _id: 'u1', openid: 'test_openid', role: 'project_lead', orgId: 'o1' }];
+  mock.__store.users = [{ _id: 'u1', openid: 'test_openid', role: 'b11', orgId: 'o1' }];
   const r = await purchase.main({ action: 'create', payload: { qty: 2 } });
   assert.strictEqual(r.code, 400);
 });
@@ -157,7 +157,7 @@ test('scrap.judge: 超过使用年限判定 mustScrap', async () => {
 });
 
 test('scrap.approve: 非授权角色被拒（403）', async () => {
-  mock.__store.users = [{ _id: 'u1', openid: 'test_openid', role: 'worker', orgId: 'o1' }];
+  mock.__store.users = [{ _id: 'u1', openid: 'test_openid', role: 'b24', orgId: 'o1' }];
   mock.__store.scrap_records = [{ _id: 's1', status: 'pending', toolId: 't1' }];
   const r = await scrap.main({ action: 'approve', payload: { scrapId: 's1', approve: true } });
   assert.strictEqual(r.code, 403);
@@ -170,7 +170,7 @@ test('scrap.list: 单位级角色按组织子树见待审报废，且忽略越�
     { _id: 'o2', parentId: 'o1' },
     { _id: 'oX', parentId: null },
   ];
-  mock.__store.users = [{ openid: 'lead1', role: 'project_lead', orgId: 'o1', status: 'active' }];
+  mock.__store.users = [{ openid: 'lead1', role: 'b11', orgId: 'o1', status: 'active' }];
   mock.__store.scrap_records = [
     { _id: 's1', status: 'pending', orgId: 'o1', toolId: 't1' },
     { _id: 's2', status: 'pending', orgId: 'o2', toolId: 't2' },
@@ -201,7 +201,7 @@ test('scrap.list: 全局角色看全量待审报废', async () => {
 // ───────────────────────── 回归守卫：scrap.disposal 外流告警 ─────────────────────────
 test('scrap.disposal: 处置时若仍有 store/keeper 则生成外流预警', async () => {
   mock.__store.users = [
-    { openid: 'lead1', role: 'lead', status: 'active', orgId: 'o1' },
+    { openid: 'lead1', role: 'b11', status: 'active', orgId: 'o1' },
     { openid: 'keeper1', nickname: '张保管', status: 'active', orgId: 'o1' },
   ];
   mock.__store.tools = [{ _id: 't1', code: 'T001', name: '扳手', store: '库房A', keeper: 'keeper1', orgId: 'o1', status: 'scrapped' }];

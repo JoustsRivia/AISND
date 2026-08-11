@@ -4,9 +4,19 @@
 .form-row { display: flex; align-items: center; padding: 20rpx 0; }
 .form-label { width: 150rpx; font-size: 28rpx; color: var(--c-text); flex-shrink: 0; }
 .form-value { flex: 1; text-align: right; font-size: 28rpx; color: var(--c-text-weak); }
-.tool { display: flex; justify-content: space-between; align-items: center; padding: 18rpx 0; border-bottom: 1rpx solid var(--c-divider); font-size: 28rpx; }
-.tick { width: 40rpx; height: 40rpx; line-height: 40rpx; text-align: center; border: 1rpx solid var(--c-border); border-radius: 50%; color: #fff; }
-.tick.on { background: var(--c-primary); border-color: var(--c-primary); }
+.sel-tip { padding: 20rpx 0 8rpx; font-size: 24rpx; color: var(--c-text-weak); }
+/* 已选卡片 */
+.sel-card {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 20rpx; margin-top: 16rpx;
+  background: var(--c-bg-soft); border-radius: 14rpx;
+}
+.sel-info { flex: 1; min-width: 0; }
+.sel-line1 { display: flex; align-items: baseline; gap: 12rpx; }
+.sel-code { font-size: 26rpx; color: var(--c-primary); font-family: SNDNum, monospace; flex-shrink: 0; }
+.sel-name { font-size: 28rpx; color: var(--c-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sel-sub { display: block; margin-top: 6rpx; font-size: 24rpx; color: var(--c-text-weak); }
+.sel-rm { padding: 0 12rpx; color: var(--c-danger); font-size: 32rpx; flex-shrink: 0; }
 .batch .card button { margin-top: 24rpx; background: var(--c-primary); }
 .rez { padding: 14rpx 0; border-bottom: 1rpx solid var(--c-divider); }
 .rn { display: block; font-size: 28rpx; }

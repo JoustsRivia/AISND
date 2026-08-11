@@ -1,5 +1,6 @@
 // cloudfunctions/training/index.js —— M9 培训持证（纯业务，只引用 helpers）
 const { getOpenid } = require('./helpers/user');
+const { MGMT, UNIT_MGMT } = require('./helpers/roles');
 
 const { createRateLimiter } = require('./helpers/rateLimiter');
 const __limiter = createRateLimiter({ getOpenid });const db = require('./helpers/db');
@@ -26,7 +27,7 @@ async function courses() {
 // 指派培训（M9.2）：仅 lead/safety_officer/project_lead/admin 可指派
 // R25：支持多选人员（userIds[]），批量写入 training_records
 async function assign(payload) {
-  const g = await requireRole('lead', 'safety_officer', 'project_lead', 'admin');
+  const g = await requireRole(...MGMT, 'admin');
   if (g.err) return g.err;
   const { userId, userIds, courseId, title, type, startAt, endAt, location, content } = payload;
   if (!courseId) return fail('缺少 courseId', 400);
@@ -66,7 +67,7 @@ async function confirm(payload) {
 
 // R25 完成培训：管理员或指派人标记完成
 async function complete(payload) {
-  const g = await requireRole('lead', 'safety_officer', 'project_lead', 'admin');
+  const g = await requireRole(...MGMT, 'admin');
   if (g.err) return g.err;
   const r = await db.getById('training_records', payload.id);
   if (!r.data) return fail('培训记录不存在', 404);

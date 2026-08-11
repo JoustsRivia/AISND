@@ -3,7 +3,7 @@
 const api = require('../../../utils/api');
 const network = require('../../../utils/network');
 const { TOOL_CATEGORIES, TOOL_SOURCES } = require('../../../utils/constants');
-const { validateDateConstraints, calcExpireAt } = require('../../../utils/tool-schema');
+const { validateDateConstraints, calcExpireAt } = require('../../utils/tool-schema');
 
 Page({
   data: {

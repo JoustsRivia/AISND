@@ -16,7 +16,7 @@
     <view class="row" data-id="{{item._id}}" bindtap="onTap">
       <view class="info">
         <text class="title">{{item.title}}</text>
-        <text wx:if="{{item.category}}" class="cat">{{item.category}}</text>
+        <text wx:if="{{item.category}}" class="cat">{{item.categoryText || item.category}}</text>
       </view>
       <text class="arrow {{selectedId === item._id ? 'open' : ''}}">›</text>
     </view>

@@ -38,7 +38,7 @@ test('迁移契约①：wx 适配层与 mongo 适配层导出接口完全一致'
 test('迁移契约②：RBAC 数据范围原语在两层行为一致', () => {
   const orgs = [{ _id: 'o1', parentId: null }, { _id: 'o2', parentId: 'o1' }, { _id: 'oX', parentId: null }];
   const admin = { role: 'admin', orgId: 'o1' };
-  const worker = { role: 'worker', orgId: 'oX' };
+  const worker = { role: 'b24', orgId: 'oX' };
   for (const [name, base] of [['wx', wxBase], ['mongo', mongoBase]]) {
     // 全局角色看全量（null）
     assert.strictEqual(base.allowedOrgIds(admin, orgs), null, `${name}: 全局角色应看全量(null)`);
@@ -46,8 +46,8 @@ test('迁移契约②：RBAC 数据范围原语在两层行为一致', () => {
     const ids = base.allowedOrgIds(worker, orgs);
     assert.ok(Array.isArray(ids) && ids.includes('oX'), `${name}: 机构角色应仅见本机构子树`);
     // 角色档位一致
-    assert.strictEqual(base.roleScope('project_lead'), 'unit', `${name}: project_lead 应为 unit`);
-    assert.strictEqual(base.roleScope('worker'), 'org', `${name}: worker 应为 org`);
+    assert.strictEqual(base.roleScope('b11'), 'unit', `${name}: b11 应为 unit`);
+    assert.strictEqual(base.roleScope('b24'), 'org', `${name}: b24 应为 org`);
     // 子树推导一致
     assert.deepStrictEqual(base.subtreeIds(orgs, 'o1'), ['o1', 'o2'], `${name}: subtreeIds(o1) 应含 o1/o2`);
     // 范围片段一致（scopeFilter）

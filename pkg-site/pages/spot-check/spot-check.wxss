@@ -1,25 +1,56 @@
-/* pkg-site/pages/spot-check/spot-check.wxss —— 现场点检 */
+/* pkg-site/pages/spot-check/spot-check.wxss —— 现场点检（含今日概况，原 daily-check 样式并入） */
 .spot-check { padding-bottom: 40rpx; }
+
+/* 子功能导航（原每日点检页） */
+.subnav { display: flex; gap: 16rpx; padding: var(--sp-3) var(--sp-3) 0; }
+.subnav-item { flex: 1; text-align: center; padding: 14rpx 0; background: var(--c-card); border-radius: var(--r-md); font-size: 26rpx; color: var(--c-text); box-shadow: var(--sh-card); }
+
+/* 今日点检概况 hero（原每日点检页） */
 .hero {
   margin: var(--sp-3); padding: var(--sp-4);
   border-radius: var(--r-lg); background: var(--c-hero-grad); color: #fff;
   box-shadow: var(--sh-float);
 }
-.h-title { display: block; font-size: 36rpx; font-weight: 700; }
+.hero-top { display: flex; align-items: center; justify-content: space-between; }
+.date { font-size: 24rpx; opacity: 0.9; }
+.badge { font-size: 22rpx; padding: 4rpx 16rpx; border-radius: 999rpx; background: rgba(255, 255, 255, 0.2); }
+.progress { display: flex; align-items: baseline; gap: 16rpx; margin-top: 16rpx; }
+.p-num { font-size: 48rpx; font-weight: 700; }
+.p-lbl { font-size: 24rpx; opacity: 0.88; }
+.bar { height: 12rpx; border-radius: 999rpx; background: rgba(255, 255, 255, 0.25); margin-top: 16rpx; overflow: hidden; }
+.bar-in { height: 100%; border-radius: 999rpx; background: #fff; }
 .h-sub { display: block; margin-top: 8rpx; font-size: 24rpx; opacity: 0.88; }
 
+/* 点检明细（原每日点检页） */
+.section-head { display: flex; justify-content: space-between; align-items: center; padding: var(--sp-2) var(--sp-3) 0; }
+.section-title { font-size: 30rpx; font-weight: 600; color: var(--c-text); }
 .card { padding: var(--sp-3); margin: var(--sp-3); background: var(--c-card); border-radius: var(--r-md); box-shadow: var(--sh-card); }
 .row { display: flex; align-items: center; padding: 20rpx 0; border-bottom: 1rpx solid var(--c-divider); }
 .row:last-child { border-bottom: none; }
 .row.col { flex-direction: column; align-items: flex-start; }
-.label { font-size: 28rpx; color: var(--c-text); }
-.label.blk { display: block; margin-bottom: 8rpx; font-weight: 600; }
-.inp { width: 100%; margin-top: 12rpx; font-size: 28rpx; }
+.status { width: 16rpx; height: 16rpx; border-radius: 50%; margin-right: 16rpx; flex-shrink: 0; }
+.status.normal { background: var(--c-success); }
+.status.abnormal { background: var(--c-danger); }
+.status.pending { background: var(--c-warning); }
+.body { flex: 1; min-width: 0; }
+.name { display: block; font-size: 28rpx; color: var(--c-text); }
+.code { display: block; font-size: 22rpx; color: var(--c-text-muted); margin-top: 4rpx; }
+.state-text { font-size: 24rpx; color: var(--c-text-muted); }
+.state-text.normal { color: var(--c-success); }
+.state-text.abnormal { color: var(--c-danger); }
+.state-text.pending { color: var(--c-warning); }
+.go { color: var(--c-text-muted); margin-left: 8rpx; font-size: 28rpx; }
+.loading { padding: var(--sp-4); text-align: center; color: var(--c-text-muted); }
 
 .empty { padding: var(--sp-4) 0; text-align: center; }
 .empty-icon { font-size: 72rpx; }
 .empty-title { font-size: var(--fs-lg); color: var(--c-text-muted); font-weight: 600; margin-top: var(--sp-1); }
+.empty-desc { font-size: 24rpx; color: var(--c-text-weak); margin-top: var(--sp-1); }
 
+/* 点检表单 */
+.label { font-size: 28rpx; color: var(--c-text); }
+.label.blk { display: block; margin-bottom: 8rpx; font-weight: 600; }
+.inp { width: 100%; margin-top: 12rpx; font-size: 28rpx; }
 .check-row { display: flex; align-items: center; justify-content: space-between; padding: 26rpx 0; border-bottom: 1rpx solid var(--c-divider); }
 .check-row:last-child { border-bottom: none; }
 .ctext { font-size: 28rpx; flex: 1; margin-right: 16rpx; color: var(--c-text); }

@@ -2,9 +2,9 @@
 // 纯展示组件：原生 canvas 2d 轻量图表（bar / line / pie），不引入 echarts 依赖。
 // 颜色由页面以具体色值传入（canvas 无法读取 CSS 变量），组件仅做兜底。
 function getDpr() {
+  // libVersion 3.0.0 必有 wx.getWindowInfo（2.20.1+），不再回退已弃用的 getSystemInfoSync
   try {
-    if (wx.getWindowInfo) return wx.getWindowInfo().pixelRatio || 2;
-    return wx.getSystemInfoSync().pixelRatio || 2;
+    return wx.getWindowInfo().pixelRatio || 2;
   } catch (e) { return 2; }
 }
 

@@ -1,5 +1,6 @@
 // cloudfunctions/check/index.js —— M10 监督检查隐患（纯业务，只引用 helpers）
 const { getOpenid } = require('./helpers/user');
+const { MGMT, UNIT_MGMT } = require('./helpers/roles');
 
 const { createRateLimiter } = require('./helpers/rateLimiter');
 const __limiter = createRateLimiter({ getOpenid });const db = require('./helpers/db');
@@ -17,7 +18,7 @@ async function requireRole(...roles) {
 
 // 考核/审批类操作鉴权（S1）：仅管理角色可评分与审批
 async function requireApprover() {
-  return requireRole('lead', 'supervisor', 'project_lead', 'safety_officer', 'admin');
+  return requireRole(...MGMT, 'admin');
 }
 
 // 检查任务（M10.1）
@@ -34,7 +35,7 @@ async function submit(payload) {
   const r = await db.getById('inspections', id);
   if (!r.data) return fail('检查任务不存在', 404);
   // 越权防护：非管理员须为本任务被指派人
-  const g = await requireRole('lead', 'supervisor', 'project_lead', 'safety_officer', 'admin');
+  const g = await requireRole(...MGMT, 'admin');
   const isManager = !g.err;
   if (!isManager && r.data.assignee && r.data.assignee !== openid) {
     return fail('仅被指派人或管理员可提交', 403);
@@ -70,7 +71,7 @@ async function reportHazard(payload) {
 
 // 隐患指派（M10.4）—— 含 operatorName（D17）
 async function assignHazard(payload) {
-  const g = await requireRole('project_lead', 'supervisor', 'lead');
+  const g = await requireRole(...MGMT);
   if (g.err) return g.err;
   const { id, assignee = '', assigneeOpenid = '', dueDate = '' } = payload;
   const r = await db.getById('hazards', id);
@@ -97,7 +98,7 @@ async function trackHazard(payload) {
   // 守卫：仅指派处理人或管理员可更新整改进展
   const isAssignee = r.data.assignee === openid || r.data.assigneeOpenid === openid;
   if (!isAssignee) {
-    const g = await requireRole('admin', 'supervisor', 'lead', 'project_lead', 'safety_officer');
+    const g = await requireRole(...MGMT, 'admin');
     if (g.err) return g.err;
   }
   const me = await db.getCurrentUser(openid);
@@ -113,7 +114,7 @@ async function trackHazard(payload) {
 
 // 闭环关闭（M10.6）—— 含 closed 守卫（D17）
 async function closeHazard(payload) {
-  const g = await requireRole('supervisor', 'lead');
+  const g = await requireRole('admin', 'a1', ...UNIT_MGMT);
   if (g.err) return g.err;
   const { id, verifyNote = '' } = payload;
   const r = await db.getById('hazards', id);

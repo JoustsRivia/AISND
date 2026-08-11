@@ -27,7 +27,11 @@ Component({
 
   lifetimes: {
     attached() {
-      this._init();
+      // 延迟到首帧渲染完成后初始化：attached 在页面初始数据应用期间同步执行，
+      // 此时 _init → _updateSelection 会 triggerEvent('change') 驱动父页面 setData，
+      // 与页面自身正在应用的数据更新冲突，基础库报「recursive update detected」。
+      // 用 setTimeout 把整条初始化链移出渲染周期，行为不变（仍自动选中首个角色并匹配组织）。
+      setTimeout(() => this._init(), 0);
     },
   },
 
@@ -54,20 +58,35 @@ Component({
       this._updateSelection(0, 0, 0);
     },
 
-    // ── picker-view 列滚动事件 ──
+    // ── picker-view 列变化事件（兼容 bindcolumnchange 与 bindchange 两种触发）──
+    // bindcolumnchange：列滚动中触发，e.detail = { column, value }（列号 + 该列索引数字）
+    // bindchange：滚动停止触发，e.detail = { value: [i0, i1, i2] }（完整索引数组）
+    // 双绑定兜底：任一事件生效即可驱动级联；两者都触发时（值已一致）直接返回，避免受控回弹
     onColumnChange(e) {
-      const { column, value } = e.detail;
+      const detail = e.detail || {};
       const current = [...this.data.pickerValue];
-      current[column] = value;
+      let changedCol = -1;
+      if (typeof detail.column === 'number' && typeof detail.value === 'number') {
+        // bindcolumnchange：单列变化
+        changedCol = detail.column;
+        current[changedCol] = detail.value;
+      } else if (Array.isArray(detail.value)) {
+        // bindchange：完整索引数组，找出与当前不同的最后一列
+        for (let i = 0; i < current.length; i++) {
+          const v = Number(detail.value[i]);
+          if (v !== current[i]) { changedCol = i; current[i] = v; }
+        }
+      }
+      if (changedCol < 0) return; // 无实际变化：不 setData，避免 picker 回弹
 
-      if (column === 0) {
+      if (changedCol === 0) {
         // L1 变化 → 重置 L2 (0) + L3 (0)，重新计算 L2 列表
         current[1] = 0;
         current[2] = 0;
         this._rebuildColumns(current);
         this.setData({ pickerValue: [current[0], 0, 0] });
         this._updateSelection(current[0], 0, 0);
-      } else if (column === 1) {
+      } else if (changedCol === 1) {
         // L2 变化 → 重置 L3 (0)，重新计算 L3 列表
         current[2] = 0;
         this._rebuildColumns(current);

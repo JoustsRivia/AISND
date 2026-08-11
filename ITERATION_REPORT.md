@@ -1,380 +1,219 @@
-# SND 小程序 · 迭代报告（ITERATION 2026-07-20·6 RBAC 全域闭环 + 留存/限流后台闭环 + 权限实时刷新 + 迁移契约写后读双向 + 前端门禁规则引擎）
+# SND 小程序 · 迭代报告
+### 7.16 问题清单修复：6 项问题 + 通用性收口（2026-08-08）
 
-> 生成依据：微信小程序云开发 AI 开发守则（可迁移 + 精准加载 + 全自主自迭代）
-> 本迭代模式：初始化 → 读取上次报告（`ITERATION_REPORT.md` §4 的 7 项建议即本次目标）→ 自主规划 → 编码 → 验证 → 修复 → 报告 → 推送
-> 时间门禁：北京时间未到 2026-07-22 00:00，继续执行（当前 2026-07-20）。
+> **背景**：用户提供 `问题.txt`（6 项：角色信息缺归属显示 / 导入页大空白 / 领用归还应走扫码 / 身份码与档案未开发 / 组织页未更新树架构 / 报修页需完善），要求"修复已确定并拓展解决类似功能通用性缺失问题"。计划经批准后实施。
 
-## 0. 初始化校验
+**A. 通用性收口（先做）**
+- `utils/org-utils.js` 新增 `orgPath(tree, orgId)` / `orgPathText(tree, orgId)`：组织路径解析单一源，替代各处重复解析与"已分配/未分配"粗显示。调用方：profile、identity、scan 核验弹窗、org 用户列表、新档案页
 
-| 项 | 结果 |
-|---|---|
-| 时间门禁（终止点 2026-07-22 00:00，北京时间） | ✅ 当前 2026-07-20，未触发 |
-| 历史迭代报告 `ITERATION_REPORT.md` | 存在并已优先读取：上轮 `§4` 列出 7 项「下一次迭代计划建议」即为本次目标 |
-| 源仓库 `JoustsRivia/AISND` | ✅ 已克隆、与远端同步（上轮基线 `6ea5a24`），remote 已配授权 token |
-| 隔离层副本 `cloudfunctions/*/helpers/{dbBase,userBase}.js` | ✅ 由 `bundle-db-base.js` 生成、已 `.gitignore`，不入库（见 §5 注） |
-| 上一会话遗留未提交改动 | ✅ 无；本轮在 `6ea5a24` 之上继续开发，目标为落实上轮 §4 全部 7 项 |
-## 6. 自上次迭代（2026-07-20·6）以来的变更汇总
+**B. #2 归属显示**：profile.js/identity.js 的 orgName 改为按 orgId 从组织树解析完整路径（users 无冗余 orgName 字段，旧代码恒空）；scan.js 身份码核验弹窗增加「归属」行（身份码负载新增 `g: orgId` 字段，扫码端用自身组织树解析）
 
-> **基线**：上轮报告最后修订节点 `12dd705`（迭代 2026-07-20·6 收尾的「修复云函数上传」）。
-> **范围**：`12dd705..88ce7c2` 共 13 个提交；**170 新增 / 110 修改 / 0 删除**文件；净变更 **+12,398 / −658** 行。
-> **涉及提交**：`d8764d6`(隔离层副本入库) · `8c40e27`(org 工具) · `ae60813`(SIMPLE 11 项) · `6e6baed`(auth R12 语义还原) · `a161385`(COMPLEX 18/19 项) · `5557384`(修复 15 问题) · `04bd8f1`(数据调取统一改造) · `edd1657`(条码子包统一显示) · `a6cce4c`(#14 报废/禁用禁编辑) · `7d09ae3`(#13 身份码) · `fe6e902`(19 缺陷 + 通用组件) · `b775188`(Web 上传 AGENTS.md) · `88ce7c2`(中低难度整改收口 + 报告状态标记)。
+**C. #3 导入模板**：import 页删除过期云存储签名二维码区（`t=1784882928` 已于 2026-07 过期 → 大空白根因），单按钮复制夸克网盘地址 `https://pan.quark.cn/s/83bee6a0863f?pwd=G4Sd`。**顺带治本**：该文件历史编码损坏严重（CSV 表头「检验周期(月)」损坏为乱码导致表头匹配失败、UI 文案乱码）→ 整文件 UTF-8 重写修复
 
-### 6.1 新增功能（New Features）
+**D. #4 扫码领用/归还**：records 页顶部加「📷 扫码领用 / 归还」→ 扫码校验器具存在 → 跳 tool-detail（复用成熟链路：合格/超期/持证校验 + 领用/归还 + 外观选择）
 
-| 功能 | 关键文件 | 说明 |
-|---|---|---|
-| 身份码体系（#13） | `pages/identity/{identity.js,wxml,wxss,json}`、`pages/scan`、`pages/profile` | 工作台身份码入口 + 「我的身份码」页（canvas 生成二维码，`pkg-barcode/utils/qrcode.js`） + 扫一扫互验；未登录走 `wx.reLaunch` 守卫 |
-| 班组协作看板（NEW-04） | `pkg-stats/pages/team/{team.js,wxml,wxss,json}` | 班组成员列表（姓名/角色/工号）+ 状态卡片（3 列）+ 近期动态；由 dashboard 的「班组协作」按钮进入，`goTeam()` 返回看板 |
-| 通用组件库 | `components/attachment-uploader/*`、`components/search-picker/*`、`components/db-picker/*`、`components/org-cascading-picker/*`、`components/user-picker/*` | 新增 5 个可复用组件（附件上传、搜索选择、数据库选择器、组织级联选择、用户选择），支撑 SIMPLE/COMPLEX 需求表单 |
-| 统一展示与数据层 | `utils/display.js`、`utils/data-schema.js`、`utils/tool-schema.js`、`utils/user-utils.js`、`utils/org-utils.js` | `displayEnum/displayDate/formatEntityItem`（枚举中文/日期/实体展示）；`ENTITY_SCHEMAS/FIELD_TYPES`（字段 schema 单一源）；`TOOL_FIELDS/TOOL_IMPORT_COLS/calcExpireAt`（工器具字段/导入列/到期计算）；`formatUser/displayName`；`subtreeIds(tree,rootId)`（组织子树，替代各页本地实现） |
-| 隔离层单一源新增 | `shared/crypto.js`、`shared/employeeId.js`、`shared/password.js`、`shared/rateLimiter.js`、`shared/roles.js` | 新增 5 个单一源（原仅 dbBase/userBase），经 `bundle-db-base.js` 打包进全部 18 云函数；含 PBKDF2 密码哈希、工号生成、密码强度、限流中间件、角色白名单 |
-| 隔离层副本入库 | `cloudfunctions/*/helpers/{crypto,employeeId,password,rateLimiter,roles,dbBase,userBase}.js`（126 份） | 由 `.gitignore` 改为纳入版本管理（`d8764d6`），修复云端 `Cannot find module` |
-| 测试 | `tests/complex-features.test.js`、`tests/tool-check-features.test.js` | 复杂需求 18/19 项 + 工器具检验特性单测 |
-| 文档交付物 | `AGENTS.md`、`CODE_REVIEW_REPORT.md`、`IMPROVEMENT_PLAN.md` | 多 Agent 协作指引、代码审查报告、整改计划（含状态标记） |
+**E. #5 身份码 + 档案**：新建 `pages/archive/archive`（我的档案·全面：归属路径/基本信息/权限说明 ROLE_INFO/统计卡 myStats/身份码入口）；profile 菜单「我的档案」→ archive、「我的身份码」→ identity（identity 页本已完整但无档案入口 + 缺归属显示）；app.json 注册
 
-### 6.2 修改的模块（Modified Modules）
+**F. #6 组织架构与用户页**：树行加 kind 标签（单位/项目部/班组）；用户列表显示组织完整路径（替代"已分配/未分配"）；用户表单组织候选按角色 orgKind 约束（unit 角色仅单位节点、project 仅项目部、team 仅班组，与注册端 ORG_KIND_MAP 同源语义）；修复 unitIndex 越界时静默丢组织的问题
 
-| 主题 | 提交 | 关键文件 | 说明 |
-|---|---|---|---|
-| 隔离层副本入库 | `d8764d6` | `cloudfunctions/*/helpers/*`、`scripts/bundle-db-base.js`、`.gitignore` | 126 份副本纳入版本管理；bundle `SOURCES` 由 2 源扩至 7 源 |
-| 组织工具增强 | `8c40e27` | `utils/org-utils.js` | 新增/调整组织树工具（`subtreeIds`） |
-| SIMPLE 11 项需求 | `ae60813` | `components/db-picker/*`、`components/org-cascading-picker/*`、`components/user-picker/*`、`pkg-store/pages/register/*`、`pkg-train/pages/{courses,sign-in}/*`、`pkg-scrap/pages/apply/*` 等 | 完成 11 项简单需求（含通用选择器组件落地） |
-| auth 登录语义还原 | `6e6baed` | `cloudfunctions/auth/helpers/*`、`shared/userBase.js` | 还原 R12：登录严格对应凭证账户，移除误伤换设备的跨身份 401 |
-| COMPLEX 18/19 项需求 | `a161385` | `pkg-ledger/pages/{tool-create,reconcile,import}/*`、`pkg-scrap/pages/apply/*`、`pkg-store/pages/register/*`、`pkg-train/*`、`pkg-maint/*`、`tests/complex-features.test.js` 等 | 完成 18/19 项复杂需求（领用/报废/入库/培训/维修等深度流程） |
-| 修复 15 个功能问题 | `5557384` | 多业务页与云函数 | 15 处功能性缺陷修复 |
-| 数据调取统一改造 | `04bd8f1` | `utils/api.js`、`utils/display.js`、`utils/data-schema.js` | 「参谋报告」实施，统一数据获取与展示路径，减少页面重复取数 |
-| 条码子包统一显示 | `edd1657` | `pkg-barcode/pages/label/label.wxml`、`pkg-barcode/pages/{gen,print}/*` | `label.wxml` 重构 + gen/print 补算 `keeperDisplay`，统一条码标签展示 |
-| 报废/禁用禁编辑入口（#14） | `a6cce4c` | `pages/tool-detail/*`、`pkg-ledger/pages/tool-create/*` | 报废/禁用器具禁止展示编辑入口，防误操作 |
-| 19 项逻辑缺陷整改 | `fe6e902` | 各业务页/云函数 + 新增 `components/attachment-uploader/*`、`components/search-picker/*` | 19 处逻辑缺陷全量整改 + 2 个通用组件 |
-| 离线缓存（FEAT-02） | `88ce7c2` | `utils/network.js`、`pages/index/index.js`、`pages/ledger/ledger.js`、`pages/message/message.js` | 新增 `cacheThenNetwork(key,fetcher,{ttl})` 离线优先策略，首页/台账/消息接入 |
-| 真分页（PERF-01） | `88ce7c2` | `shared/dbBase.js`、`cloudfunctions/{auth,system,warning,scrap,reconcile}/index.js` 及 `helpers/db.js` | `listAll(name,filter,opts)` 真分页取代 500/200 硬上限，`listBy(...,500/200)` → `listAll(...)` |
-| 预警跳转带 refId（FEAT-06） | `88ce7c2` | `pages/message/message.js` | 消息点击跳转带 `?id=${msg.refId||msg._id}`，可定位到具体工器具/借还单 |
-| 组织树 subtreeIds（OPT-05） | `88ce7c2` | `pages/ledger/ledger.js`、`utils/org-utils.js` | 台账移除本地 `clientSubtree`，改用 `subtreeIds(tree,p.orgId)` 统一算法 |
-| 报告状态标记 | `88ce7c2` | `CODE_REVIEW_REPORT.md`、`IMPROVEMENT_PLAN.md`、`IMPROVEMENT_SUMMARY.md` | 9 项审查问题 + 20 项计划任务补充「状态」行（14 ✅ 已完成 / FEAT-08、NEW-01/02/03/05 ⏸ 待办） |
+**G. #7 维保报修**：maintenance 云函数 `list` 富化器具信息（toolName/toolCode/category/source/leaseUnit，helpers/db.js 补 remove 原语）；新增 `archive`（管理族，pending 不可归档，列表默认排除）与 `delete`（管理族，仅 pending/rejected 可删防审计断裂，器具 maintaining 回滚 qualified）；api.js 两方法；repair 页显示来源信息 + 归档/删除按钮（管理族显隐，与服务端 requireApprover 同源）
 
-### 6.3 删除的文件或逻辑（Deleted）
+**H. 顺带修复（同类问题）**
+- tool-detail 报修按钮跳 repair **列表页**且不带 toolId（断点）→ 改跳 create 发起页带 toolId
+- profile「证书即将到期」徽标原用 s.todo（未读预警+待试验）口径错误 → 改 myCerts 统计 30 天内到期证书数
+- **tool-detail.js 因历史编码问题在本次编辑中被截断（0 字节）**，用户提供原件（`原件tool-detail.js`）后按原件恢复，应用两处必要修改：① 词表统一后的角色判定（点检=班组作业层+安全员 b22/b23/b24/c22/c23/c24；编辑=管理族 isLead 或班组长 b23/c23）；② 问题 #7 报修路由改跳 create 发起页带 toolId。顺带修复原件中显示给用户的文案乱码（banner 提示等）
 
-- **删除文件**：**0**（`git diff --name-status` 无 `D` 状态）。
-- **删除/替换的逻辑**：
-  - `pages/ledger/ledger.js` 本地 `clientSubtree` 函数被移除，改用 `utils/org-utils.js` 的 `subtreeIds`（统一组织子树算法，消除重复实现）。
-  - `cloudfunctions/auth` 中 R12「误伤换设备的跨身份 401」逻辑被移除（`6e6baed`），登录严格对应凭证账户。
-  - `cloudfunctions/*/helpers/*` 副本由「不入库」改为「入库」，原 `.gitignore` 排除规则失效（属策略反转，非代码删除）。
+**I. 质量门禁终态**
 
-### 6.4 重要的重构操作（Refactors）
+| 门禁 | 结果 |
+|------|------|
+| `npm test` | ✅ **157/157**（新增 maintenance archive/delete/list 富化 4 用例） |
+| `check:syntax` | ✅ 255 JS |
+| `check:frontend` | ✅ 零直连 |
+| `lint:helpers` / `lint:db-base` | ✅ 34 helper / ✅ 51 副本 |
+| `validate:functions` | ✅ 17 云函数 |
+| grep 兜底 | ✅ tplQr/onPreviewQr/onOpenTpl 零命中；pages/archive 已注册 |
 
-| 重构 | 提交 | 文件 | 收益 |
-|---|---|---|---|
-| 隔离层副本入库 | `d8764d6` | `cloudfunctions/*/helpers/*`、`scripts/bundle-db-base.js`、`.gitignore` | 仓库即部署物，根治云端 `Cannot find module`；仍由 `pretest`/部署脚本重写，保证单一源一致性 |
-| 隔离层单一源扩展 | `d8764d6` + 多提交 | `shared/{crypto,employeeId,password,rateLimiter,roles}.js` | 单一源由 2 → 7，密码/工号/限流/角色白名单收敛为共享层，消除各函数各自实现 |
-| 数据调取统一改造 | `04bd8f1` | `utils/api.js`、`utils/display.js`、`utils/data-schema.js` | 「参谋报告」统一取数与展示，页面取数去重 |
-| 条码 label 重构 | `edd1657` | `pkg-barcode/pages/label/label.wxml` + gen/print | 标签展示统一，补算 `keeperDisplay` |
-| 离线缓存抽象 | `88ce7c2` | `utils/network.js` | `cacheThenNetwork` 统一离线优先策略，三页复用 |
-| 组织树算法收敛 | `88ce7c2` | `utils/org-utils.js`、`pages/ledger/ledger.js` | `subtreeIds` 单一源替代各页本地实现 |
-
-### 6.5 架构合规核查（本轮叠加变更）
-
-| 铁律 | 核查 | 结论 |
-|---|---|---|
-| ① 前端零直连 | `cacheThenNetwork`、新增组件、identity/team 页均只 `require` `utils/api`/`auth`/`network`；grep 前端无新增 `wx.cloud.*`（豁免 `app.js` init 与 `api.js` transport） | ✅ 合规 |
-| ② 云函数分层隔离 | 新增单一源（crypto/password/rateLimiter/roles）经 helpers 注入；业务逻辑 `index.js` 仍只引 `./helpers` | ✅ 合规 |
-| ③ 迁移契约 | 改动落点：`shared/*`（迁移点，允许）、`utils/*`（前端层）、`components/*`/`pages/*`（UI）、`cloudfunctions/*/helpers/*`（隔离层副本，允许）；`listAll` 为数据能力增强，契约不破坏 | ✅ 合规 |
-
-**架构合规率：100%**（隔离层副本入库属策略调整，未破坏解耦；单一源扩展进一步强化收敛）。
-
-### 6.6 验证与当前状态
-
-- **代码状态**：本地 `main` 领先远端 1 个提交（已 rebase 同步 `b775188` 的 AGENTS.md 上传），工作区干净。
-- **单一源一致性**：`scripts/bundle-db-base.js` 已重写 126 份副本；`npm run lint:db-base` 可校验逐字节一致。
-- **待办（高难度 / 需决策）**：FEAT-08 批量导入导出；NEW-01/02/03/05 多端后台 / 消息推送 / 审计日志 / 看板深化 —— 属范围与资源决策，需产品+技术负责人确认后排期。
-
-### 6.7 下一步建议
-
-1. **【质量】** 跑全量门禁（`npm test` / `lint:helpers` / `lint:db-base` / `check:frontend`）确认本轮 170 新增文件无回归。
-2. **【架构】** 评估隔离层副本「入库 vs 构建生成」的取舍：当前入库保证可部署，但需依赖 `pretest` 重写避免漂移；可考虑 CI 校验副本与单一源一致。
-3. **【安全】** 落地 NEW-01 多端管理后台与 NEW-03 审计日志导出，闭环 RBAC 剩余读接口（ledger/reconcile/training 看板型接口按 `orgId` 子树收窄）。
-4. **【运维】** 轮换已明文写入 remote URL 的 GitHub token，改用凭据助手/SSH。
+**J. 遗留与下一步**
+- 与 §7.14/§7.15 同属未推送改动（本机无 git），分支 `feature/feature-slim-20260805` 待推
+- 建议真机手测：我的→档案/身份码（归属路径显示）；导入页（无空白+复制网盘地址）；领用归还页（扫码→详情→领用/归还）；组织页（kind 标签+组织候选按角色约束）；报修页（来源信息+归档/删除）
+- tool-detail.js 为重建文件，重点回归：扫码→详情、领用/归还、点检/报修/编辑入口显隐
 
 ---
 
-## 7. 自 2026-07-28 三级级联角色选择器改造
+### 7.17 主包瘦身：utils/tool-schema.js 移入分包并裁死导出（2026-08-08）
 
-> **范围**：注册页角色/组织/权限树重构。**新增 5 文件，修改 12 文件**。
-> **核心变更**：将注册页「角色 + 所属单位 + 机构/班组」三个独立 Flat Picker 替换为**三级级联角色选择器**（`picker-view` 实现，类似时间选择器交互），角色选定后自动推导组织归属与权限树。
+> **背景**：代码质量审查提示「主包未使用的文件 utils/tool-schema.js」。核实：主包内无任何引用（引用者仅 pkg-ledger 分包页面 tool-create 与单测）；且 5 个导出中 3 个功能已被其他文件实现（TOOL_FIELDS→`utils/data-schema.js` ENTITY_SCHEMAS.tool；TOOL_IMPORT_COLS→`pkg-ledger/pages/import/import.js` COLS，且其 label 与 CSV 表头形态不一致；DATE_CONSTRAINTS→`cloudfunctions/tool/index.js` 内联权威副本）。唯一无替代实现的 `calcExpireAt` 与仅剩 UX 预检价值的 `validateDateConstraints` 保留。
 
-### 7.1 背景与根因
+**改动**
+- 新建 `pkg-ledger/utils/tool-schema.js`：仅保留 `validateDateConstraints` + `calcExpireAt`，注释说明各元数据功能已由哪些文件实现（防未来重新发明双源）
+- 删除主包 `utils/tool-schema.js`（主包按需加载瘦身）
+- require 路径同步：`pkg-ledger/pages/tool-create/tool-create.js` → `../../utils/tool-schema`；`tests/complex-features.test.js` → `../pkg-ledger/utils/tool-schema`
 
-**症状**：用户注册时"所属单位"和"机构/班组"形成的组织树不正确，角色与组织错位。
+**门禁**：`npm test` ✅ 157/157 全绿，无残留旧路径引用。
 
-**根因**：角色（role）与组织（unit/org）是两套独立选择器，没有任何级联约束。用户可以选「项目部负责人」角色 +「班组」级别 org 节点，形成逻辑矛盾的组织树。
+**遗留**：与 §7.14-§7.16 同属未推送改动，分支 `feature/feature-slim-20260805` 待推。
 
-**治疗策略**：用三级级联选择器替换三个独立 picker，让角色选择本身携带组织/权限语义，并自动推导正确的组织归属。
+---
 
-### 7.2 新增文件
+### 7.18 BUGLOG 排查：字体加载失败 + getSystemInfoSync 弃用（2026-08-08）
 
-| 文件 | 说明 |
-|------|------|
-| `utils/role-tree.js` | 角色树数据结构（14 个叶子角色：a1~a2, b11~b24, c11~c24） + 级联查询/元数据/路径工具函数 |
-| `components/cascading-role-picker/` (4 文件) | `picker-view` 三级级联选择器组件，L1→L2→L3 严格级联、实时角色描述、自动通知父页面 |
-| `tests/role-tree.test.js` | 20 项纯函数单测：树结构完整性、级联查询、角色元数据、叶子识别 |
+> **背景**：用户提供 `BUGLOG/log1.txt`（微信开发者工具控制台日志），3 项：① `[fonts] SNDNum 字体加载失败`（`cdn.jsdelivr.net` DNS 解析失败 ENOTFOUND，等宽数字字体从未生效）；② `routeDone with a webviewId ... is not found`（开发工具良性路由告警，无代码问题，忽略）；③ `wx.getSystemInfoSync is deprecated`。
 
-### 7.3 修改文件
+**A. 字体治本（SNDNum）**
+- 调研结论：`wx.loadFontFace` **不支持包内本地路径**；Data URL 需基础库 ≥3.7.9，项目 libVersion 3.0.0 不满足；网络字体还须后台配 downloadFile 合法域名。
+- 方案：改为 **WXSS `@font-face` 内嵌 base64**——新建 `styles/fonts.wxss`（roboto-mono latin 子集 woff 15832B → base64 21112B，family 名保持 `SNDNum`，现有 `--font-num` 令牌/`.font-num` 类零改动），`app.wxss` 顶部 `@import "styles/fonts.wxss"`。免白名单、离线可用，符合弱网/离线设计意图；主包代价 +21KB。
+- `utils/fonts.js`：移除 `NUM_URL`/`loadOne('SNDNum')`（避免与 @font-face 双加载），仅保留可选 `SNDIcon`；头注释记录改版原因与再生成步骤。
+- `styles/fonts/sndnum.woff` 源文件**不保留在仓库**（会被打进主包成为未引用文件，同 §7.17 教训），再生成步骤已写入 fonts.wxss 注释。
 
-| 文件 | 变更 |
-|------|------|
-| `pages/register/register.js` | 替换 `role-org-picker` → `cascading-role-picker`；新增 `_autoMatchOrg()` 根据角色自动匹配组织树节点 |
-| `pages/register/register.wxml` | 替换组件引用；新增组织匹配状态提示 |
-| `pages/register/register.json` | 组件路径更新 |
-| `pages/register/register.wxss` | 新增 `.org-match*` 样式 |
-| `pages/login/login.js` | 同步适配（登录页注册模式同样使用新组件 + 自动匹配） |
-| `pages/login/login.wxml` | 同上 |
-| `pages/login/login.json` | 同上 |
-| `pages/login/login.wxss` | 同上 |
-| `utils/register-shared.js` | 新增 `ROLE_INFO` 含全部 14 个新角色码（a1~c24）的权限说明（数据范围/可用功能/审批链路） |
-| `utils/constants.js` | 新增 `ROLE_TREE_CODES` 常量映射 |
-| `shared/roles.js` | `ROLE_SELF_BINDABLE` 扩展包含全部新角色码 |
-| `cloudfunctions/auth/index.js` | 新增 `listAll` 导入；`register()` 新增 `orgKind` 校验：验证注册提交的 org 节点 kind 与角色要求一致，不匹配返回 400 |
+**B. 弃用 API**：3 处 `wx.getSystemInfoSync` 全部改为 `wx.getWindowInfo()`（lib 3.0.0 必有，2.20.1+ 提供）——`components/chart/chart.js` getDpr、`pages/identity/identity.js:69`、`pkg-barcode/pages/gen/gen.js:52`（后两处原「getWindowInfo 优先 + getSystemInfoSync 兜底」双分支简化为单调用）。
 
-### 7.4 角色树架构
+**C. 文档同步**：DESIGN_SYSTEM.md 4 处字体描述（约束声明/数字即仪表/字体节/P2 状态）更新为 base64 @font-face 现状。
 
-```
-一级          二级              三级（叶子角色）
-安监人员(a) ─ 平台安监(a1)
-          ─ 总包安监(a2)
-总包人员(b) ─ 总包管理(b1) ─ 公司负责人(b11)、部门经理(b12)
-          ─ 总包现场(b2) ─ 项目部负责人(b21)、安全员(b22)、班长(b23)、作业(b24)
-分包人员(c) ─ 分包管理(c1) ─ 分包负责人(c11)、部门经理(c12)
-          ─ 分包现场(c2) ─ 项目部负责人(c21)、安全员(c22)、班长(c23)、作业(c24)
-```
+**门禁**：`npm test` ✅ 157/157；`check:syntax` ✅ 255 文件；`check:frontend` ✅；`getSystemInfoSync` 全仓仅剩注释提及。
 
-- **14 个叶子角色码**均可自助注册（admin 除外）
-- 旧角色码（worker/group_lead 等）保留向后兼容
-- 角色码与服务端 orgKind 映射：`unit`(a1/a2/b11/b12/c11/c12)、`project`(b21/b22/c21/c22)、`team`(b23/b24/c23/c24)
+**遗留**：① 需在开发者工具/真机确认 SNDNum 生效（仪表盘数字宽度变化）与 BUGLOG 无字体/弃用告警；② 与 §7.14-§7.17 同属未推送改动，分支 `feature/feature-slim-20260805` 待推。
 
-### 7.5 设计决策
+---
 
-| 决策 | 理由 |
-|------|------|
-| `picker-view` 而非三个独立 `picker` | 用户要求"类似时间选择器的交互方式"，三列联动是标准实现 |
-| 保留 `role-org-picker` 组件不删除 | 系统管理页的用户管理可能仍需 flat role picker |
-| `components/cascading-role-picker/` 通过 `bind:change` 派发完整角色元数据 | 父页面零感知级联细节，职责单一 |
-| 旧角色码保留在 `ROLE_SELF_BINDABLE` | 已注册用户不受影响；新注册推荐走三级级联 |
-| `_autoMatchOrg()` 按 unitType + orgKind 关键词匹配 | 简单实用；无匹配时提示管理员创建组织架构 |
+### 7.19 待优化问题 15 项全量实施（2026-08-08）
 
-### 7.6 质量门禁
+> **背景**：用户提供 `待优化问题.txt`（15 项，附「无需重复获取授权，执行完成后报告」）。全部实施完毕，质量门禁全绿（157/157 单测、256 文件语法、前端零直连、helpers 注释 34 文件）。
 
-| 门禁 | 结果 |
-|------|------|
-| `node --test tests/role-tree.test.js` | ✅ 20 pass / 0 fail |
-| `npm run lint:helpers` | ✅ 36 文件首行路径合规 |
-| 预存 `tests/cloud-functions.test.js` | ⚠️ 已有 1 fail（`rateLimiter.js` 缺失，属测试环境不一致，非本次引入） |
+**逐项落地**：
+1. **消息中心**：`.bar` 改 `flex-wrap` + `.bar-ops` 右对齐换行（「管理」按钮超边界修复）；「生成预警」完善——服务端加 RBAC（admin/a1/单位级管理，与 del 同口径）、返回按类型明细（detail），前端按钮仅管理可见 + 生成后分类明细弹窗 + 403 原因透出。测试 R24 同步补调用者 admin 身份。
+2. **_id of undefined**：Explore 代理全仓扫描定位——修复 org.js 提交 `parent._id`（越界无守卫，`|| {}` 兜底）、plan.js onExec / hazard.js / sign-in.js 的 dataset item 未判空、disposal.js find 无命中注入 undefined、auth/index.js 3 处写后重查返回 `ok(undefined)` → `|| null`。
+3. **showLoading 配对**：全仓扫描确认全部配对（tool-detail 用 finally，import 双路径 hide）。
+4. **身份码**：负载加生成时间戳 `t`，页面展示「刷新于 HH:mm」+ 刷新按钮，扫码核验弹窗显示「码生成于」——防翻拍/旧码辨识。工作台/档案入口经核查均已就绪（§7.16 已建）。
+5. **人员显示**：borrow `records` 服务端按 openid 批量映射 `byName`+`byEid`（users 表 `_.in` 查询），前端显示「姓名（工号）」；台账/档案侧已有 keeperDisplay/R18 富化，确认无裸 openid。
+6. **领用归还筛选**：服务端按 toolId 批量富化库房/保管人 → 支持 编号/名称/库房/保管人 四选一关键词过滤；默认仅返回最近 20 条（feed 式，不再全量）。前端加筛选条（类型 chips + 输入防抖 300ms + 清空）。
+7. **档案删除**：api.js 暴露 `deleteTool`（此前云函数有 del 但前端无入口——这就是 ⑦ 的缺口）；tool-detail 加「删除」按钮（管理族或工具归属本人机构可见，恒定占位最右 + danger 样式），二次确认弹窗（红色删除按钮文案），成功后返回。
+8. **导入保管人按工号匹配**：importTools 批量按 employeeId 反查 users → 存 openid；keeper/operator 同机制；未匹配工号回传 `unmatched`，前端导入结果提示核对。导入页 hint 更新。
+9. **文件导入导出**：导入页移除 textarea 粘贴——纯文件方式（chooseMessageFile → 读 UTF-8 → 自动导入），提示 XLS/XLSX 先另存 CSV（不引入 xlsx 库控包体积）；导出改为写 USER_DATA_PATH 后「保存到手机文件（saveFileToDisk）/ 发送文件（shareFileMessage）」双通道，替代剪贴板。
+10. **台账层级**：档案页新增「台账层级」行（orgId → orgPathText 组织树全路径）；导入自动归属本为既有逻辑（orgId 取操作者），补页面提示说明。
+11. **履历时间线**：根因——ops 只存 `type`（borrow/return/scrap），前端却读 action/title → 全部渲染「状态变更」。前端建 OP_LABELS 映射（领用/归还/报废/入库建档）；create 与 importTools 建档即写 `created` 履历（原恒为空）。
+12. **编号索引联想**：新建共享组件 `components/code-autocomplete`（输入防抖 300ms → tool.list keyword 联想 → 下拉 code+name+状态 → pick 回传 code），接入现场点检与维保报修两页（替换裸文本输入）；领用归还页已有编号筛选（⑥）、报废页已有扫码。组件可复用。
+13. **分类中文**：`utils/display.js` 新增 `catName()` 统一出口；修复 8 处——试验待检列表、试验提交、标识牌生成、打印文件、账物核对范围、规程指引、台账导出 CSV（导出中文）、导入解析兼容中英文类别（反查表）。
+14. **编号规则**：去连字符，`{类别前两字拼音缩写}{YY}{5位流水}`（绝缘 JY/手持 SC/通用 TY/起重 QZ/高空 GK/计量 JL/临时 LS/大型 DX，示例 LS2600001）；nextSeq 前缀与新正则同步，旧格式数据不受影响。R15 测试断言全部更新。
+15. **组织树编辑**：服务端 manageOrg 加三级树架构校验（kind 与 level 严格对应、unit 挂根/project 挂 unit/team 挂 project、team 为叶子不可下挂）+ 移动子树防环（subtreeIds 检查目标父级不在自身子树）；前端「新增下级」树行快捷入口（按父级类型给默认子类型）、切换上级自动纠正类型、提交前防环预检。
 
-### 7.7 遗留问题与下一步
+**门禁**：`npm test` ✅ 157/157（含 R15 新规则断言、R24 鉴权身份）；`check:syntax` ✅ 256 文件；`check:frontend` ✅；`lint:helpers` ✅ 34 文件。
 
-| 项 | 说明 |
-|------|------|
-| `_autoMatchOrg()` 匹配策略 | 当前基于名称关键词匹配，可演化为基于 org 节点的 `kind` 字段精确匹配（需确保组织树 `kind` 字段有值） |
-| 云函数 `rateLimiter` 本地测试 | `cloudfunctions/*/index.js` 中 `require('./rateLimiter')` 在本地 Node 下解析失败（部署环境正常），建议统一加 `./helpers/` 前缀或用环境变量切换 |
-| 旧角色码清理 | 待确认所有在册用户已迁移到新角色码后，可将旧角色码从 `ROLE_SELF_BINDABLE` 移除 |
-| `register-shared.js` 中 `buildUnits()` | 保留但不再被注册/登录页引用（改为 `_autoMatchOrg`），系统管理页等其他场景仍在使用 |
+**遗留**：① 新编号规则仅影响新建器具，存量旧格式（GL-26-GJ-0001）数据不迁移，继续按原码展示（安全、可读）；② 组件 `code-autocomplete` 待真机验证下拉交互（blur 收起时序）；③ 与 §7.14-§7.18 同属未推送改动，分支 `feature/feature-slim-20260805` 待推。
 
-### 7.8 纯前端 HTML 预览（`/workspace/role-picker-preview.html`）
+---
 
-> **定位**：独立交付物（**已入库** `demos/role-picker-preview.html`，仅作交互演示），不调用微信云开发后端，组织匹配/权限说明均为本地 `MOCK_ORG_TREE` 模拟数据。与 `utils/role-tree.js`、`utils/register-shared.js` 同源摘录。
-> **目的**：让非小程序环境（浏览器/桌面）也能直观体验三级级联选择器的交互，而无需搭建微信开发者工具。
+### 7.19 待优化问题 15 项全部实施 + 组织树缓存失效修复（2026-08-08）
 
-**已修复的两个反馈缺陷：**
+> **背景**：用户提供 `待优化问题.txt`（15 项，文件授权「无需重复获取授权，执行完成后报告」）。全部实施完毕，质量门禁 157/157 全绿、256 文件语法通过、前端零直连。之后用户实测反馈「组织架构新增/编辑后数据库已更新但前端不及时刷新」，另修复。
 
-| 缺陷 | 根因 | 修复 |
-|------|------|------|
-| B1：第一/二级正常，第三级数组数据不显示 | `rebuild()` / `currentPathNodes()` 通过 `childrenOf()` 取子级，而 `childrenOf()` 把节点 `map` 成 `{value,name}` 会**丢弃 `.children`**，导致 `l1[resetTo.i0].children` 恒为 `undefined`，第三列永远 `[]` | 改回直接基于 `ROLE_TREE` 原始节点做结构遍历，仅在渲染时统一 `map` 成 `{value,name}`，保留 `.children` 链路 |
-| B2：第三级依旧无法选择 | 交互层**仅依赖 `scroll` 事件 + `scroll-snap-type: y mandatory`**。2~4 项的短列在桌面滚轮/触控下几乎滚不动（内容高度 ≈ 滚动区高度），`scroll` 事件无法稳定触发，索引计算 `Math.round(scrollTop/ROW_H)` 失效 | ① 新增**点击直选** `col.addEventListener('click', ...)`：读取被点 `.crp-item` 的 `data-i` 直接 `selectAt()`，与滚动解耦；② `selectAt(ci,idx)` 统一级联逻辑（L0/L1 触发 `rebuild`，L2 仅更新 `state.i2` + 视觉居中）；③ `scroll` 处理器增加 `maxIdx = col.children.length-1` 上界保护，避免越界算错索引；④ CSS 增加 `touch-action: pan-y`、`user-select: none` 及 `.crp-item:hover/:active` 桌面端可点击反馈 |
+**A. 15 项实施要点**（详见各文件注释「优化#N」）
+1. 消息中心：「管理」按钮溢出→`.bar` flex-wrap+`.bar-ops` 右对齐换行；「生成预警」→服务端加 RBAC（admin/a1/单位级管理，与 del 同口径）+返回分类明细，前端仅管理可见+结果明细弹窗
+2. `_id of undefined`：全仓扫描（Explore 代理 102 次工具调用）→ 修复 6 处：org.js parent 越界、plan/hazard/sign-in dataset item 空值、disposal find 空结果、auth 写后重查空值（返回 null）
+3. showLoading/hideLoading：全仓脚本扫描 9 文件逐处核对，全部严格配对（无遗漏无重复）
+4. 身份码页：负载加生成时间戳 t，页面显示「刷新于」+手动刷新按钮，扫码端核验展示码生成时间（旧码/翻拍可辨识）；首页入口与 profile 入口已存在
+5. 领用归还记录：`by`(openid) 服务端批量映射为 姓名+工号（byName/byEid），前端展示「姓名（工号）」；台账/档案侧已有 keeperDisplay/R18 富化
+6. 领用归还记录筛选：服务端按 toolId 批量富化库房/保管人 → 支持编号/名称/库房/保管人四选一关键词过滤；**默认仅返回最近 20 条**（feed 式）
+7. 档案删除：api.js 补暴露 deleteTool（服务端 del 早已存在）；tool-detail 加删除按钮（管理族或本人机构，恒占位最右+danger 样式）+二次确认弹窗
+8. 导入保管人按工号匹配：importTools 批量 employeeId→openid 映射（keeper/operator 同机制），未匹配工号回传前端提示；前端提示「保管/操作人列填工号」
+9. 导入导出改文件方式：导入页删除 textarea 粘贴，纯「选择 CSV 文件→自动导入」；导出 CSV 落盘后提供「保存到手机文件（saveFileToDisk）/发送文件（shareFileMessage）」双通道，替代剪贴板
+10. 台账层级：tool-detail 新增「台账层级」行（orgId→orgPathText）；导入自动归属已实现（orgId=操作者），补提示文案
+11. 履历时间线：根因=ops 记录存 `type` 而前端只读 `action/title`→全显示「状态变更」；新增 OP_LABELS 映射（领用/归还/报废/入库建档）；create/importTools 补写「入库建档」首条履历
+12. 编号联想：新建共享组件 `components/code-autocomplete`（防抖 300ms→getToolList 联想→点选回传 code），接入 spot-check 与 maint create（替换裸输入）；领用归还已有编号筛选、报废已有扫码
+13. 分类中文：`utils/display.js` 新增 `catName()` 单一源；修复 7 处 wxml（due-list/submit/label/print/reconcile/guide）+导出 CSV 中文化 + 导入兼容中英文类别名
+14. 编号规则：`{类别前两字拼音缩写}{YY}{5位流水}` 无连字符（临时配电→LS2600001；绝缘JY/手持SC/通用TY/起重QZ/高空GK/计量JL/大型DX）；旧格式保留可读不再生成；R15 测试同步更新
+15. 组织树编辑：服务端 add/update 加三级树架构校验（unit 挂根/project 挂 unit/team 挂 project、team 叶子不可下挂、kind 与层级严格对应）+移动防环（subtreeIds 检查目标不在自身子树）；前端树行加「新增下级」快捷入口、上级切换自动纠正类型、提交前防环预检
 
-**验证**（DOM mock 跑通 `selectAt` 全链路）：
+**B. 组织树缓存失效修复（用户实测反馈）**
+- 根因：`utils/api.js getOrgTree` 有缓存时无条件 `resolve(cached)` 返回旧树，后台版本校验发现不一致只写 storage 不更新返回值 → 数据库已变、前端永远旧树
+- 修复：缓存分支改为等版本校验——版本一致返回缓存（省传输），不一致返回新树并更新缓存；网络失败回退缓存（保留弱网/离线设计）。org.js 提交后 `await this.load()` 已有，闭环成立
+- 所有消费 getOrgTree 的页面（org/ledger/login/register/profile 等）统一受益
 
-- 14 个叶子角色（a1~a2, b11~b24, c11~c24）经「点击第三级」链路逐级 `selectAt` 全部命中，**14/14 通过**；
-- 样例 `b → b2 → b23`：角色描述「管辖本班组工器具与人员」、自动关联节点「安装公司·项目部A·电气班 (team)」、`autoCard` 正常显示、路径高亮正确。
+**门禁**：`npm test` ✅ 157/157；`check:syntax` ✅ 256 文件；`check:frontend` ✅；`lint:helpers` ✅ 34 文件。
 
-**注意**：小程序侧 `components/cascading-role-picker/` 用的是原生 `picker-view`（`bindcolumnchange`），移动端选择本就是原生可靠交互，**不受 B2 影响**；B2 仅存在于此 HTML 预览的 `scroll-snap` 模拟实现中，已通过点击直选根除。
+**遗留**：① 需真机手测：组织树新增/编辑后立即刷新、生成预警明细、记录页筛选、档案删除、编号联想、文件导出（saveFileToDisk 权限）；② 与 §7.14-§7.18 同属未推送改动，分支 `feature/feature-slim-20260805` 待推。
 
-### 7.9 集成适配与遗留问题（2026-07-30 接手整合）
+---
 
-> **范围**：将三级级联角色选择器改造**完整接入项目并跑通本地质量门禁**。本次除功能代码（c89e302 已提交）外，还修复了若干**阻塞测试套件、但与本特性无关**的预存缺陷，并补齐了交付物入库。
+### 7.20 组织树缓存失效根因治本：版本号改为内容指纹（2026-08-08）
 
-**A. 已通过的本地门禁（适配后全绿）**
+> **背景**：§7.19 修复前端 `getOrgTree` 缓存分支后，用户实机调试仍显示旧组织架构。追查发现**版本号机制本身失效**：`orgTreeVersion` 存于 `configs` 集合，但该集合从未被 `ensureCollection`（orgs/users/dicts/check_templates/operation_logs 均有，唯独 configs 没有）→ 云数据库向不存在集合 add/update 抛错 → `bumpOrgVersion` 的 try/catch 静默吞掉 → 版本恒 0 → 前端缓存比对永远「一致」→ 永远返回缓存旧树。
 
-| 门禁 | 命令 | 结果 |
-|------|------|------|
-| 语法 | `npm run check:syntax` | ✅ 268 个 JS 文件 |
-| 前端解耦 | `npm run check:frontend` | ✅ pages/components/utils 均无直连 `wx.cloud.*` |
-| helper 首行注释 | `npm run lint:helpers` | ✅ 36 个 helper 首行均为真实路径 |
-| 云函数可部署 | `npm run validate:functions` | ✅ 18 个云函数，异常 0 |
-| 角色树单测 | `node --test tests/role-tree.test.js` | ✅ 20/20 |
-| 全量单测 | `npm test` | ✅ **150/150（全绿，含 4 个 §7.10 回归测试）** |
+**修复（治本，不依赖集合可写性）**
+- `cloudfunctions/system/index.js` `orgTree()`：版本号改为**树内容指纹**（对每个节点的 _id/parentId/kind/name 做滚动 hash，`>>> 0` 取非负）——树的任意增/删/改都会改变指纹，前端即检测到不一致并拉新树；空树指纹 0 与前端初始缓存版本 0 语义一致
+- `bumpOrgVersion` 补 `ensureCollection('configs')`：configs 记录可真正落库（辅助审计），版本比对以指纹为准
+- 前端 `getOrgTree`（§7.19 已修）：版本不一致返回新树——闭环完成
 
-**B. 修复的预存缺陷（非本特性引入，阻塞测试套件 / 功能）**
+**回归守卫**：新增测试「版本号为内容指纹，组织变更后版本变化」（新增节点/重命名 → 版本变；内容未变 → 版本稳定），158/158 全绿。
 
-| 缺陷 | 根因 | 修复 | 文件 |
-|------|------|------|------|
-| 18 个云函数 `index.js` 模块加载失败 | 根级 `require('./rateLimiter'|'./password'|'./roles'|'./crypto'|'./employeeId')` 引用的 helper 实际位于 `helpers/`，与同文件已有的 `./helpers/db`、`./helpers/user` 约定不一致；本地 Node 与（推断）真实部署均无法解析 | 统一改为 `./helpers/<name>` | `cloudfunctions/*/index.js`（18 个） |
-| `system` / `warning` 的 `helpers/db.js` 导出 `listAll` 但未定义 | 二处 `module.exports` 引用了从未声明的 `listAll`，导致模块加载即 `ReferenceError` | 从 `base`（即 `dbBase.js`）解构引入 `listAll` | `cloudfunctions/system/helpers/db.js`、`cloudfunctions/warning/helpers/db.js` |
-| `auth.register` 单测断言失败 | 测试硬编码旧 `sha1('tms_'+pw)` 哈希，而真实 `helpers/crypto.js` 已升级为 **PBKDF2（随机盐）**；二者算法不一致，且 PBKDF2 每次盐随机、无法字面比较 | 测试改用真实 `hashPwd` 并由 `verifyPwd` 校验口令确已哈希 | `tests/cloud-functions.test.js` |
-| `reconcile.createTask` 建任务恒返回 `400` | `db.listAll('tools', ...)` 返回**裸数组**，但代码误用 `(tools.data \|\| [])` → `tools.data` 为 `undefined` → `items` 恒空 → 永远命中"无匹配器具"分支；同模块其他 `listBy` 调用返回 `{data}` 因而此前未暴露 | 改为 `(tools \|\| [])`（与全局 `listAll` 裸数组约定一致） | `cloudfunctions/reconcile/index.js` |
-| `warning.generate` 不生成任何预警 | `generate` 内 `const tools = await db.listAll('tools')` 后误用 `(tools.data \|\| [])`，循环不执行 → `warnings` 集合为空 → 测试 `mock.__store.warnings.find` 抛 `Cannot read ... 'find'` | 改为 `(tools \|\| [])`（同 B4 同类失误） | `cloudfunctions/warning/index.js` |
+**部署提示**：真机调试调用的是**线上已部署的云函数**——须重新部署 `cloudfunctions/system` 后指纹机制才生效；前端代码真机调试用本地版本即可。
 
-> 注：require 路径与 `listAll` 缺陷此前被 `./rateLimiter` 加载错误"遮盖"——函数尚未 require 到 `helpers/db` 即已抛错，问题未暴露；修复 require 路径后浮出，属**治本**。B4/B5 为 `reconcile`/`warning` 模块内 `listAll` 裸数组 vs `.data` 的约定误用，修复后 `reconcile.createTask`（含 409 重复校验）与 `R24 warning.generate` 均转绿，全量单测由 144/146 升至 146/146。
+---
 
-**C. `auth/index.js` 编码处理（细节）**
+### 7.21 库房管理纳入组织架构页（2026-08-08）
 
-- HEAD 中 `cloudfunctions/auth/index.js` 为 GBK/混合编码（含少量损坏字节，`file` 标为 Non-ISO extended-ASCII），但中文实为 UTF-8 字节（被 `file` 误判）。
-- 本次对该文件**仅改 5 行 require 路径**，故采用"还原 HEAD 字节 → 按字节做 5 处 ASCII 替换"的最小改动法，避免整文件重编码产生百行 mojibake 噪音 diff。最终 diff 仅含 5 行 require 路径变更，HEAD 既有少量损坏中文（预存，非本次引入）原样保留。
-- 其余 17 个云函数原即为 UTF-8，批量 require 改写不产生编码噪音，diff 均为单行 require 变更。
+> **背景**：用户要求「库房管理也纳入该架构页中」——组织架构页（pkg-system/pages/org）树节点下直接管理该组织库房，替代仅独立库房注册页的现状。
 
-**D. 交付物入库**
+**改动**
+- `cloudfunctions/store/index.js`：
+  - `register` 支持显式 `orgId`（架构页给指定组织挂库房），但须在调用者可编辑范围内（`allowedOrgIds` 校验，admin 放行），越权挂靠 403 拒绝——保留原「防越权挂靠」安全边界（原实现静默忽略，改为明确拒绝）
+  - 新增 `update` 动作：管理员或库房创建者可改 名称/分区/保管人；orgId 不可改（挂靠变更走删除重建）
+- `utils/api.js`：暴露 `updateStore`
+- `pkg-system/pages/org/`：树行加「库房」按钮（点击展开该组织库房列表：名称/分区/保管人 + 新增/编辑/删除，删除带二次确认且服务端拒绝「库房下仍有器具」）；新增/编辑表单内联卡片
+- 测试：原「忽略越权 orgId」断言改为「越权 403」，新增 显式挂靠成功 / 默认归属 / update 权限 3 例
 
-- HTML 预览由 `/workspace/role-picker-preview.html` 移入仓库 `demos/role-picker-preview.html`（纯前端演示，不进入小程序构建，门禁脚本不扫描 HTML）。
-- 命名/目录/依赖均遵循项目约定：工具树单一源 `utils/role-tree.js`（kebab，首行真实路径）、组件 `components/cascading-role-picker/`（4 件套）、`shared/roles.js` 经 `bundle-db-base.js` 同步为各函数 `helpers/roles.js`、页面仅经 `utils/api.js` 调用云函数（前端解耦门禁通过）。
+**门禁**：`npm test` ✅ 161/161（store 4 例）；`check:syntax` ✅；`check:frontend` ✅。
 
-### 7.10 全面代码复查与缺陷整改（2026-07-30）
+**遗留**：需重新部署 `cloudfunctions/store`（register 放开 orgId + update 新动作）与 `cloudfunctions/system`（§7.20 指纹）；与 §7.14-§7.20 同属未推送改动，分支 `feature/feature-slim-20260805` 待推。
 
-> **范围**：对 18 个云函数 `index.js` 及 `helpers/db.js` 进行全面逻辑审查，根治已知及新发现的缺陷。
+---
 
-**A. 复查发现与修复**
+### 7.20 台账状态刷新 + status-tag null 告警修复（2026-08-08）
 
-| 缺陷 | 严重度 | 根因 | 修复 | 文件 |
-|------|--------|------|------|------|
-| `system/orgTree` 端点恒返回空列表 | **高** | `listAll('orgs')` 返回裸数组，但 `return ok({ list: res.data \|\| [] })` 误取 `.data` → `list` 恒为 `[]` | `res.data` → `res` | `cloudfunctions/system/index.js` |
-| `warning/delete` 动作崩溃 | **高** | `coll('warnings')` 调用但 `coll` 未在 index.js 作用域引入（仅在 `db` 对象上），触发 `ReferenceError` | `coll(...)` → `db.coll(...)` | `cloudfunctions/warning/index.js` |
-| `scrap/disposal` 外流告警路径崩溃 | **高** | `listAll('orgs')` / `listAll('users')` 调用但 `listAll` 未在 destructured import 中声明，触发 `ReferenceError` | 追加 `listAll` 到 import | `cloudfunctions/scrap/index.js` |
+> **背景**：用户反馈「器具合格→待检后，台账页卡片状态不及时更新」，且控制台提示 `[component] property "status" of "components/status-tag" received type-uncompatible value: expected <string> but got null`。
 
-> 三者均为「测试缺口导致未暴露」型缺陷：`orgTree` 无内容校验测试、`warning.delete` 无测试、`scrap.disposal`（store/keeper 告警分支）无测试。修复后同步补齐回归测试，防止再灭。
+**根因（两个独立问题）**：
+- **状态不更新**：`pages/ledger/ledger.js` 的 `onShow` 只做登录拦截、**不 reload**——器具在别的页（消息中心自动标待检/档案页操作）变更后，切回台账 tab 拿到的是 onLoad 时的旧列表（reload 走 cacheThenNetwork，在线时本就每次拉新数据，TTL 只影响离线回退，故非缓存问题）。
+- **status null**：老数据器具文档缺 `status` 字段（list rows `status: t.status` 直接透传 undefined → WXML 绑定 null）。组件 `MAP[null]` 回退 `normal`，控制台告警且**把缺状态器具误标为「正常」**——比告警本身更危险。
 
-**B. 补充的回归测试**
+**修复（组件层治本 + 页面 + 服务端兜底）**：
+1. `ledger.js onShow`：首次（onLoad 已 reload）跳过，之后每次切回强制 `reload()`——状态变化即时可见，离线时仍回退缓存。
+2. `components/status-tag/status-tag.js`：observers 归一化 `status || ''`，null/空显示「未知」（info 灰标）而非误标「正常」；顺带补 MAP 缺失的 `in_use`（领用中）——此前领用中的器具同样被回退显示「正常」。
+3. `cloudfunctions/tool/index.js` list 映射 `status: t.status || ''` 兜底（数据层不再透传 undefined）。
 
-| 新增测试 | 目的 | 文件 |
-|----------|------|------|
-| `system.orgTree: 空库自愈播种并返回非空列表` | 防止 `orgTree` 端点返回空列表 | `tests/complex-features.test.js` |
-| `warning.delete: 删除存在的预警` | 防止 `coll` 作用域 bug 回归 | `tests/complex-features.test.js` |
-| `warning.delete: 不存在的预警返回404` | 守卫正常不存在路径 | `tests/complex-features.test.js` |
-| `scrap.disposal: 处置时若仍有 store/keeper 则生成外流预警` | 防止 `listAll` import bug 回归 | `tests/cloud-functions.test.js` |
+**门禁**：`npm test` ✅ 162/162；`check:syntax` ✅ 256 文件。
 
-**C. 其余审查未发现新缺陷**
+**遗留**：与 §7.14-§7.19 同属未推送改动，分支 `feature/feature-slim-20260805` 待推。
 
-- `listAll` 裸数组 vs `listBy` `{data}` 的返回值约定在全量扫描后已无剩余误用（第 7.9 节已修复 reconcile/warning，本节修复 system/orgTree）。
-- 所有 `require` 路径均为 `./helpers/<name>`，无遗漏根级引用。
-- 空值守卫（`.data`、`.find`、`.map` 前守卫）在修复后已全覆盖关键路径。
-- 错误处理：各 `exports.main` 均有外层 `try/catch`，各业务函数均有输入校验与 `fail` 分支。`warning/generate` 内层 `catch(e)` 为有意空的"单类异常不影响其他类别"，风险可控。
-- `auth/index.js` 的编码不影响逻辑正确性（仅中文注释为 mojibake，代码为 ASCII 正确）。
+---
 
-**D. 门禁终态**
+### 7.21 账物核对三问题修复（2026-08-08）
 
-| 门禁 | 结果 |
-|------|------|
-| `check:syntax` | ✅ 268 文件 |
-| `check:frontend` | ✅ 零直连 `wx.cloud.*` |
-| `lint:helpers` | ✅ 36 文件 |
-| `validate:functions` | ✅ 18 云函数，异常 0 |
-| `npm test` | ✅ **150/150（+4 回归测试）** |
+> **背景**：用户反馈 reconcile 新建核对任务——① 目标仓库/器具类别选择后弹窗自动消失；② 直接提交报「数据库集合不存在」；③ 控制台提示 showLoading/hideLoading 必须配对使用。
 
-### 7.11 前端 + 共享层深度复查（2026-07-30 第二轮）
+**根因与修复**：
+1. **弹窗自动消失**：弹层 `mask` 绑了 `bindtap="onHideCreateForm"`（点击遮罩关闭）。picker 是原生组件，选择器弹层关闭瞬间的触摸会穿透到 mask 误触发关闭。修复：mask 移除 tap 关闭（注释说明原因），关闭仅走「取消」按钮。
+2. **集合不存在**：`reconcile_tasks`（及可能 `stores`）集合未在云数据库创建——云函数无法动态建集合，写入即报 `-502005 collection not exists`。修复：reconcile 云函数入口 catch 识别该错误码，返回中文指引「请在云开发控制台创建 stores / reconcile_tasks 集合」；**DEPLOY.md 新增 §0 云数据库集合创建清单**（全仓 26 个集合，部署第一件事），根治各功能逐个踩坑。
+3. **loading 配对提示**：reconcile.js 各处本有 finally 配对，真正触发是**快速双击「提交」**——两次并发 onSubmitTask 各 show 一次，第一次 finally 已 hide，第二次的 hide 无匹配 show → 微信报「必须配对使用」。修复：`submitting` 防重入标志（提交中忽略重复点击）。
 
-> **范围**：逐文件审查 `pages/`、`components/`、`utils/`、`shared/`，修复新发现的逻辑缺陷。
+**门禁**：`npm test` ✅ 162/162；`check:syntax` ✅。
 
-**A. 前端 — 6 个中等缺陷（`ac1a767`）**
+**遗留**：① 需要在云开发控制台确认 `reconcile_tasks` / `stores` 集合已创建（reconcile 云函数需重新部署生效中文提示）；② 与 §7.14-§7.20 同属未推送改动，分支 `feature/feature-slim-20260805` 待推。
 
-| # | 位置 | 缺陷 | 影响 | 修复 |
-|---|------|------|------|------|
-| 1–3 | `pages/index|ledger|message` `onPullDownRefresh` | `.then()` 无 `.catch()` | 刷新失败 → spinner 永远不停止（wx.stopPullDownRefresh 在 catch 内） | 追加 `.catch()` 链 |
-| 4 | `pages/message` `onMarkAll` | `readAllWarnings` 调用时序：服务端失败后无反馈 | 乐观更新了 UI 且 toast 了成功，实际服务端未标记 | 改为 `await` + `res.code === 0` 判断后再乐观操作 |
-| 5–6 | `pages/tool-detail|scan` `requireOnline` | catch 块静默 `return`（不调用原回调） | 无网络时用户点击按钮无任何 UI 反馈 | catch 内至少 `wx.showToast({title:'请检查网络'})` |
-| 7 | `pages/profile` 头像显示 | `p.nickName`（大写 N）→ 微信 `getUserProfile` 返回的字段是 `nickname`（小写 n），头像文字永远取 username 首字，非 nickname | 头像昵称永不对 | 改为 `p.nickname` |
+---
 
-**B. 共享层 — 1 个中等缺陷（`2cccf0c`）**
+### 7.22 条码生成页：筛选 + 标签图片完整化（2026-08-08）
 
-| 缺陷 | 根因 | 修复 |
-|------|------|------|
-| `shared/rateLimiter.js` `BATCH_ACTIONS` 名单名实漂移 | `'importTools'` 是 API 函数名，云函数 action 实为 `'import'`；`'batchImport'` 无对应 action；缺少 `'batchBorrow'`/`'batchReturn'`/`'batchCheck'` | 对齐云函数 action 名，删除死条目，补全 3 个批量操作 |
+> **背景**：用户反馈条码生成页（pkg-barcode/pages/gen）——① 无法筛选到目标器具；② 生成的标签图片仅含二维码，缺编号/名称/有效期等文字信息。
 
-> `BATCH_ACTIONS` 控制批量操作使用高阈值（300/min）而非默认 30/min。名单错位导致批量导入/领用/归还/点检实际跑在 30/min 低频档，生产环境可能误触发 429 限流。
+**根因**：
+1. gen.js `onLoad` 仅加载 `getToolList({ size: 100 })` 前 100 台且页面无任何搜索——器具多时找不到目标。
+2. `onSave` 用 `canvasToTempFilePath` 只导出二维码 canvas（#qr 400×400），文字信息仅在页面 DOM（qr-meta）展示，不进图片。
 
-**C. 其余维度零新增缺陷**
+**修复**：
+1. 页面加「筛选」输入框（名称/编号关键词，防抖 300ms 走服务端 tool.list keyword 多字段匹配），命中即重置选择器；提供清空按钮。
+2. 单 canvas 绘制完整标签：canvas 高度 400rpx→620rpx（二维码区 + 文字区），二维码下方绘制 名称(bold)/编号/类别(中文)/有效期/保管人 五行文字，`onSave` 导出整卡——文字随图保存。行距按最小屏宽（320px）校核不溢出。
 
-- `wx.cloud.*` 直连：pages/components 零命中（`check:frontend` 验证）
-- WXML ↔ JS 事件绑定：全部 `bindxxx` 在 JS 中均有对应 handler
-- `require` 路径：18 云函数一致指向 `./helpers/<name>`
-- `listAll`/`listBy` 返回值约定：全量扫描零剩余误用
+**门禁**：`npm test` ✅ 162/162；`check:syntax` ✅ 256 文件；`check:frontend` ✅。
 
-### 7.12 已知低优先级防御性观测（非阻塞，记录待排期）
-
-| # | 位置 | 描述 | 严重度 |
-|---|------|------|--------|
-| 1 | `scripts/validate-functions.js` | 仅校验 dbBase/userBase 一致性，其余 5 个共享文件（rateLimiter/crypto/employeeId/roles/password）不做漂移检测 | 低 |
-| 2 | `utils/api.js` `invoke` | `res.result` 为 undefined 时会将原始 wx 对象 resolve（实际不会触发） | 低 |
-| 3 | `utils/role-tree.js` `getRoleTree()` | 返回内部引用而非拷贝（调用方只读，暂无风险） | 低 |
-
-### 7.13 第三轮交叉验证：代理遗漏缺陷收口（2026-07-30）
-
-> 代理第二轮复查（§7.11）完成前端 6 项中危修复后，本 Agent 手工逐模式扫描全库，发现代理遗漏了子包页面（`pkg-*`）中的同类缺陷。
-
-**A. nickName（大写N）拼写 —— 6 处（代理修复了 JS 层 2 处，漏修 WXML 3 处 + 子包 JS 3 处）**
-
-| 文件 | 行 | 原值 | 根因 |
-|------|-----|------|------|
-| `pages/index/index.wxml` | 8 | `profile.nickName` | 后端存储字段为 `nickname`（小写n），模板引用 `nickName` → 永远 undefined → 始终走 fallback，昵称从不显示 |
-| `pages/profile/profile.wxml` | 6 | `profile.nickName` | 同上 |
-| `pkg-train/pages/courses/courses.wxml` | 38 | `item.nickName` | 同上 |
-| `pkg-train/pages/courses/courses.js` | 66, 87 | `u.nickName` / `user.nickName` | 搜索过滤与选中逻辑用错字段 |
-| `pkg-stats/pages/team/team.js` | 56 | `u.nickName` | 成员列表名称回退用错字段 |
-
-> 修复：统一改为 `nickname`（小写n）。
-
-**B. onPullDownRefresh 无错误处理 —— 10 处子包页面（代理修复了 3 处主包页面，漏修 10 处子包页面）**
-
-| 文件 | 原模式 | 风险 |
-|------|--------|------|
-| `pkg-check/pages/{assessment,hazard,inspection,performance}/**` | `async onPullDownRefresh() { await ...; wx.stopPullDownRefresh(); }` | `load()` 抛错 → `stopPullDownRefresh()` 不执行 → 下拉刷新 spinner 永久卡死 |
-| `pkg-ledger/pages/reconcile/` | 同上 | 同上 |
-| `pkg-maint/pages/plan/` | 同上 | 同上 |
-| `pkg-train/pages/{courses,sign-in}/` | 同上 | 同上 |
-| `pkg-system/pages/log/` | `this.load().then(...)` 缺 `.catch()` | 同上 |
-| `pkg-test/pages/due-list/` | 同上 | 同上 |
-
-> 修复：async 模式改为 `try { await ... } finally { wx.stopPullDownRefresh() }`；then 模式追加 `.catch(() => wx.stopPullDownRefresh())`。
-
-**C. 最终基线**
-
-| 门禁 | 结果 |
-|------|------|
-| `check:syntax` | ✅ 268 JS |
-| `check:frontend` | ✅ 零直连 |
-| `lint:helpers` | ✅ 36 helper |
-| `validate:functions` | ✅ 18 云函数 |
-| `npm test` | ✅ **150/150（全绿）** |
-
-**D. 本轮提交**：`nickName` 全量修复 6 处 + `onPullDownRefresh` 子包覆盖 10 处 + 本文档 §7.13。
-
-### 7.14 运行时崩溃修复：onTapItem 读取 undefined._id（2026-07-30）
-
-> 用户上报微信运行时错误 `MiniProgramError: Cannot read properties of undefined (reading '_id')`，堆栈定位到 `di.onTapItem`（编译后 `chunk_10.appservice.js`）。
-
-**根因（治本分析）**
-
-- 报错点：`pages/ledger/ledger.js` `onTapItem`：`const t = e.detail.tool; wx.navigateTo({ ... + (t._id || '') })`。当 `e.detail.tool` 为 `undefined` 时，`t._id` 直接抛 `Cannot read properties of undefined`。
-- 上游：`e.detail.tool` 来自 `components/tool-card/tool-card.js` `onTap()`：`this.triggerEvent('tap', { tool: this.data.tool })`。
-- 数据链路（`reload → fetchPage → api.getToolList → cacheThenNetwork`）返回的是规整器具数组，**数据本身没问题**。
-- 真正成因：台账页在刷新/分页时会 `setData({ list: [] })` 先清空再填充，或通过 `list.concat(...)` 追加。微信在 `wx:for` 列表过渡（清空/回收/复用）期间，`<tool-card tool="{{item}}">` 的 `item` 会**瞬时为 `undefined`**；此时组件属性 `tool` 被绑成 `undefined`，而属性默认值 `value: {}` **不会被回填**（微信已知行为）。于是 `this.data.tool === undefined`，冒泡后 `e.detail.tool === undefined`，下游 `t._id` 崩溃。
-
-**修复（双层边界防护，彻底消除成因而非掩盖现象）**
-
-| 层 | 文件 | 改动 |
-|----|------|------|
-| 发射边界（根因点） | `components/tool-card/tool-card.js` | `triggerEvent('tap', { tool: this.data.tool \|\| {} })` —— 保证下游永远拿到对象（至少空对象），不再冒泡 `undefined` |
-| 主处理器（二次安全网） | `pages/ledger/ledger.js` | `const t = (e.detail && e.detail.tool) \|\| {}; if (!t._id) return;` —— 即便上游异常也绝不崩溃，仅对有效 `_id` 跳转 |
-| 同类加固 | `pkg-site/pages/daily-check/daily-check.js` | `onTapItem` 增加 `if (!item) return;` —— 同一类 `undefined` 崩溃（原会抛 `reading 'status'`），一并消除 |
-
-**验证**
-
-- `node --check` 语法门禁通过（268 文件）。
-- 逻辑单测（Node 模拟）：对 `e.detail.tool = undefined / {} / 有效对象 / 缺 detail` 四情形，修复后均不抛错，仅有效 `_id` 才跳转；对照组确认旧逻辑在 undefined 上抛错。
-- 全量门禁 + `npm test`：✅ 150/150 全绿，零回归。
-
-> 说明：前端 `Page/Component` 无法在 Node 测试 harness（仅覆盖云函数）中直接运行，故用等价的纯逻辑片段做边界验证；真机/开发者工具需人工回归一次点击空卡片。
+**遗留**：与 §7.14-§7.21 同属未推送改动，分支 `feature/feature-slim-20260805` 待推。

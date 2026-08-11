@@ -1,7 +1,0 @@
-/* pkg-stats/pages/six-standard/six-standard.wxss */
-.six { padding-bottom: 40rpx; }
-.title { font-size: 32rpx; font-weight: 600; }
-.dim { margin-top: 24rpx; }
-.dim-head { display: flex; justify-content: space-between; align-items: center; font-size: 28rpx; }
-.track { margin-top: 12rpx; height: 16rpx; border-radius: 8rpx; background: var(--c-divider); overflow: hidden; }
-.fill { height: 100%; border-radius: 8rpx; background: var(--c-primary); }

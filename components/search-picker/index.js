@@ -1,7 +1,8 @@
 // components/search-picker —— D11/D17 通用可搜索选择器
 // 用法：<search-picker fetch="tools" displayKey="name" bind:pick="onSelect" />
-//   fetch='tools' → api.getLedgerList({keyword})，fetch='users' → api.listUsers()
+//   fetch='tools' → api.getToolList({keyword})，fetch='users' → api.listUsers()，fetch='stores' → api.getStoreList()
 const api = require('../../utils/api');
+const { catName } = require('../../utils/display'); // 类别英文码 → 中文（选项副信息）
 Component({
   properties: {
     placeholder: { type: String, value: '请搜索选择' },
@@ -25,7 +26,12 @@ Component({
       try {
         if (this.data.fetch === 'tools') {
           const r = await api.getToolList({ keyword: kw, size: 50 }).catch(() => ({ list: [] }));
-          list = (r.list || []).map((t) => ({ id: t._id, name: t.name, code: t.code, raw: t }));
+          // 选项带唯一特征副信息（库房 · 类别）：同名称器具可借编号/库房/类别分辨
+          list = (r.list || []).map((t) => ({
+            id: t._id, name: t.name, code: t.code,
+            subtitle: [t.store, catName(t.category)].filter(Boolean).join(' · '),
+            raw: t,
+          }));
         } else if (this.data.fetch === 'users') {
           const r = await api.listUsers().catch(() => []);
           const arr = (r.list || r || []);
@@ -42,7 +48,8 @@ Component({
     onPick(e) {
       const i = e.currentTarget.dataset.idx;
       const item = this.data.items[i];
-      this.setData({ picked: item, pickedLabel: item.name, show: false });
+      // 选中态带编号，同名称器具可分辨
+      this.setData({ picked: item, pickedLabel: item.name + (item.code ? '（' + item.code + '）' : ''), show: false });
       this.triggerEvent('pick', { value: item });
     },
     onBlur() { setTimeout(() => this.setData({ show: false }), 200); },

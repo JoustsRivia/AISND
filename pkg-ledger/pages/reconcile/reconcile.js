@@ -2,6 +2,7 @@
 const api = require('../../../utils/api');
 const network = require('../../../utils/network');
 const { TOOL_CATEGORIES } = require('../../../utils/constants');
+const { catName } = require('../../../utils/display'); // 优化#13：类别中文
 
 const RESULT = {
   pending: { text: '待核对', cls: 'gray' },
@@ -30,6 +31,7 @@ Page({
     categories: [{ code: '', name: '全部' }].concat(TOOL_CATEGORIES.map((c) => ({ code: c.code, name: c.name }))),
     categoryIndex: 0,
     note: '',
+    submitting: false, // 防重复提交：双击会并发 showLoading，第二次 hide 无匹配报「必须配对使用」
   },
 
   async onLoad() {
@@ -55,6 +57,7 @@ Page({
     const mapped = (list || []).map((t) => ({
       ...t, _status: t.status === 'done' ? '已完成' : '核对中',
       _statusCls: t.status === 'done' ? 'ok' : 'warn',
+      _cat: catName(t.category), // 优化#13：类别中文
     }));
     this.setData({ tasks: mapped, loading: false });
   },
@@ -97,11 +100,13 @@ Page({
 
   // #15 提交新建任务
   async onSubmitTask() {
+    if (this.data.submitting) return; // 防重入（问题：快速双击 → 并发 show/hide 配对报错）
     try { await network.requireOnline(); } catch (err) { return; }
     const { storeList, storeIndex, categories, categoryIndex, note } = this.data;
     const store = storeList[storeIndex];
     const category = categories[categoryIndex];
     if (!store || !category) { wx.showToast({ title: '请选择仓库和类别', icon: 'none' }); return; }
+    this.setData({ submitting: true });
     wx.showLoading({ title: '生成中' });
     try {
       await api.createReconcileTask({
@@ -118,6 +123,7 @@ Page({
       wx.showToast({ title: err.message || '生成失败', icon: 'none' });
     } finally {
       wx.hideLoading();
+      this.setData({ submitting: false });
     }
   },
 

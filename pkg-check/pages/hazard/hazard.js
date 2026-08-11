@@ -124,6 +124,7 @@ Page({
 
   async onTapHazard(e) {
     const item = e.currentTarget.dataset.item;
+    if (!item) return; // 优化#2 空值守卫
     let actions;
     if (item.status === 'closed') {
       // closed: no actions available, just view detail

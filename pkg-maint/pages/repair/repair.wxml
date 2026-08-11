@@ -6,14 +6,18 @@
   <view wx:for="{{list}}" wx:key="_id" class="card">
     <view class="row" data-id="{{item._id}}" bindtap="onTap">
       <view class="info">
-        <text class="title">器具 {{item.toolId}}</text>
-        <text class="muted sub">{{item.fault}}</text>
+        <text class="title">{{item.toolName || ('器具 ' + item.toolId)}}</text>
+        <text class="muted sub">{{item.toolCode ? item.toolCode + ' · ' : ''}}{{item.fault}}</text>
       </view>
       <status-tag status="{{item.status}}" size="sm" />
     </view>
 
     <view wx:if="{{selectedId === item._id}}" class="detail">
       <flow-steps title="处理进度" labels="{{item.flow.labels}}" current="{{item.flow.current}}" rejected="{{item.flow.rejected}}" />
+      <!-- 问题 #7：器具来源信息（云函数 list 富化） -->
+      <view class="line"><text class="muted">器具名称：</text><text>{{item.toolName || '—'}}</text></view>
+      <view class="line"><text class="muted">器具编号：</text><text>{{item.toolCode || '—'}}</text></view>
+      <view class="line"><text class="muted">来源：</text><text>{{item.source === 'lease' ? '租赁' : item.source === 'self' ? '自购' : '—'}}{{item.leaseUnit ? '（' + item.leaseUnit + '）' : ''}}</text></view>
       <view class="line"><text class="muted">故障现象：</text><text>{{item.fault}}</text></view>
       <view class="line"><text class="muted">情况说明：</text><text>{{item.desc || '—'}}</text></view>
       <view class="line"><text class="muted">上报人：</text><text>{{item.reporter || '—'}}</text></view>
@@ -25,6 +29,9 @@
         <button wx:if="{{item.status === 'pending'}}" size="mini" type="primary" loading="{{acting}}" disabled="{{acting}}" bindtap="onApprove">通过</button>
         <button wx:if="{{item.status === 'approved'}}" size="mini" loading="{{acting}}" disabled="{{acting}}" bindtap="onRecord">维修登记</button>
         <button wx:if="{{item.status === 'repaired'}}" size="mini" type="warn" loading="{{acting}}" disabled="{{acting}}" bindtap="onRecheck">复检合格</button>
+        <!-- 问题 #7：归档（已流转记录）/ 删除（仅未流转） -->
+        <button wx:if="{{canMgmt && item.status !== 'pending' && item.status !== 'rejected' && item.status !== 'archived'}}" size="mini" loading="{{acting}}" disabled="{{acting}}" bindtap="onArchive">归档</button>
+        <button wx:if="{{canMgmt && (item.status === 'pending' || item.status === 'rejected')}}" size="mini" type="warn" plain loading="{{acting}}" disabled="{{acting}}" bindtap="onDelete">删除</button>
       </view>
     </view>
   </view>

@@ -1,4 +1,25 @@
-/* pkg-barcode/pages/query/query.wxss —— R17 核验反馈 kv 列表样式 */
+/* pkg-barcode/pages/query/query.wxss —— R17 核验反馈 kv 列表样式
+   2026-08-09：补齐 .label/.input/.btn-row/.name/.tag/.warn 等缺失样式（原页面引用但从未定义，导致结构松散） */
+.q { padding-bottom: 40rpx; }
+
+.row { display: flex; align-items: center; margin-bottom: 20rpx; }
+.label { width: 150rpx; flex-shrink: 0; font-size: 28rpx; color: var(--c-text); }
+.input {
+  flex: 1; padding: 16rpx 20rpx;
+  background: var(--c-bg-soft); border-radius: 14rpx; font-size: 28rpx;
+}
+.btn-row { display: flex; gap: 20rpx; margin-bottom: 24rpx; }
+.btn-row button { flex: 1; }
+.suggest-row { margin: 8rpx 0 0; }
+
+.name { font-size: 32rpx; font-weight: 600; color: var(--c-text); }
+.tag {
+  padding: 6rpx 16rpx; border-radius: var(--r-pill);
+  font-size: 22rpx; font-weight: 500;
+}
+.tag.ok { background: var(--c-success-soft); color: var(--c-success); }
+.tag.no { background: var(--c-danger-soft); color: var(--c-danger); }
+.warn { display: block; margin-top: 16rpx; font-size: 24rpx; color: var(--c-danger); }
 
 .kv-list {
   margin: var(--sp-2) 0;

@@ -163,8 +163,10 @@ const getCurrentUser = async (openid) => {
 };
 
 // ── RBAC 数据范围原语（与 dbBase.js 完全一致，纯函数，可被所有业务函数复用）──
-const GLOBAL_ROLES = ['admin', 'lead', 'supervisor'];
-const UNIT_ROLES = ['project_lead', 'safety_officer', 'lease_admin'];
+// 词表统一（2026-08-08）：档位只认三级树码 + admin；a1 平台安监=全局，
+// 单位级管理码=a2/b11/b12/c11/c12；其余树码走 org 档（绑定节点子树=管辖范围）。
+const GLOBAL_ROLES = ['admin', 'a1'];
+const UNIT_ROLES = ['a2', 'b11', 'b12', 'c11', 'c12'];
 
 // 组织子树推导：返回 rootId 及其全部后代 ID（含自身）
 function subtreeIds(orgs, rootId) {

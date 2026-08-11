@@ -5,67 +5,17 @@
 //   - buildUnits(tree)：把扁平组织树转换为「单位 + 其下级机构/班组（带路径）」结构，
 //     供系统管理页等单位/机构选择器使用（注册页不再使用此函数）。
 
-const { ROLES, ROLE_ORDER } = require('./constants');
 const { getLeafRoleCodes, getRoleMeta } = require('./role-tree');
 
-// 旧角色码排序（与 ROLE_ORDER 保持同源）
-function orderRoles(list) {
-  const rank = (v) => { const i = ROLE_ORDER.indexOf(v); return i === -1 ? 999 : i; };
-  return [...list].sort((a, b) => rank(a.value) - rank(b.value));
-}
+// 可自助绑定角色清单：全部为三级树叶子码（a1~c24，树序）
+// 词表统一（2026-08-08）：旧扁平码已移除，注册/绑定统一走三级树角色
+const ROLES_BINDABLE = getLeafRoleCodes().map((code) => {
+  const m = getRoleMeta(code);
+  return { value: code, name: m ? m.name : code, desc: m ? m.desc : '' };
+});
 
-// 可自助绑定角色清单：合并旧角色码（向后兼容）+ 新角色码（a1~c24）
-// 注意：旧角色码用于系统中已注册用户，新注册统一走三级级联选择器（新角色码）
-const ROLES_BINDABLE = orderRoles([
-  // ── 原角色（向后兼容，ROLE_ORDER 驱动顺序）──
-  { value: ROLES.WORKER, name: '普通作业人员', desc: '仅可查看本班组工器具' },
-  { value: ROLES.GROUP_LEAD, name: '班组长/班组安全员', desc: '仅可查看本班组工器具' },
-  { value: ROLES.SAFETY_OFFICER, name: '项目部专职安全员', desc: '可管辖整个项目部台账' },
-  { value: ROLES.LEASE_ADMIN, name: '租赁机具管理员', desc: '管理租赁机具台账' },
-  { value: ROLES.LEAD, name: '专班负责人', desc: '全局台账与全部管理权限' },
-  { value: ROLES.PROJECT_LEAD, name: '项目部负责人', desc: '可管辖整个项目部台账' },
-  { value: ROLES.SUPERVISOR, name: '安监部管理人员', desc: '安监督查与系统管理' },
-]);
-
-// ── 角色权限说明（合并新旧角色码）──
+// ── 角色权限说明（三级树 14 叶子码 + admin，与 utils/role-tree.js 语义同源）──
 const ROLE_INFO = {
-  // ── 旧角色（保持向后兼容）──
-  [ROLES.WORKER]: {
-    scope: '仅可查看本班组（机构）工器具台账',
-    functions: ['浏览本班组器具档案与状态', '领用 / 归还本班组器具', '提交个人防护用品需求'],
-    approval: '无需审批，操作即时生效',
-  },
-  [ROLES.GROUP_LEAD]: {
-    scope: '管辖本班组全部工器具与人员操作',
-    functions: ['本班组器具全生命周期管理', '指派本班成员作业任务', '审核本班领用申请'],
-    approval: '班组内操作直接生效；跨班 / 项目部事项报上级',
-  },
-  [ROLES.SAFETY_OFFICER]: {
-    scope: '管辖整个项目部台账与隐患排查',
-    functions: ['项目部全量台账查看', '隐患排查与整改跟踪', '安全交底与培训记录'],
-    approval: '项目部内事项自行审批；重大隐患报安监部',
-  },
-  [ROLES.LEASE_ADMIN]: {
-    scope: '管理全单位租赁机具台账',
-    functions: ['租赁机具登记录入', '租赁合格证与操作人持证管理', '租赁器具状态跟踪'],
-    approval: '租赁业务自行审批',
-  },
-  [ROLES.LEAD]: {
-    scope: '全局台账与全部管理权限',
-    functions: ['全部工器具与人员数据', '系统管理后台', '审批 / 归档 / 报表导出'],
-    approval: '最高权限，操作即时生效',
-  },
-  [ROLES.PROJECT_LEAD]: {
-    scope: '管辖整个项目部台账',
-    functions: ['项目部全量台账', '项目部人员与任务', '项目级报表'],
-    approval: '项目部内事项自行审批',
-  },
-  [ROLES.SUPERVISOR]: {
-    scope: '安监督查与系统管理',
-    functions: ['全域监督检查', '隐患核销与考核', '字典与系统配置'],
-    approval: '安监事项自行审批',
-  },
-
   // ── 新角色码（a1~c24 三级级联角色树）──
   a1: {
     scope: '平台级安全监督管理，全局数据查看权限',

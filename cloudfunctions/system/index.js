@@ -99,40 +99,44 @@ async function orgTree() {
     await seedOrgs();
     res = await db.listAll('orgs');
   }
-  // R06：返回当前版本号，供前端缓存比对
-  let version = 0;
-  try {
-    const vr = await db.listBy('configs', { key: 'orgTreeVersion' }, 1);
-    version = (vr.data && vr.data[0] && Number(vr.data[0].value)) || 0;
-  } catch (_) {}
+  // R06：版本号 = 树内容指纹（修复 2026-08-08）。
+  // 原实现读 configs 集合的 orgTreeVersion：该集合从未 ensureCollection，新增/编辑组织时
+  // bumpOrgVersion 写入静默失败 → 版本恒 0 → 前端缓存比对永远「一致」→ 组织变更后前端不刷新。
+  // 内容指纹不依赖任何集合可写性：树的任意增/删/改都会改变指纹，前端即可检测到并拉取新树。
+  const version = (res || []).reduce((h, o) => {
+    const s = String(o._id || '') + '|' + String(o.parentId || '') + '|'
+      + String(o.kind || '') + '|' + String(o.name || '');
+    for (let i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0;
+    return h;
+  }, 0) >>> 0;
   return ok({ list: res || [], version });
 }
 
 // ── 组织架构管理（op: add | update | delete | seed）───────────────────
-// R09：组织编辑权限按角色档位分发
-//   admin → 全部组织树
-//   lead（专班负责人） → 本公司(root)及下属所有项目部
-//   project_lead（项目部负责人） → 本项目部的班组节点
-//   supervisor（安监部管理人员） → 只读
-const { ROLE_ADMIN_ASSIGNABLE } = require('./helpers/roles');
+// R09：组织编辑权限按角色档位分发（词表统一 2026-08-08：三级树码 + admin）
+//   admin / a1（平台安监） → 全部组织树
+//   单位级管理码 a2/b11/b12/c11/c12（UNIT_MGMT） → 本单位(root)及下属所有项目部
+//   b21/c21（项目部负责人） → 本项目部的班组节点
+//   其余角色（b22/c22 安全员、b23/c23 班长、b24/c24 作业员等） → 只读
+const { ROLE_ADMIN_ASSIGNABLE, UNIT_MGMT } = require('./helpers/roles');
 
 // R09：获取当前用户可编辑的 orgId 范围
 // 返回 { canEdit: boolean, editableIds: string[] | null }
-//   editableIds === null 表示全部可编辑（admin）；空数组表示只读/无权限
+//   editableIds === null 表示全部可编辑（平台级）；空数组表示只读/无权限
 async function getOrgEditScope(u, orgs) {
   if (!u) return { canEdit: false, editableIds: [] };
-  if (u.role === 'admin') return { canEdit: true, editableIds: null }; // 全部
-  if (u.role === 'lead') {
-    // 专班负责人：本单位子树全部
+  if (u.role === 'admin' || u.role === 'a1') return { canEdit: true, editableIds: null }; // 平台级：全部
+  if (UNIT_MGMT.includes(u.role)) {
+    // 单位级管理：本单位子树全部
     const ids = u.orgId ? db.subtreeIds(orgs, u.orgId) : [];
     return { canEdit: true, editableIds: ids };
   }
-  if (u.role === 'project_lead') {
+  if (u.role === 'b21' || u.role === 'c21') {
     // 项目部负责人：仅本项目部的班组节点（子树）
     const ids = u.orgId ? db.subtreeIds(orgs, u.orgId) : [];
     return { canEdit: true, editableIds: ids };
   }
-  // supervisor / 其他：只读
+  // 其余：只读
   return { canEdit: false, editableIds: [] };
 }
 
@@ -151,12 +155,12 @@ async function requireAdmin() {
   return { u };
 }
 
-// R09：组织编辑权限守卫（admin/lead/project_lead 可编辑，supervisor 只读）
+// R09：组织编辑权限守卫（admin/a1 全量、单位级管理本单位子树、b21/c21 项目部子树，其余只读）
 async function requireOrgEditor() {
   const u = await db.getCurrentUser(getOpenid());
   if (!u || u.status === 'disabled') return { err: fail('账号不可用', 403) };
-  if (!['admin', 'lead', 'project_lead'].includes(u.role)) {
-    return { err: fail('无组织编辑权限（仅管理员/专班/项目部负责人）', 403) };
+  if (!(['admin', 'a1'].includes(u.role) || UNIT_MGMT.includes(u.role) || u.role === 'b21' || u.role === 'c21')) {
+    return { err: fail('无组织编辑权限（仅平台安监/单位负责人/项目部负责人）', 403) };
   }
   return { u };
 }
@@ -188,8 +192,11 @@ async function orgManage(payload) {
   }
 
   // R06：组织变更后递增 orgTreeVersion，驱动前端缓存失效
+  // 修复 2026-08-08：configs 集合此前未 ensureCollection，写入静默失败（版本比对现以
+  // orgTree 内容指纹为准，此处 ensure 后记录可真正落库，作为辅助审计）
   const bumpOrgVersion = async () => {
     try {
+      await db.ensureCollection('configs');
       const r = await db.listBy('configs', { key: 'orgTreeVersion' }, 1);
       const cur = r.data && r.data[0];
       const next = (cur && Number(cur.value) || 0) + 1;
@@ -199,6 +206,8 @@ async function orgManage(payload) {
   };
 
   if (op === 'seed') {
+    // 播种为平台级操作，仅 admin 可执行（组织编辑角色已放宽到单位级，须防止借空库播种篡改全树）
+    if (u.role !== 'admin') return fail('仅小程序管理员可恢复默认组织架构', 403);
     // 仅当组织架构为空时允许恢复默认，避免覆盖既有数据
     const cur = await db.listBy('orgs', {}, 1);
     if (cur.data && cur.data.length) return fail('组织架构已存在，无需恢复默认', 409);
@@ -207,14 +216,36 @@ async function orgManage(payload) {
     return ok({ seeded: true });
   }
 
+  // 优化#15：对照项目书组织树架构（单位 → 项目部 → 班组，最多三层）校验
+  // kind 与层级严格对应：unit=level0、project=level1、team=level2；父节点类型决定可挂子类型
+  const KIND_LEVEL = { unit: 0, project: 1, team: 2 };
+  const PARENT_ALLOW = { unit: ['project'], project: ['team'], team: [] }; // team 为叶子，不再下挂
+  const validateTree = (parentId, kind) => {
+    if (KIND_LEVEL[kind] === undefined) return '组织类型不合法';
+    const parent = parentId ? orgs.find((o) => o._id === parentId) : null;
+    if (!parentId) {
+      return kind === 'unit' ? '' : '根节点（所属单位）必须是「所属单位」类型';
+    }
+    if (parent && parent.kind === 'team') return '班组为最末层级，不可再新增下级组织';
+    const allow = parent ? (PARENT_ALLOW[parent.kind] || []) : ['unit'];
+    if (parent && !allow.includes(kind)) {
+      return `${parent.name || '该节点'} 下只能新增 ${allow.length ? allow.join(' / ') : '无'} 类型`;
+    }
+    return '';
+  };
+
   if (op === 'add') {
     if (!data.name) return fail('请填写组织名称', 400);
     const level = await resolveLevel(data.parentId || '');
+    const kind = data.kind || (level === 0 ? 'unit' : level === 1 ? 'project' : 'team');
+    const err = validateTree(data.parentId || '', kind);
+    if (err) return fail(err, 400);
+    if (KIND_LEVEL[kind] !== level) return fail('组织类型与层级不符', 400);
     const a = await db.addOrg({
       name: data.name,
       parentId: data.parentId || '',
       level,
-      kind: data.kind || (level === 0 ? 'unit' : level === 1 ? 'project' : 'team'),
+      kind,
       createdAt: now(),
     });
     await bumpOrgVersion();
@@ -225,11 +256,20 @@ async function orgManage(payload) {
     if (!id) return fail('缺少组织 id', 400);
     if (!data.name) return fail('请填写组织名称', 400);
     const level = await resolveLevel(data.parentId || '');
+    const kind = data.kind || (level === 0 ? 'unit' : level === 1 ? 'project' : 'team');
+    const err = validateTree(data.parentId || '', kind);
+    if (err) return fail(err, 400);
+    if (KIND_LEVEL[kind] !== level) return fail('组织类型与层级不符', 400);
+    // 移动子树防环：目标父节点不能位于本节点子树内（否则成环，树遍历将死循环）
+    if (data.parentId && data.parentId !== '') {
+      const subs = db.subtreeIds(orgs, id);
+      if (subs.includes(data.parentId)) return fail('不能移动到自身下级组织下', 400);
+    }
     await db.update('orgs', id, {
       name: data.name,
       parentId: data.parentId || '',
       level,
-      kind: data.kind || (level === 0 ? 'unit' : level === 1 ? 'project' : 'team'),
+      kind,
       updatedAt: now(),
     });
     await bumpOrgVersion();
@@ -278,23 +318,26 @@ async function userManage(payload) {
   }
 
   if (op === 'add') {
-    if (!data.username) return fail('请填写用户名', 400);
+    // 用户名/昵称 trim：与 auth 注册端同规则，防止前导空格导致登录精确匹配失败
+    const username = String(data.username || '').trim();
+    const nickname = String(data.nickname || '').trim();
+    if (!username) return fail('请填写用户名', 400);
     if (!data.password) return fail('请填写密码', 400);
     const pwErr = passwordError(data.password);
     if (pwErr) return fail(pwErr, 400);
     if (data.role && !ROLE_ADMIN_ASSIGNABLE.includes(data.role)) return fail('角色不合法', 403);
     // 用户名唯一性
-    const dup = await db.listBy('users', { username: data.username }, 1);
+    const dup = await db.listBy('users', { username }, 1);
     if (dup.data && dup.data.length) return fail('用户名已存在', 409);
     // R02：自动生成组织树内唯一工号
     const orgs = await db.listAll('orgs');
     const employeeId = await generateEmployeeId(data.orgId || '', orgs);
     const a = await db.add('users', {
       openid: '',                 // 由管理员预建，首次微信登录时绑定当前身份
-      username: data.username,
-      nickname: data.nickname || data.username,
+      username,
+      nickname: nickname || username,
       password: hashPwd(data.password),
-      role: data.role || 'worker',
+      role: data.role || 'b24',   // 默认角色：班组作业人员（三级树码）
       unitId: data.unitId || '',
       orgId: data.orgId || '',
       employeeId,                 // R02 工号
@@ -309,19 +352,21 @@ async function userManage(payload) {
     if (!id) return fail('缺少用户 id', 400);
     const patch = {};
     if (data.username !== undefined) {
-      if (!data.username) return fail('用户名不可为空', 400);
-      const dup = await db.listBy('users', { username: data.username }, 50);
+      const username = String(data.username).trim(); // 与注册端同规则
+      if (!username) return fail('用户名不可为空', 400);
+      const dup = await db.listBy('users', { username }, 50);
       if (dup.data && dup.data.some((x) => String(x._id) !== String(id))) return fail('用户名已存在', 409);
-      patch.username = data.username;
+      patch.username = username;
     }
-    if (data.nickname !== undefined) patch.nickname = data.nickname;
+    if (data.nickname !== undefined) patch.nickname = String(data.nickname).trim();
     if (data.password) { // 仅非空时更新密码，且需通过强度校验
       const pwErr = passwordError(data.password);
       if (pwErr) return fail(pwErr, 400);
       patch.password = hashPwd(data.password);
     }
     if (data.role !== undefined) {
-      if (data.role && !ROLE_ADMIN_ASSIGNABLE.includes(data.role)) return fail('不允许分配该角色', 403);
+      // 角色不可清空（空串也拒绝）：避免 '' 绕过白名单把用户角色置空
+      if (!data.role || !ROLE_ADMIN_ASSIGNABLE.includes(data.role)) return fail('不允许分配该角色', 403);
       patch.role = data.role;
     }
     if (data.unitId !== undefined) patch.unitId = data.unitId;
@@ -595,7 +640,7 @@ async function orgPerm() {
     role: u.role,
     canEdit: scope.canEdit,
     canAdd: scope.canEdit,
-    canDelete: scope.canEdit && u.role !== 'project_lead', // 项目部负责人不可删除
+    canDelete: scope.canEdit && u.role !== 'b21' && u.role !== 'c21', // 项目部负责人不可删除
     editableIds: scope.editableIds, // null=全部可编辑，[]=只读
   });
 }

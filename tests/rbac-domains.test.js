@@ -1,11 +1,11 @@
 'use strict';
 // tests/rbac-domains.test.js
 //
-// 迭代 Item 1（RBAC 注入剩余业务域闭环）：覆盖 cert / check / performance 三个读接口的
+// 迭代 Item 1（RBAC 注入剩余业务域闭环）：覆盖 cert / check 两个读接口的
 // 「按组织子树收窄」行为，验证 scopedList 通用模板在各域真正生效：
-//   - 全局角色(admin/lead/supervisor)看全量
-//   - 单位级角色(project_lead/safety_officer)看整单位子树
-//   - 机构/班组级(worker)仅看本机构子树，且越权 orgId 下钻被忽略
+//   - 全局角色(admin/a1)看全量
+//   - 单位级角色(a2/b11/b12/c11/c12)看整单位子树
+//   - 机构/班组级(b23/b24/c23/c24 等)仅看本机构子树，且越权 orgId 下钻被忽略
 //   - 写库带服务端 orgId（防止越权挂靠）
 //
 // 沿用 mock-cloud 拦截层，业务云函数（index.js + helpers）零改动，证明「换掉 wx-server-sdk 即可复用」。
@@ -18,7 +18,6 @@ const assert = require('node:assert');
 
 const cert = require('../cloudfunctions/cert/index');
 const check = require('../cloudfunctions/check/index');
-const performance = require('../cloudfunctions/performance/index');
 const mock = require('./mock-cloud');
 
 beforeEach(() => {
@@ -39,7 +38,7 @@ function seedOrgs() { mock.__store.orgs = ORGS.map((o) => ({ ...o })); }
 // ───────────────────────── cert：持证列表 RBAC ─────────────────────────
 test('cert.list: 机构/班组级角色仅见本机构子树（含后代），不泄漏他机构', async () => {
   seedOrgs();
-  mock.__store.users = [{ openid: 'w1', role: 'worker', orgId: 't1', status: 'active' }];
+  mock.__store.users = [{ openid: 'w1', role: 'b24', orgId: 't1', status: 'active' }];
   mock.__store.certificates = [
     { _id: 'c1', orgId: 't1', type: 'welder', status: 'valid' },
     { _id: 'c2', orgId: 't2', type: 'hoist', status: 'valid' },   // t1 子树内的兄弟班组
@@ -56,7 +55,7 @@ test('cert.list: 机构/班组级角色仅见本机构子树（含后代），�
 
 test('cert.list: 单位级角色看整单位子树（u1→p1→t1/t2）', async () => {
   seedOrgs();
-  mock.__store.users = [{ openid: 'lead1', role: 'project_lead', orgId: 'u1', status: 'active' }];
+  mock.__store.users = [{ openid: 'lead1', role: 'b11', orgId: 'u1', status: 'active' }];
   mock.__store.certificates = [
     { _id: 'c1', orgId: 't1', type: 'welder', status: 'valid' },
     { _id: 'c2', orgId: 't2', type: 'hoist', status: 'valid' },
@@ -89,7 +88,7 @@ test('cert.list: 全局角色看全量；可下钻任一组织子树', async () 
 
 test('cert.upsert: 写库带服务端 orgId（忽略前端传入，防挂靠）', async () => {
   seedOrgs();
-  mock.__store.users = [{ openid: 'w1', role: 'worker', orgId: 't1', status: 'active' }];
+  mock.__store.users = [{ openid: 'w1', role: 'b24', orgId: 't1', status: 'active' }];
   mock.__setOpenid('w1');
   const r = await cert.main({ action: 'upsert', payload: { type: 'welder', name: '焊工证', no: 'N1', expireAt: '2099-01-01', issuer: 'X', orgId: 'uX' } });
   assert.strictEqual(r.code, 0);
@@ -100,7 +99,7 @@ test('cert.upsert: 写库带服务端 orgId（忽略前端传入，防挂靠）'
 // ───────────────────────── check：隐患/考核列表 RBAC ─────────────────────────
 test('check.listHazard: 单位级角色看整单位子树，越权下钻忽略；写库带服务端 orgId', async () => {
   seedOrgs();
-  mock.__store.users = [{ openid: 'lead1', role: 'project_lead', orgId: 'u1', status: 'active' }];
+  mock.__store.users = [{ openid: 'lead1', role: 'b11', orgId: 'u1', status: 'active' }];
   mock.__store.hazards = [
     { _id: 'h1', orgId: 't1', status: 'open', reporter: 'a' },
     { _id: 'h2', orgId: 't2', status: 'open', reporter: 'b' },
@@ -121,7 +120,7 @@ test('check.listHazard: 单位级角色看整单位子树，越权下钻忽略�
 
 test('check.assessList: 单位级角色按组织子树收窄；assess 写库带服务端 orgId', async () => {
   seedOrgs();
-  mock.__store.users = [{ openid: 'lead1', role: 'project_lead', orgId: 'u1', status: 'active' }];
+  mock.__store.users = [{ openid: 'lead1', role: 'b11', orgId: 'u1', status: 'active' }];
   mock.__store.assessments = [
     { _id: 'a1', orgId: 't1', score: 90 },
     { _id: 'a2', orgId: 't2', score: 80 },
@@ -135,51 +134,4 @@ test('check.assessList: 单位级角色按组织子树收窄；assess 写库带�
   const s = await check.main({ action: 'assess', payload: { targetId: 'T', targetName: '被考核', score: 88 } });
   assert.strictEqual(s.code, 0);
   assert.strictEqual(mock.__store.assessments[mock.__store.assessments.length - 1].orgId, 'u1');
-});
-
-// ───────────────────────── performance：评分/排行/汇总 RBAC ─────────────────────────
-test('performance.list: 机构级角色仅见本机构子树', async () => {
-  seedOrgs();
-  mock.__store.users = [{ openid: 'w1', role: 'worker', orgId: 't1', status: 'active' }];
-  mock.__store.performance_scores = [
-    { _id: 's1', orgId: 't1', personId: 'P1', month: '2026-07', score: 90 },
-    { _id: 's2', orgId: 't2', personId: 'P2', month: '2026-07', score: 80 },
-    { _id: 'sX', orgId: 'uX', personId: 'PX', month: '2026-07', score: 70 },
-  ];
-  mock.__setOpenid('w1');
-  const r = await performance.main({ action: 'list', payload: {} });
-  assert.strictEqual(r.code, 0);
-  const ids = (r.data || []).map((x) => x._id);
-  assert.deepStrictEqual(ids, ['s1']);
-});
-
-test('performance.rank/summary: 仅聚合本机构子树数据', async () => {
-  seedOrgs();
-  mock.__store.users = [{ openid: 'w1', role: 'worker', orgId: 't1', status: 'active' }];
-  mock.__store.performance_scores = [
-    { _id: 's1', orgId: 't1', personId: 'P1', month: '2026-07', score: 100 },
-    { _id: 's2', orgId: 't1', personId: 'P2', month: '2026-07', score: 80 },
-    { _id: 'sX', orgId: 'uX', personId: 'PX', month: '2026-07', score: 50 },
-  ];
-  mock.__setOpenid('w1');
-  const rank = await performance.main({ action: 'rank', payload: { month: '2026-07' } });
-  assert.strictEqual(rank.code, 0);
-  assert.strictEqual(rank.data.length, 2); // 仅 t1 的 2 条
-  assert.strictEqual(rank.data[0].avg, 100); // 降序：P1 居首
-  const sum = await performance.main({ action: 'summary', payload: { month: '2026-07' } });
-  assert.strictEqual(sum.code, 0);
-  assert.strictEqual(sum.data.scoreCount, 2); // 仅本机构
-  assert.strictEqual(sum.data.avg, 90);       // (100+80)/2
-});
-
-test('performance.score/rewardAdd: 写库带服务端 orgId', async () => {
-  seedOrgs();
-  mock.__store.users = [{ openid: 'sup1', role: 'supervisor', orgId: 'u1', status: 'active' }];
-  mock.__setOpenid('sup1');
-  const s = await performance.main({ action: 'score', payload: { personId: 'P1', personName: '甲', score: 95 } });
-  assert.strictEqual(s.code, 0);
-  assert.strictEqual(mock.__store.performance_scores[mock.__store.performance_scores.length - 1].orgId, 'u1');
-  const rw = await performance.main({ action: 'rewardAdd', payload: { personId: 'P1', personName: '甲', type: 'reward', reason: '优秀' } });
-  assert.strictEqual(rw.code, 0);
-  assert.strictEqual(mock.__store.performance_rewards[mock.__store.performance_rewards.length - 1].orgId, 'u1');
 });

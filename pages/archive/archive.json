@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "我的档案",
+  "usingComponents": {
+    "stats-card": "/components/stats-card/stats-card"
+  }
+}

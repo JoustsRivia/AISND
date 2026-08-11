@@ -1,0 +1,17 @@
+<!-- components/code-autocomplete/index.wxml —— 器具编号联想输入 -->
+<view class="ca">
+  <view class="ca-row">
+    <text class="ca-ico">🔍</text>
+    <input class="ca-input" placeholder="{{placeholder}}" value="{{kw}}" bindinput="onInput" bindblur="onBlur" confirm-type="search" />
+    <text wx:if="{{kw}}" class="ca-clear" catchtap="onClear">✕</text>
+  </view>
+  <view wx:if="{{open}}" class="ca-list">
+    <view wx:if="{{loading}}" class="ca-item ca-muted">匹配中…</view>
+    <view wx:for="{{options}}" wx:key="code" class="ca-item" data-code="{{item.code}}" catchtap="onPick">
+      <text class="ca-code">{{item.code}}</text>
+      <text class="ca-name">{{item.name}}</text>
+      <text class="ca-status">{{item.statusText}}</text>
+    </view>
+    <view wx:if="{{!loading && !options.length}}" class="ca-item ca-muted">无匹配器具</view>
+  </view>
+</view>
