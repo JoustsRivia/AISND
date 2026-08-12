@@ -53,13 +53,20 @@ Page({
   bindDesc(e) { this.setData({ desc: e.detail.value }); },
   bindLocation(e) { this.setData({ location: e.detail.value }); },
 
-  // R20：获取定位
+  // R20：获取定位 —— 地图选点，返回中文位置名称（不裸显经纬度）
   async onGetLocation() {
     try {
-      const r = await wx.getLocation({ type: 'gcj02' });
-      this.setData({ coords: r.longitude.toFixed(6) + ',' + r.latitude.toFixed(6) });
+      const r = await wx.chooseLocation({});
+      const name = r.name || r.address || '';
+      if (name) this.setData({ location: name });
+      if (r.latitude && r.longitude) {
+        this.setData({ coords: r.longitude.toFixed(6) + ',' + r.latitude.toFixed(6) });
+      }
     } catch (err) {
-      wx.showToast({ title: '定位失败，请手动输入', icon: 'none' });
+      // 用户取消选点属正常，不提示；其余失败提示
+      if (err && err.errMsg && !err.errMsg.includes('cancel')) {
+        wx.showToast({ title: '选点失败，请手动输入', icon: 'none' });
+      }
     }
   },
 

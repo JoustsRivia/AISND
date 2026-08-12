@@ -30,12 +30,16 @@ App({
     // 加载完成后强制已渲染页面重绘（setData 触发），使图标字体生效。
     fonts.loadFonts().then(() => {
       this.globalData.fontReady = true;
-      const pages = getCurrentPages() || [];
-      pages.forEach((p) => {
-        if (p && typeof p.setData === 'function' && !p.__fontRedrawn) {
-          p.__fontRedrawn = true;
-          p.setData({ _fontTick: 1 });
-        }
+      // 用 nextTick 让出主线程，避免字体就绪瞬间同步 setData 造成卡顿；
+      // 一次性重绘（所有已渲染页），后续页面进入时字体已就绪，无额外开销。
+      wx.nextTick(() => {
+        const pages = getCurrentPages() || [];
+        pages.forEach((p) => {
+          if (p && typeof p.setData === 'function' && !p.__fontRedrawn) {
+            p.__fontRedrawn = true;
+            p.setData({ _fontTick: 1 });
+          }
+        });
       });
     });
     // 启动即尝试静默登录并拉取档案；失败不阻塞首屏

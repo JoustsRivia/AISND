@@ -102,11 +102,10 @@ Page({
         abnormal: this.data.abnormal,
         remark: this.data.remark,
       });
-      wx.showToast({ title: '点检已提交', icon: 'success' });
-      // 提交后清空预填并刷新今日概况
-      this.setData({ toolId: '' });
+      wx.showToast({ title: '点检已提交，可继续点检下一项', icon: 'success', duration: 1500 });
+      // 提交后清空表单并刷新今日概况，留在当前页支持连续点检多个工器具
+      this.setData({ toolId: '', items: [], abnormal: false, remark: '' });
       this.loadDaily();
-      setTimeout(() => wx.navigateBack(), 800);
     } catch (err) {
       wx.showToast({ title: '提交失败', icon: 'none' });
     } finally {

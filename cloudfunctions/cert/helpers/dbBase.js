@@ -23,6 +23,7 @@ const regExp = (regexp, options = 'i') => db.RegExp({ regexp, options });
 const getById = (name, id) => collection(name).doc(id).get();
 const add = (name, data) => collection(name).add({ data });
 const update = (name, id, data) => collection(name).doc(id).update({ data });
+const remove = (name, id) => collection(name).doc(id).remove();
 const listBy = (name, filter = {}, size = 50) =>
   collection(name).where(filter).limit(size).get();
 
@@ -114,7 +115,7 @@ function scopeFilter(user, orgs, opts = {}) {
 }
 
 module.exports = {
-  cloud, db, _, collection, regExp, getById, add, update, listBy, listAll, getCurrentUser,
+  cloud, db, _, collection, regExp, getById, add, update, remove, listBy, listAll, getCurrentUser,
   // RBAC 数据范围原语（纯函数，业务函数按需复用，迁移零改动�?
   GLOBAL_ROLES, UNIT_ROLES, subtreeIds, roleScope, allowedOrgIds, scopeFilter,
 };

@@ -46,7 +46,12 @@ Page({
     const id = e.currentTarget.dataset.id;
     const r = await wx.showModal({ title: '删除证书', content: '确认删除该证件记录？' });
     if (!r.confirm) return;
-    await api.deleteCert(id).catch(() => {});
+    const ok = await api.deleteCert(id).catch(() => null);
+    if (!ok || ok.code !== 0) {
+      wx.showToast({ title: '删除失败，请重试', icon: 'none' });
+      return;
+    }
+    wx.showToast({ title: '已删除', icon: 'success' });
     this.load();
   },
   onBack() { wx.navigateBack(); },

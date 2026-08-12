@@ -26,6 +26,9 @@
   padding: var(--sp-2);
   background: var(--c-surface-2);
   border-radius: var(--r-sm);
+  /* 2026-08-12：边框+阴影，与背景分层 */
+  border: 2rpx solid var(--c-border);
+  box-shadow: 0 4rpx 12rpx rgba(15, 43, 91, 0.05);
 }
 .kv {
   display: flex;

@@ -7,6 +7,13 @@
 
   <view class="card">
     <view class="row"><text class="label">检测单位</text><input class="input" placeholder="从机构名单选择" value="{{testOrg}}" bindinput="onOrg" /></view>
+    <view class="row">
+      <text class="label">本次试验日期</text>
+      <picker mode="date" value="{{testDate}}" start="2020-01-01" end="{{today}}" bindchange="onTestDate">
+        <view class="input {{testDate ? '' : 'placeholder'}}">{{testDate || '请选择试验日期'}}</view>
+      </picker>
+    </view>
+    <view wx:if="{{nextExpireAt}}" class="row"><text class="label">下次试验截止</text><text class="input">{{nextExpireAt}}</text></view>
     <view class="row"><text class="label">试验结果</text></view>
     <radio-group bindchange="onResult">
       <label class="radio"><radio value="qualified" checked="{{result === 'qualified'}}" /> 合格</label>

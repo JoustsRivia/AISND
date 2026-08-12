@@ -48,7 +48,14 @@ Page({
       const tree = await api.getOrgTree().catch(() => []);
       orgText = orgPathText(tree, t.orgId);
     }
-    const toolWithDisplay = { ...t, keeperDisplay, orgText };
+    const toolWithDisplay = {
+      ...t,
+      keeperDisplay, orgText,
+      // 日期统一 yyyy-mm-dd（禁止 UTC/ISO 直显）
+      expireAt: fmtDate(t.expireAt),
+      lastTestDate: fmtDate(t.lastTestDate),
+      purchaseDate: fmtDate(t.purchaseDate),
+    };
 
     // 履历时间线（试验 + 操作记录，按时间倒序）
     const timeline = [];

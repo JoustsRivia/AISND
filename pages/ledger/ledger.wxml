@@ -10,7 +10,7 @@
       <text class="act-ico iconfont ri-add-line"></text><text>录入</text>
     </view>
     <view class="act-cell act-cell--primary" bindtap="onImport">
-      <text class="act-ico iconfont ri-upload-2-line"></text><text>导入</text>
+      <text class="act-ico iconfont ri-upload-2-line"></text><text>批量导入</text>
     </view>
     <view class="act-cell {{highRisk ? 'act-cell--on' : ''}}" bindtap="onToggleHighRisk">
       <text class="act-ico iconfont ri-alarm-warning-line"></text><text>高危专项</text>

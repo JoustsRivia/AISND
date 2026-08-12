@@ -7,12 +7,22 @@ Page({
     id: '', tool: null,
     testOrg: '', result: 'qualified',
     reportFileId: '', reportName: '',
+    testDate: '', nextExpireAt: '', today: '',
     submitting: false,
   },
 
   onLoad(o) {
-    this.setData({ id: o.id });
+    const today = fmtDate(new Date());
+    this.setData({ id: o.id, today, testDate: today });
     this.load(o.id);
+  },
+  onTestDate(e) {
+    const testDate = e.detail.value;
+    const t = this.data.tool;
+    const period = (t && t.testPeriod) || 6;
+    const d = new Date(testDate);
+    d.setMonth(d.getMonth() + Number(period));
+    this.setData({ testDate, nextExpireAt: fmtDate(d) });
   },
   async load(id) {
     const t = await api.getToolDetail(id).catch(() => null);
@@ -36,6 +46,7 @@ Page({
       await api.submitTest({
         id: this.data.id, testOrg: this.data.testOrg,
         result: this.data.result, reportFileId: this.data.reportFileId,
+        testDate: this.data.testDate,
       });
       wx.showToast({ title: this.data.result === 'qualified' ? '已登记合格' : '已判定报废', icon: 'success' });
       setTimeout(() => wx.navigateBack(), 800);
@@ -46,3 +57,10 @@ Page({
     }
   },
 });
+
+// 统一 yyyy-mm-dd 格式（禁止 UTC 显示）
+function fmtDate(d) {
+  const x = d instanceof Date ? d : new Date(d);
+  const p = (n) => String(n).padStart(2, '0');
+  return x.getFullYear() + '-' + p(x.getMonth() + 1) + '-' + p(x.getDate());
+}

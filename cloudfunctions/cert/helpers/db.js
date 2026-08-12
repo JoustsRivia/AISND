@@ -34,6 +34,7 @@ const regExp = (regexp, options = 'i') => db.RegExp({ regexp, options });
 const getById = (name, id) => collection(name).doc(id).get();
 const add = (name, data) => collection(name).add({ data });
 const update = (name, id, data) => collection(name).doc(id).update({ data });
+const remove = (name, id) => collection(name).doc(id).remove();
 const listBy = (name, filter = {}, size = 50) => collection(name).where(filter).limit(size).get();
 
 // 读取当前用户档案（role/orgId/status），供服务端鉴权与数据范围推导
@@ -57,7 +58,7 @@ module.exports = {
   findTool, addTool, updateTool, listTools, countTools,
   addBorrow, listBorrow,
   addScrap, updateScrap, listScrap,
-  getById, add, update, listBy,
+  getById, add, update, remove, listBy,
   getCurrentUser,
   // RBAC 数据范围原语 + 通用列表模板（透出，供 index.js 复用，迁移零改动）
   subtreeIds, roleScope, allowedOrgIds, scopeFilter, scopedList,

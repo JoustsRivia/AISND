@@ -28,14 +28,15 @@ async function list(payload = {}) {
   const filter = {};
   if (type) filter.type = type;
   if (status) filter.status = status;
+  filter.status = filter.status || { $ne: 'deleted' };  // 隐藏历史软删记录
   const res = await db.scopedList('certificates', filter, { orgId, size: 100 });
-  return ok(res.data || []);
+  return ok((res.data || []).filter((c) => c.status !== 'deleted'));
 }
 
 // 我的证书（首页/领用校验用）
 async function myCerts() {
   const res = await db.listBy('certificates', { openid: getOpenid() }, 50);
-  return ok(res.data || []);
+  return ok((res.data || []).filter((c) => c.status !== 'deleted'));
 }
 
 // 新增 / 编辑
@@ -68,7 +69,7 @@ async function remove(payload = {}) {
   if (r.data.openid !== getOpenid() && !(me && me.role === 'admin')) {
     return fail('无权限删除', 403);
   }
-  await db.update('certificates', id, { status: 'deleted', deletedAt: now() });
+  await db.remove('certificates', id);  // 真实删除（2026-08-12：原软删除导致列表仍显示）
   return ok({ id });
 }
 
