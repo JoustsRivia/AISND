@@ -55,6 +55,12 @@ Page({
     if (!auth.isLoggedIn()) { wx.reLaunch({ url: '/pages/login/login' }); return; }
     auth.ensureLogin().catch(() => {});
     this.setData({ themeClass: theme.classOf(app.globalData.theme) });
+    // 图标字体就绪兜底：loadFontFace 异步，若首帧已用 fallback 渲染方块，
+    // 字体加载完成后由 app.js 全局重绘；此处再兜底一次（切回首页时）。
+    if (app.globalData.fontReady && !this.__fontRedrawn) {
+      this.__fontRedrawn = true;
+      this.setData({ _fontTick: 1 });
+    }
     // 轻量同步：重新拉取模块徽标聚合 + 应用最新档案（角色/组织变更后回看即更新）
     this.refreshBadges();
     // 订阅「档案变更」事件（Item 5）：角色/组织变更后实时刷新首页徽标与档案，无需重复进入

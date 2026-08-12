@@ -40,6 +40,7 @@ function loadOne(family, url) {
       family,
       source: 'url("' + url + '")',
       scopes: ['webview', 'native'],
+      global: true,   // 全局生效（跨页面；否则已渲染页面字体不刷新）
       success: () => resolve(true),
       fail: (err) => {
         console.warn('[fonts] 加载失败，回退系统字体：', family, err);

@@ -20,12 +20,24 @@ App({
     orgId: null,       // 所属组织节点
     openid: null,
     theme: 'auto',     // 夜间主题模式：auto / dark
+    fontReady: false,  // SNDIcon 字体是否已加载完成（页面可据此触发重绘）
   },
 
   onLaunch() {
     this.globalData.theme = theme.getMode();
     // 静默加载展示/图标字体（失败回退系统字体，绝不阻塞首屏）
-    fonts.loadFonts();
+    // 2026-08-12：loadFontFace 异步——首页首帧渲染时字体未就绪会显示方块，
+    // 加载完成后强制已渲染页面重绘（setData 触发），使图标字体生效。
+    fonts.loadFonts().then(() => {
+      this.globalData.fontReady = true;
+      const pages = getCurrentPages() || [];
+      pages.forEach((p) => {
+        if (p && typeof p.setData === 'function' && !p.__fontRedrawn) {
+          p.__fontRedrawn = true;
+          p.setData({ _fontTick: 1 });
+        }
+      });
+    });
     // 启动即尝试静默登录并拉取档案；失败不阻塞首屏
     this.bootstrap().catch((err) => {
       console.warn('[app] bootstrap 失败，等待用户主动登录', err);
