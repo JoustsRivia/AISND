@@ -1,7 +1,7 @@
 <!-- components/code-autocomplete/index.wxml —— 器具编号联想输入 -->
 <view class="ca">
   <view class="ca-row">
-    <text class="ca-ico">🔍</text>
+    <text class="ca-ico iconfont ri-search-line"></text>
     <input class="ca-input" placeholder="{{placeholder}}" value="{{kw}}" bindinput="onInput" bindblur="onBlur" confirm-type="search" />
     <text wx:if="{{kw}}" class="ca-clear" catchtap="onClear">✕</text>
   </view>

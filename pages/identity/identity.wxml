@@ -5,7 +5,7 @@
     <view class="id-meta">
       <text class="id-name">{{name}}</text>
       <text class="id-role">{{roleText}}{{employeeId ? ' · ' + employeeId : ''}}</text>
-      <text wx:if="{{orgText}}" class="id-org">🏢 {{orgText}}</text>
+      <text wx:if="{{orgText}}" class="id-org"><text class="iconfont ri-building-line"></text> {{orgText}}</text>
     </view>
   </view>
 

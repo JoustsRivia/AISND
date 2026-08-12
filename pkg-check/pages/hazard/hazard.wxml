@@ -29,7 +29,7 @@
       <text class="label">位置</text>
       <view class="loc-row">
         <input class="inp" placeholder="如：#3配电室" value="{{location}}" bindinput="bindLocation" />
-        <button size="mini" bindtap="onGetLocation">📍定位</button>
+        <button size="mini" bindtap="onGetLocation"><text class="iconfont ri-map-pin-line"></text>定位</button>
       </view>
       <text wx:if="{{coords}}" class="muted loc-coords">经纬度：{{coords}}</text>
     </view>

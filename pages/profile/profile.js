@@ -73,24 +73,24 @@ Page({
         {
           title: '账户与资质',
           items: [
-            { key: 'profile', icon: '👤', label: '我的档案', value: p ? (ROLE_TEXT[p.role] || p.role) : '', arrow: true },
-            { key: 'identity', icon: '🪪', label: '我的身份码', arrow: true },
-            { key: 'permission', icon: '🔑', label: '我的权限', arrow: true },
-            { key: 'cert', icon: '📜', label: '持证管理', arrow: true },
-            { key: 'cert-expire', icon: '⏰', label: '证书即将到期', badge: certBadge ? String(certBadge) : '', arrow: true },
+            { key: 'profile', icon: 'ri-user-line', label: '我的档案', value: p ? (ROLE_TEXT[p.role] || p.role) : '', arrow: true },
+            { key: 'identity', icon: 'ri-user-line', label: '我的身份码', arrow: true },
+            { key: 'permission', icon: 'ri-key-line', label: '我的权限', arrow: true },
+            { key: 'cert', icon: 'ri-award-line', label: '持证管理', arrow: true },
+            { key: 'cert-expire', icon: 'ri-alarm-line', label: '证书即将到期', badge: certBadge ? String(certBadge) : '', arrow: true },
           ],
         },
         ...(ADMIN_ROLES.includes(p && p.role) ? [{
           title: '系统管理',
           items: [
-            { key: 'system', icon: '⚙️', label: '组织架构与用户', value: '管理员', arrow: true },
+            { key: 'system', icon: 'ri-settings-3-line', label: '组织架构与用户', value: '管理员', arrow: true },
           ],
         }] : []),
         {
           title: '通用',
           items: [
-            { key: 'about', icon: 'ℹ️', label: '关于系统', value: 'V1.0', arrow: true },
-            { key: 'logout', icon: '🚪', label: '退出登录', danger: true, arrow: true },
+            { key: 'about', icon: 'ri-menu-line', label: '关于系统', value: 'V1.0', arrow: true },
+            { key: 'logout', icon: 'ri-logout-box-r-line', label: '退出登录', danger: true, arrow: true },
           ],
         },
       ],

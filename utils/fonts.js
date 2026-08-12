@@ -27,6 +27,11 @@
 //          4) 在 wxml 中将 emoji 文本改为 <text class="iconfont">&#xe001;</text> 之类。
 const ICONFONT_URL = '';
 
+// v4（2026-08-12）：已用 remixicon 子集化生成轻量图标字体 assets/fonts/snd-icon.ttf（52 图标 / 9.1KB）。
+// 二选一：A. ICONFONT_URL（CDN 直链）/ B. ICONFONT_FILEID（云存储，运行期 getTempFileURL 再加载）
+// 映射：assets/fonts/snd-icon-map.json（类名/场景/Unicode）、assets/fonts/snd-icons.wxss（图标类）
+const ICONFONT_FILEID = 'cloud://cloud1-d0g31jich6a6569b0.636c-cloud1-d0g31jich6a6569b0-1449954076/ICON/snd-icon.ttf';
+
 // 单次加载：成功/失败都 resolve（失败返回 false），不让未捕获 reject 冒泡到 onLaunch。
 function loadOne(family, url) {
   return new Promise((resolve) => {
@@ -44,11 +49,27 @@ function loadOne(family, url) {
   });
 }
 
+// 图标字体：优先云存储 fileID（getTempFileURL → loadFontFace），失败静默回退。
+async function loadSNDIcon() {
+  if (ICONFONT_FILEID) {
+    try {
+      const { fileList } = await wx.cloud.getTempFileURL({ fileList: [ICONFONT_FILEID] });
+      const url = fileList && fileList[0] && fileList[0].tempFileURL;
+      if (!url) return false;
+      return await loadOne('SNDIcon', url);
+    } catch (e) {
+      console.warn('[fonts] 图标字体云存储加载失败，回退 emoji：', e);
+      return false;
+    }
+  }
+  return loadOne('SNDIcon', ICONFONT_URL);
+}
+
 // 并发加载所有可选字体；整体异常也吞掉，绝不影响首屏。
 function loadFonts() {
-  return loadOne('SNDIcon', ICONFONT_URL)
+  return loadSNDIcon()
     .then(() => [])
     .catch(() => []);
 }
 
-module.exports = { loadFonts, ICONFONT_URL };
+module.exports = { loadFonts, ICONFONT_URL, ICONFONT_FILEID };

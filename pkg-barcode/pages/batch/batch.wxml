@@ -12,7 +12,7 @@
   <view class="card">
     <text class="sec-title">添加器具（已选 {{selected.length}} 台）</text>
     <search-picker placeholder="输入名称/编号/库房/保管人搜索添加" fetch="tools" bind:pick="onPickTool" />
-    <view class="sel-tip" wx:if="{{!selected.length}}">⬆ 搜索并选择要批量操作的器具，可多次添加</view>
+    <view class="sel-tip" wx:if="{{!selected.length}}"><text class="iconfont ri-arrow-right-s-line"></text> 搜索并选择要批量操作的器具，可多次添加</view>
     <!-- 已选卡片：编号 + 名称 + 库房·类别，可移除 -->
     <view wx:for="{{selected}}" wx:key="_id" class="sel-card">
       <view class="sel-info">

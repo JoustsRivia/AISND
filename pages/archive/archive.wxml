@@ -8,7 +8,7 @@
         <text class="role-pill">{{roleText}}</text>
         <text wx:if="{{profile.employeeId}}" class="eid">工号 {{profile.employeeId}}</text>
       </view>
-      <text wx:if="{{orgPathText}}" class="org">🏢 {{orgPathText}}</text>
+      <text wx:if="{{orgPathText}}" class="org"><text class="iconfont ri-building-line"></text> {{orgPathText}}</text>
     </view>
   </view>
 
@@ -35,8 +35,8 @@
   </view>
 
   <view class="btns">
-    <button type="primary" bindtap="goIdentity">🪪 查看我的身份码</button>
-    <button class="btn-plain" bindtap="goPermission">🔑 查看完整权限说明</button>
+    <button type="primary" bindtap="goIdentity"><text class="iconfont ri-user-line"></text> 查看我的身份码</button>
+    <button class="btn-plain" bindtap="goPermission"><text class="iconfont ri-key-line"></text> 查看完整权限说明</button>
   </view>
 
   <view class="safe-bottom"></view>

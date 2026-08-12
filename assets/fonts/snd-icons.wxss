@@ -1,0 +1,58 @@
+/* assets/fonts/snd-icons.wxss —— SNDIcon 图标字体类（remixicon 子集化，52 图标） */
+/* 用法：<view class="iconfont ri-home-line"></view> 或 <text class="iconfont">&#xEE2B;</text> */
+/* 映射：assets/fonts/snd-icon-map.json */
+
+.iconfont { font-family: 'SNDIcon', -apple-system, sans-serif; font-style: normal; -webkit-font-smoothing: antialiased; }
+
+.ri-upload-2-line::before { content: "\F24A"; }
+.ri-map-pin-line::before { content: "\EF14"; }
+.ri-close-line::before { content: "\EB99"; }
+.ri-delete-bin-line::before { content: "\EC2A"; }
+.ri-refresh-line::before { content: "\F064"; }
+.ri-checkbox-circle-line::before { content: "\EB81"; }
+.ri-graduation-cap-line::before { content: "\F333"; }
+.ri-moon-line::before { content: "\EF75"; }
+.ri-shield-check-line::before { content: "\F100"; }
+.ri-download-2-line::before { content: "\EC54"; }
+.ri-dashboard-line::before { content: "\EC14"; }
+.ri-tools-line::before { content: "\F21B"; }
+.ri-archive-line::before { content: "\EA48"; }
+.ri-user-line::before { content: "\F264"; }
+.ri-printer-line::before { content: "\F029"; }
+.ri-scan-line::before { content: "\F0BD"; }
+.ri-search-line::before { content: "\F0D1"; }
+.ri-folder-line::before { content: "\ED6A"; }
+.ri-calendar-line::before { content: "\EB27"; }
+.ri-time-line::before { content: "\F20F"; }
+.ri-more-2-line::before { content: "\EF77"; }
+.ri-key-line::before { content: "\EE71"; }
+.ri-barcode-line::before { content: "\EAA2"; }
+.ri-flag-line::before { content: "\ED3B"; }
+.ri-file-list-3-line::before { content: "\ECEF"; }
+.ri-search-eye-line::before { content: "\F0CF"; }
+.ri-notification-3-line::before { content: "\EF94"; }
+.ri-add-line::before { content: "\EA13"; }
+.ri-user-add-line::before { content: "\F25E"; }
+.ri-camera-line::before { content: "\EB31"; }
+.ri-eye-line::before { content: "\ECB5"; }
+.ri-forbid-line::before { content: "\ED95"; }
+.ri-pen-nib-line::before { content: "\EFDE"; }
+.ri-filter-line::before { content: "\ED27"; }
+.ri-arrow-right-s-line::before { content: "\EA6E"; }
+.ri-building-line::before { content: "\EB0F"; }
+.ri-bar-chart-line::before { content: "\EA9E"; }
+.ri-edit-line::before { content: "\EC86"; }
+.ri-wifi-line::before { content: "\F2C0"; }
+.ri-menu-line::before { content: "\EF3E"; }
+.ri-settings-3-line::before { content: "\F0E6"; }
+.ri-award-line::before { content: "\EA8A"; }
+.ri-alarm-line::before { content: "\EA1B"; }
+.ri-logout-box-r-line::before { content: "\EEDA"; }
+.ri-shopping-cart-line::before { content: "\F120"; }
+.ri-link::before { content: "\EEB2"; }
+.ri-lock-line::before { content: "\EECE"; }
+.ri-eye-off-line::before { content: "\ECB7"; }
+.ri-money-cny-circle-line::before { content: "\EF61"; }
+.ri-alarm-warning-line::before { content: "\EA1D"; }
+.ri-swap-line::before { content: "\F1CB"; }
+.ri-home-line::before { content: "\EE2B"; }

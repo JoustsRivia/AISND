@@ -30,7 +30,7 @@
   >
     <view class="db-picker-field {{disabled ? 'is-disabled' : ''}}">
       <text class="db-picker-text">{{value || placeholder}}</text>
-      <text class="db-picker-arrow">📅</text>
+      <text class="db-picker-arrow iconfont ri-calendar-line"></text>
     </view>
   </picker>
 </block>

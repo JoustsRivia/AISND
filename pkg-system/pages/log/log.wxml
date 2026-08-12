@@ -107,7 +107,7 @@
   </block>
 
   <view wx:if="{{!loading && !logs.length}}" class="empty">
-    <view class="empty-icon">📜</view>
+    <view class="empty-icon iconfont ri-award-line"></view>
     <view class="empty-title">暂无操作日志</view>
     <view class="empty-desc">关键操作（入库/领用/报废/审批/策略变更）将自动留痕</view>
   </view>

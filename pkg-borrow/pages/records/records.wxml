@@ -1,6 +1,6 @@
 <!-- pkg-borrow/pages/records/records.wxml —— M5 领用归还记录（问题 #4：扫码领用/归还；优化#6：筛选） -->
 <view class="rec">
-  <button class="scan-btn" type="primary" bindtap="onScan">📷 扫码领用 / 归还</button>
+  <button class="scan-btn" type="primary" bindtap="onScan"><text class="iconfont ri-scan-line"></text> 扫码领用 / 归还</button>
   <view class="tabs">
     <view wx:for="{{tabs}}" wx:key="v" class="tab {{type === item.v ? 'on' : ''}}" data-v="{{item.v}}" bindtap="onTab">{{item.n}}</view>
   </view>
@@ -11,7 +11,7 @@
       <text wx:for="{{kwTypes}}" wx:key="v" class="kw-t {{kwType === item.v ? 'on' : ''}}" data-v="{{item.v}}" bindtap="onKwType">{{item.n}}</text>
     </view>
     <view class="kw-row">
-      <text class="kw-ico">🔍</text>
+      <text class="kw-ico iconfont ri-search-line"></text>
       <input class="kw-input" placeholder="{{kwType === 'code' ? '输入器具编号' : kwType === 'name' ? '输入器具名称' : kwType === 'store' ? '输入库房' : '输入保管人'}}" value="{{kw}}" bindinput="onKwInput" confirm-type="search" />
       <text wx:if="{{kw}}" class="kw-clear" bindtap="onKwClear">✕</text>
     </view>

@@ -12,7 +12,7 @@
   </view>
 
   <view wx:if="{{banner}}" class="banner {{banner.cls}}">
-    <text class="b-ico">⚠️</text>
+    <text class="b-ico iconfont ri-alarm-warning-line"></text>
     <text class="b-txt">{{banner.text}}</text>
   </view>
 
@@ -45,7 +45,7 @@
 </block>
 
 <view wx:else class="empty">
-  <view class="empty-icon">🔍</view>
+  <view class="empty-icon iconfont ri-search-line"></view>
   <view class="empty-title">未找到器具档案</view>
   <view class="empty-desc">请确认编号或重新扫码</view>
 </view>

@@ -4,7 +4,7 @@
   <view class="group">
     <view wx:for="{{g.items}}" wx:for-item="it" wx:key="key"
       class="row {{it.danger ? 'danger' : ''}}" data-key="{{it.key}}" bindtap="onSelect">
-      <text wx:if="{{it.icon}}" class="ico">{{it.icon}}</text>
+      <text wx:if="{{it.icon}}" class="ico iconfont {{it.icon}}"></text>
       <text class="label">{{it.label}}</text>
       <text wx:if="{{it.value}}" class="value">{{it.value}}</text>
       <view wx:if="{{it.badge}}" class="badge">{{it.badge}}</view>

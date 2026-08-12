@@ -1,0 +1,314 @@
+{
+  "ri-home-line": {
+    "scene": "首页",
+    "unicode": "\\uee2b",
+    "char": "",
+    "hex": "ee2b"
+  },
+  "ri-dashboard-line": {
+    "scene": "工作台",
+    "unicode": "\\uec14",
+    "char": "",
+    "hex": "ec14"
+  },
+  "ri-search-line": {
+    "scene": "搜索",
+    "unicode": "\\uf0d1",
+    "char": "",
+    "hex": "f0d1"
+  },
+  "ri-scan-line": {
+    "scene": "扫码",
+    "unicode": "\\uf0bd",
+    "char": "",
+    "hex": "f0bd"
+  },
+  "ri-barcode-line": {
+    "scene": "条码",
+    "unicode": "\\ueaa2",
+    "char": "",
+    "hex": "eaa2"
+  },
+  "ri-notification-3-line": {
+    "scene": "消息",
+    "unicode": "\\uef94",
+    "char": "",
+    "hex": "ef94"
+  },
+  "ri-user-line": {
+    "scene": "我的",
+    "unicode": "\\uf264",
+    "char": "",
+    "hex": "f264"
+  },
+  "ri-settings-3-line": {
+    "scene": "设置",
+    "unicode": "\\uf0e6",
+    "char": "",
+    "hex": "f0e6"
+  },
+  "ri-add-line": {
+    "scene": "添加",
+    "unicode": "\\uea13",
+    "char": "",
+    "hex": "ea13"
+  },
+  "ri-delete-bin-line": {
+    "scene": "删除",
+    "unicode": "\\uec2a",
+    "char": "",
+    "hex": "ec2a"
+  },
+  "ri-edit-line": {
+    "scene": "编辑",
+    "unicode": "\\uec86",
+    "char": "",
+    "hex": "ec86"
+  },
+  "ri-more-2-line": {
+    "scene": "更多",
+    "unicode": "\\uef77",
+    "char": "",
+    "hex": "ef77"
+  },
+  "ri-menu-line": {
+    "scene": "菜单",
+    "unicode": "\\uef3e",
+    "char": "",
+    "hex": "ef3e"
+  },
+  "ri-archive-line": {
+    "scene": "库房",
+    "unicode": "\\uea48",
+    "char": "",
+    "hex": "ea48"
+  },
+  "ri-file-list-3-line": {
+    "scene": "档案",
+    "unicode": "\\uecef",
+    "char": "",
+    "hex": "ecef"
+  },
+  "ri-checkbox-circle-line": {
+    "scene": "合格",
+    "unicode": "\\ueb81",
+    "char": "",
+    "hex": "eb81"
+  },
+  "ri-time-line": {
+    "scene": "时间",
+    "unicode": "\\uf20f",
+    "char": "",
+    "hex": "f20f"
+  },
+  "ri-alarm-line": {
+    "scene": "试验",
+    "unicode": "\\uea1b",
+    "char": "",
+    "hex": "ea1b"
+  },
+  "ri-alarm-warning-line": {
+    "scene": "预警",
+    "unicode": "\\uea1d",
+    "char": "",
+    "hex": "ea1d"
+  },
+  "ri-map-pin-line": {
+    "scene": "位置",
+    "unicode": "\\uef14",
+    "char": "",
+    "hex": "ef14"
+  },
+  "ri-calendar-line": {
+    "scene": "日历",
+    "unicode": "\\ueb27",
+    "char": "",
+    "hex": "eb27"
+  },
+  "ri-shopping-cart-line": {
+    "scene": "采购",
+    "unicode": "\\uf120",
+    "char": "",
+    "hex": "f120"
+  },
+  "ri-money-cny-circle-line": {
+    "scene": "预算",
+    "unicode": "\\uef61",
+    "char": "",
+    "hex": "ef61"
+  },
+  "ri-graduation-cap-line": {
+    "scene": "培训",
+    "unicode": "\\uf333",
+    "char": "",
+    "hex": "f333"
+  },
+  "ri-building-line": {
+    "scene": "组织",
+    "unicode": "\\ueb0f",
+    "char": "",
+    "hex": "eb0f"
+  },
+  "ri-key-line": {
+    "scene": "权限",
+    "unicode": "\\uee71",
+    "char": "",
+    "hex": "ee71"
+  },
+  "ri-shield-check-line": {
+    "scene": "安全",
+    "unicode": "\\uf100",
+    "char": "",
+    "hex": "f100"
+  },
+  "ri-download-2-line": {
+    "scene": "导出",
+    "unicode": "\\uec54",
+    "char": "",
+    "hex": "ec54"
+  },
+  "ri-upload-2-line": {
+    "scene": "上传",
+    "unicode": "\\uf24a",
+    "char": "",
+    "hex": "f24a"
+  },
+  "ri-bar-chart-line": {
+    "scene": "统计",
+    "unicode": "\\uea9e",
+    "char": "",
+    "hex": "ea9e"
+  },
+  "ri-filter-line": {
+    "scene": "筛选",
+    "unicode": "\\ued27",
+    "char": "",
+    "hex": "ed27"
+  },
+  "ri-refresh-line": {
+    "scene": "刷新",
+    "unicode": "\\uf064",
+    "char": "",
+    "hex": "f064"
+  },
+  "ri-eye-line": {
+    "scene": "眼睛",
+    "unicode": "\\uecb5",
+    "char": "",
+    "hex": "ecb5"
+  },
+  "ri-wifi-line": {
+    "scene": "网络",
+    "unicode": "\\uf2c0",
+    "char": "",
+    "hex": "f2c0"
+  },
+  "ri-pen-nib-line": {
+    "scene": "笔",
+    "unicode": "\\uefde",
+    "char": "",
+    "hex": "efde"
+  },
+  "ri-swap-line": {
+    "scene": "领用",
+    "unicode": "\\uf1cb",
+    "char": "",
+    "hex": "f1cb"
+  },
+  "ri-tools-line": {
+    "scene": "工具",
+    "unicode": "\\uf21b",
+    "char": "",
+    "hex": "f21b"
+  },
+  "ri-award-line": {
+    "scene": "证书",
+    "unicode": "\\uea8a",
+    "char": "",
+    "hex": "ea8a"
+  },
+  "ri-logout-box-r-line": {
+    "scene": "退出",
+    "unicode": "\\ueeda",
+    "char": "",
+    "hex": "eeda"
+  },
+  "ri-close-line": {
+    "scene": "关闭",
+    "unicode": "\\ueb99",
+    "char": "",
+    "hex": "eb99"
+  },
+  "ri-link": {
+    "scene": "链接",
+    "unicode": "\\ueeb2",
+    "char": "",
+    "hex": "eeb2"
+  },
+  "ri-folder-line": {
+    "scene": "文件夹",
+    "unicode": "\\ued6a",
+    "char": "",
+    "hex": "ed6a"
+  },
+  "ri-flag-line": {
+    "scene": "标记",
+    "unicode": "\\ued3b",
+    "char": "",
+    "hex": "ed3b"
+  },
+  "ri-user-add-line": {
+    "scene": "添加用户",
+    "unicode": "\\uf25e",
+    "char": "",
+    "hex": "f25e"
+  },
+  "ri-printer-line": {
+    "scene": "打印",
+    "unicode": "\\uf029",
+    "char": "",
+    "hex": "f029"
+  },
+  "ri-forbid-line": {
+    "scene": "禁用",
+    "unicode": "\\ued95",
+    "char": "",
+    "hex": "ed95"
+  },
+  "ri-camera-line": {
+    "scene": "照片",
+    "unicode": "\\ueb31",
+    "char": "",
+    "hex": "eb31"
+  },
+  "ri-arrow-right-s-line": {
+    "scene": "箭头",
+    "unicode": "\\uea6e",
+    "char": "",
+    "hex": "ea6e"
+  },
+  "ri-search-eye-line": {
+    "scene": "检查",
+    "unicode": "\\uf0cf",
+    "char": "",
+    "hex": "f0cf"
+  },
+  "ri-moon-line": {
+    "scene": "夜间",
+    "unicode": "\\uef75",
+    "char": "",
+    "hex": "ef75"
+  },
+  "ri-eye-off-line": {
+    "scene": "隐藏密码",
+    "unicode": "\\uecb7",
+    "char": "",
+    "hex": "ecb7"
+  },
+  "ri-lock-line": {
+    "scene": "锁定",
+    "unicode": "\\ueece",
+    "char": "",
+    "hex": "eece"
+  }
+}

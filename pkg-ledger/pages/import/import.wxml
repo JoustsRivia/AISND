@@ -1,22 +1,22 @@
 <!-- pkg-ledger/pages/import/import.wxml —— 优化#9：台账批量导入（纯文件方式，替代复制粘贴） -->
 <view class="imp">
   <view class="tip card">
-    <view class="tip-title">📥 批量导入工器具</view>
+    <view class="tip-title"><text class="iconfont ri-upload-2-line"></text> 批量导入工器具</view>
     <view class="tip-desc">先下载模板（夸克网盘），按列填写后从微信会话选择 CSV 文件，点击「选择文件」导入。</view>
-    <view class="tip-hint">📌 支持 CSV 文件；XLS/XLSX 请先用 Excel「另存为 CSV」后导入</view>
-    <view class="tip-hint">📌 {{catHint}}</view>
-    <view class="tip-hint">📌 {{srcHint}}</view>
-    <view class="tip-hint">📌 {{keeperHint}}</view>
-    <view class="tip-hint">📌 {{orgHint}}</view>
+    <view class="tip-hint"><text class="iconfont ri-flag-line"></text> 支持 CSV 文件；XLS/XLSX 请先用 Excel「另存为 CSV」后导入</view>
+    <view class="tip-hint"><text class="iconfont ri-flag-line"></text> {{catHint}}</view>
+    <view class="tip-hint"><text class="iconfont ri-flag-line"></text> {{srcHint}}</view>
+    <view class="tip-hint"><text class="iconfont ri-flag-line"></text> {{keeperHint}}</view>
+    <view class="tip-hint"><text class="iconfont ri-flag-line"></text> {{orgHint}}</view>
     <view class="btn-row">
-      <button class="btn-tpl" bindtap="onDownloadTpl">⬇️ 下载导入模板</button>
-      <button class="btn-pick" loading="{{importing}}" bindtap="onChooseFile">📁 选择 CSV 文件导入</button>
+      <button class="btn-tpl" bindtap="onDownloadTpl"><text class="iconfont ri-download-2-line"></text> 下载导入模板</button>
+      <button class="btn-pick" loading="{{importing}}" bindtap="onChooseFile"><text class="iconfont ri-folder-line"></text> 选择 CSV 文件导入</button>
     </view>
   </view>
 
   <view class="card" wx:if="{{fileName}}">
     <view class="ta-label">已选文件</view>
-    <view class="file-name">📄 {{fileName}}</view>
+    <view class="file-name"><text class="iconfont ri-file-list-3-line"></text> {{fileName}}</view>
   </view>
 
   <view wx:if="{{result}}" class="result">{{result}}</view>

@@ -10,7 +10,7 @@
     </view>
   </view>
 
-  <view wx:if="{{loading}}" class="card loading-tip">⏳ 正在加载器具档案…</view>
+  <view wx:if="{{loading}}" class="card loading-tip"><text class="iconfont ri-time-line"></text> 正在加载器具档案…</view>
 
   <view wx:else class="card">
     <!-- 三级联动筛选（2026-08-09）：先库房 → 再类别 → 最后编号，编号项带名称/库房/类别特征，同类型器具可分辨 -->

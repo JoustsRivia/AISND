@@ -15,7 +15,7 @@
 
   <view class="theme-row card">
     <view class="tr-label">
-      <text class="tr-ico">🌙</text>
+      <text class="tr-ico iconfont ri-moon-line"></text>
       <view class="tr-text">
         <text class="tr-title">夜间模式</text>
         <text class="tr-sub">深色作业终端风（手动开启；系统深色自动跟随）</text>

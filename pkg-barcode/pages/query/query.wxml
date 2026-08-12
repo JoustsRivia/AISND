@@ -28,7 +28,7 @@
       <view class="kv" wx:if="{{result.expireAt}}"><text class="k">有效截止</text><text class="v">{{result.expireAt}}</text></view>
     </view>
 
-    <text wx:if="{{!result.valid}}" class="warn">⚠ 该器具试验标识异常或已禁用，请现场核实</text>
+    <text wx:if="{{!result.valid}}" class="warn"><text class="iconfont ri-alarm-warning-line"></text> 该器具试验标识异常或已禁用，请现场核实</text>
 
     <!-- R17 查看档案 -->
     <button size="mini" type="primary" bindtap="onGoArchive">查看档案</button>

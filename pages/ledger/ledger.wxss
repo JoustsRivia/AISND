@@ -16,18 +16,10 @@
   font-size: 28rpx; color: var(--c-text-weak);
   width: 44rpx; height: 44rpx; line-height: 44rpx; text-align: center;
 }
-.actions { display: flex; gap: var(--sp-2); padding: var(--sp-2) 0 0; }
-.act {
-  flex: 1; display: flex; align-items: center; justify-content: center; gap: 8rpx;
-  height: 72rpx; border-radius: var(--r-pill);
-  background: var(--c-card); color: var(--c-text-sub);
-  font-size: var(--fs-sm); font-weight: 600;
-  box-shadow: var(--sh-card); border: 2rpx solid transparent;
-  transition: all 0.2s;
-}
+/* .actions 已由 app.wxss .act-grid 替代（v3） */
 .act-ico { font-size: 26rpx; }
-.act-on { background: var(--c-warning-soft); color: var(--c-warning); border-color: var(--c-warning); }
-.act-export { background: var(--c-primary-soft); color: var(--c-primary); }
+/* .act-on 已由 .act-cell--on 替代（v3） */
+/* .act-export 已由 .act-cell--primary 替代（v3） */
 
 /* 问题6：分台账筛选条 */
 .subledger { display: flex; align-items: center; gap: var(--sp-2); padding: var(--sp-2) var(--sp-3) 0; }

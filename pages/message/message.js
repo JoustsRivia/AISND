@@ -5,9 +5,9 @@ const net = require('../../utils/network');
 const { SUBSCRIBE_TMPL_ID, ROLE_FAMILIES } = require('../../utils/constants');
 
 const LEVEL_META = {
-  urgent:   { label: '紧急', cls: 'danger', icon: '⛔' },
-  important: { label: '重要', cls: 'warning', icon: '⚠️' },
-  notice:   { label: '通知', cls: 'info',    icon: '📢' },
+  urgent:   { label: '紧急', cls: 'danger', icon: 'ri-alarm-warning-line' },
+  important: { label: '重要', cls: 'warning', icon: 'ri-alarm-warning-line' },
+  notice:   { label: '通知', cls: 'info',    icon: 'ri-notification-3-line' },
 };
 
 const TABS = [

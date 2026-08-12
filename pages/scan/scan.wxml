@@ -8,7 +8,7 @@
       <text class="frame-tip">将二维码 / 条码放入框内</text>
     </view>
     <view class="scan-btn grad-primary" bindtap="onScan">
-      <text class="sb-ico">📷</text><text class="sb-txt">扫一扫</text>
+      <text class="sb-ico iconfont ri-scan-line"></text><text class="sb-txt">扫一扫</text>
     </view>
     <view class="manual" bindtap="onManual">手动输入编号 ›</view>
   </view>

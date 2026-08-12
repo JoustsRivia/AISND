@@ -1,24 +1,24 @@
 <!-- pages/ledger/ledger.wxml —— 台账列表（统计 + 筛查 + 卡片列表） -->
 <view class="topbar">
   <view class="search">
-    <text class="s-ico">🔍</text>
+    <text class="s-ico iconfont ri-search-line"></text>
     <input class="s-input" placeholder="搜索器具名称 / 编号" value="{{keyword}}" bindinput="onSearch" confirm-type="search" />
     <text wx:if="{{keyword}}" class="s-clear" bindtap="clearSearch">✕</text>
   </view>
-  <view class="actions">
-    <view class="act" bindtap="onAdd">
-      <text class="act-ico">➕</text><text>录入</text>
+  <view class="act-grid">
+    <view class="act-cell act-cell--primary" bindtap="onAdd">
+      <text class="act-ico iconfont ri-add-line"></text><text>录入</text>
     </view>
-    <view class="act" bindtap="onImport">
-      <text class="act-ico">📥</text><text>导入</text>
+    <view class="act-cell act-cell--primary" bindtap="onImport">
+      <text class="act-ico iconfont ri-upload-2-line"></text><text>导入</text>
     </view>
-    <view class="act {{highRisk ? 'act-on' : ''}}" bindtap="onToggleHighRisk">
-      <text class="act-ico">⚠️</text><text>高危专项</text>
+    <view class="act-cell {{highRisk ? 'act-cell--on' : ''}}" bindtap="onToggleHighRisk">
+      <text class="act-ico iconfont ri-alarm-warning-line"></text><text>高危专项</text>
     </view>
-    <view class="act act-export" bindtap="onExport" wx:if="{{!exporting}}">
-      <text class="act-ico">⬇️</text><text>导出台账</text>
+    <view class="act-cell act-cell--primary" bindtap="onExport" wx:if="{{!exporting}}">
+      <text class="act-ico iconfont ri-download-2-line"></text><text>导出台账</text>
     </view>
-    <view class="act act-export" wx:else><text>导出中…</text></view>
+    <view class="act-cell act-cell--primary" wx:else><text>导出中…</text></view>
   </view>
 </view>
 
@@ -52,7 +52,7 @@
 <view wx:if="{{loading && !list.length}}" class="loading">加载中…</view>
 
 <view wx:if="{{!loading && !list.length}}" class="empty">
-  <view class="empty-icon">🗃️</view>
+  <view class="empty-icon iconfont ri-file-list-3-line"></view>
   <view class="empty-title">暂无匹配器具</view>
   <view class="empty-desc">试试切换状态、类别或分台账筛选</view>
   <view class="empty-act" bindtap="onAdd">＋ 手动录入一台器具</view>

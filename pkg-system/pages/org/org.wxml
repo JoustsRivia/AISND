@@ -37,7 +37,7 @@
       <block wx:if="{{storePanel.orgId === item._id}}">
         <view class="store-panel">
           <view class="store-head">
-            <text class="store-title">🏬 {{item.name}} · 库房（{{storePanel.stores.length}}）</text>
+            <text class="store-title"><text class="iconfont ri-archive-line"></text> {{item.name}} · 库房（{{storePanel.stores.length}}）</text>
             <text class="op" data-orgid="{{item._id}}" bindtap="onStoreAdd">新增库房</text>
           </view>
           <view wx:if="{{storePanel.loading}}" class="muted">加载中…</view>

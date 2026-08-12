@@ -7,6 +7,8 @@
 
 /* SNDNum 等宽数字字体：包内 base64 @font-face（离线可用、免合法域名白名单，见 fonts.js 头注释） */
 @import "styles/fonts.wxss";
+/* SNDIcon 图标字体类（remixicon 子集化 52 图标；映射 assets/fonts/snd-icon-map.json） */
+@import "./assets/fonts/snd-icons.wxss";
 
 page {
   /* —— 品牌色 —— */
@@ -431,4 +433,71 @@ page {
 .theme-dark input, .theme-dark textarea, .theme-dark label, .theme-dark navigator,
 .theme-dark rich-text, .theme-dark picker {
   color: #E0E0E0 !important;
+}
+
+/* =========================================================================
+   v3 设计系统工具类（DESIGN_SYSTEM §7-§10；2026-08-12 从旧工作区重新应用）
+   - 触控目标 ≥88rpx（硬性）
+   - 操作区三种形态：btn 主按钮 / chip-group 次级操作组 / toolbar 底部栏
+   - 卡片内面板用 panel（禁止卡片套卡片）
+   ========================================================================= */
+.act-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-2);
+}
+.act-cell {
+  display: flex; align-items: center; justify-content: center; gap: 8rpx;
+  height: 88rpx; border-radius: var(--r-md);
+  background: var(--c-card); color: var(--c-text-sub);
+  font-size: var(--fs-md); font-weight: 600;
+  box-shadow: var(--sh-card); border: 2rpx solid transparent; box-sizing: border-box;
+}
+.act-cell:active { transform: scale(0.98); }
+.act-cell--on      { background: var(--c-warning-soft); color: var(--c-warning); border-color: var(--c-warning); }
+.act-cell--primary { background: var(--c-primary-soft); color: var(--c-primary); }
+
+.chip-group { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-2); }
+.chip-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6rpx;
+  min-height: 88rpx; padding: 0 var(--sp-4); border-radius: var(--r-pill);
+  background: var(--c-surface); color: var(--c-text-sub);
+  font-size: var(--fs-sm); font-weight: 600; box-sizing: border-box;
+}
+.chip-btn:active { opacity: 0.7; }
+.chip-btn--primary { background: var(--c-primary-soft); color: var(--c-primary); }
+.chip-btn--success { background: var(--c-success-bg); color: var(--c-success); }
+.chip-btn--danger  { background: var(--c-danger-bg); color: var(--c-danger); }
+.chip-btn--on      { background: var(--c-primary-soft); color: var(--c-primary); border: 2rpx solid var(--c-primary); }
+
+.panel {
+  background: var(--c-surface-2); border-radius: var(--r-sm); padding: var(--sp-3);
+}
+
+.btn-sm {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6rpx;
+  height: 72rpx; padding: 0 var(--sp-3); border-radius: var(--r-pill);
+  font-size: var(--fs-sm); font-weight: 600; border: none; line-height: 1;
+  background: var(--c-surface); color: var(--c-text-sub);
+}
+.btn-sm::after { border: none; }
+.btn-sm-primary { background: var(--c-primary-grad); color: #fff; }
+.btn-sm-outline { background: transparent; color: var(--c-primary); border: 2rpx solid var(--c-primary); }
+
+.form-row { display: flex; align-items: center; padding: 24rpx 0; border-bottom: 1rpx solid var(--c-divider); }
+.form-row:last-of-type { border-bottom: none; }
+.form-label { width: 168rpx; color: var(--c-text-sub); font-size: var(--fs-md); flex-shrink: 0; }
+.form-value { flex: 1; color: var(--c-text); font-size: var(--fs-md); }
+.form-input { flex: 1; text-align: right; font-size: var(--fs-md); color: var(--c-text); }
+
+.input-box {
+  display: flex; align-items: center; gap: var(--sp-2);
+  min-height: 80rpx; padding: 0 var(--sp-3);
+  background: var(--c-surface); border-radius: var(--r-sm);
+  border: 2rpx solid transparent; box-sizing: border-box;
+}
+.input-box:focus-within { background: var(--c-card); border-color: var(--c-primary); }
+.input-box input { flex: 1; font-size: var(--fs-md); color: var(--c-text); min-width: 0; }
+
+/* size="mini" 全局兜底：只提触控，不覆盖页面自定义 padding/字号 */
+button[size="mini"] {
+  min-height: 88rpx; display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box;
 }

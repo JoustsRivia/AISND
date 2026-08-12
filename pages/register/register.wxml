@@ -12,15 +12,15 @@
 
       <!-- 自动匹配结果提示 -->
       <view class="org-match" wx:if="{{isRoleComplete}}">
-        <text wx:if="{{orgLoading}}" class="org-match-loading">⏳ 正在匹配组织架构…</text>
-        <text wx:elif="{{matchedOrgId}}" class="org-match-ok">✅ 已自动匹配组织归属</text>
-        <text wx:else class="org-match-warn">⚠ 未找到匹配的组织节点，请联系管理员</text>
+        <text wx:if="{{orgLoading}}" class="org-match-loading"><text class="iconfont ri-time-line"></text> 正在匹配组织架构…</text>
+        <text wx:elif="{{matchedOrgId}}" class="org-match-ok"><text class="iconfont ri-checkbox-circle-line"></text> 已自动匹配组织归属</text>
+        <text wx:else class="org-match-warn"><text class="iconfont ri-alarm-warning-line"></text> 未找到匹配的组织节点，请联系管理员</text>
       </view>
 
       <form-field label="用户名" value="{{username}}" placeholder="请输入用户名" bind:input="onUserInput" />
       <view class="pwd-field">
         <view class="pwd-input-wrap"><form-field label="密码" password="{{!showPwd}}" value="{{password}}" placeholder="请输入密码（≥8位，含大小写/数字/符号更佳）" bind:input="onPwdInput" /></view>
-        <view class="pwd-eye" catchtap="togglePwd">{{showPwd ? '🙈' : '👁'}}</view>
+        <view class="pwd-eye iconfont {{showPwd ? 'ri-eye-off-line' : 'ri-eye-line'}}" catchtap="togglePwd"></view>
       </view>
       <view class="pwd-strength" wx:if="{{password}}">
         <view class="pwd-bar">
@@ -32,7 +32,7 @@
 
       <button type="primary" loading="{{loading}}" bindtap="onRegister">注册并登录</button>
 
-      <view class="note">🔒 请通过上方级联选择器逐级选择您的角色，系统将自动匹配组织归属与权限</view>
+      <view class="note"><text class="iconfont ri-lock-line"></text> 请通过上方级联选择器逐级选择您的角色，系统将自动匹配组织归属与权限</view>
       <view class="forgot" bindtap="goLogin">已有账号？<text class="link">去登录</text></view>
     </view>
   </view>
@@ -40,7 +40,7 @@
   <!-- 注册成功：角色权限说明弹窗 -->
   <view class="modal-mask" wx:if="{{showSuccess}}" catchtap="noop">
     <view class="modal">
-      <view class="modal-ico">✅</view>
+      <view class="modal-ico iconfont ri-checkbox-circle-line"></view>
       <view class="modal-title">注册成功</view>
       <view class="modal-sub">已为您创建账号并登录</view>
       <view class="modal-role" wx:if="{{successInfo}}">

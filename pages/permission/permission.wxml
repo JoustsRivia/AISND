@@ -8,23 +8,23 @@
 
   <view class="card" wx:if="{{info}}">
     <view class="sec">
-      <view class="sec-h">📍 数据范围</view>
+      <view class="sec-h"><text class="iconfont ri-map-pin-line"></text> 数据范围</view>
       <view class="sec-b">{{info.scope}}</view>
     </view>
     <view class="sec">
-      <view class="sec-h">🛠 可用功能</view>
+      <view class="sec-h"><text class="iconfont ri-tools-line"></text> 可用功能</view>
       <view class="sec-b">
         <view class="li" wx:for="{{info.functions}}" wx:key="*this">· {{item}}</view>
       </view>
     </view>
     <view class="sec">
-      <view class="sec-h">🔗 审批链路</view>
+      <view class="sec-h"><text class="iconfont ri-link"></text> 审批链路</view>
       <view class="sec-b">{{info.approval}}</view>
     </view>
   </view>
 
   <view class="empty" wx:else>
-    <view class="empty-icon">🔒</view>
+    <view class="empty-icon iconfont ri-lock-line"></view>
     <view class="empty-title">暂无可查看的权限说明</view>
     <view class="empty-desc">完成注册 / 角色绑定后，此处将展示对应角色权限</view>
   </view>
