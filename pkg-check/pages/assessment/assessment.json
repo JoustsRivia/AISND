@@ -1,6 +1,8 @@
 {
   "usingComponents": {
-    "status-tag": "/components/status-tag/status-tag"
+    "status-tag": "/components/status-tag/status-tag",
+    "user-picker": "/components/user-picker/user-picker",
+    "attachment-uploader": "/components/attachment-uploader/index"
   },
   "navigationBarTitleText": "考核评比"
 }

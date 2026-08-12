@@ -2,7 +2,12 @@
 const api = require('../../../utils/api');
 
 Page({
-  data: { team: '', content: '', participants: '', date: '', submitting: false },
+  data: { team: '', content: '', participants: '', date: '', photos: [], submitting: false },
+  onParticipants(e) {
+    const v = e.detail || {};
+    this.setData({ participants: v.displayName || v.username || '' });
+  },
+  onPhotos(e) { this.setData({ photos: (e.detail && e.detail.value) || [] }); },
   onLoad() {
     const d = new Date();
     const p = (n) => String(n).padStart(2, '0');
@@ -16,6 +21,7 @@ Page({
       await api.recordBriefing({
         team: this.data.team, content: this.data.content,
         participants: this.data.participants, date: this.data.date,
+        photos: this.data.photos.map((p) => p.id),
       });
       wx.showToast({ title: '已记录交底', icon: 'success' });
       setTimeout(() => wx.navigateBack(), 800);

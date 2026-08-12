@@ -15,7 +15,7 @@ const HAZARD_STATUS = { open: '待整改', tracking: '跟踪中', closed: '已�
 
 Page({
   data: {
-    desc: '', levelIdx: 0, location: '', coords: '',
+    desc: '', levelIdx: 0, location: '', coords: '', photos: [],
     levelOptions: LEVEL_OPTIONS,
     targetKeyword: '', targetResults: [], assessmentTarget: '', assessmentTargetName: '',
     list: [], loading: true, submitting: false,
@@ -52,6 +52,7 @@ Page({
   onPickLevel(e) { this.setData({ levelIdx: +e.detail.value }); },
   bindDesc(e) { this.setData({ desc: e.detail.value }); },
   bindLocation(e) { this.setData({ location: e.detail.value }); },
+  onPhotos(e) { this.setData({ photos: (e.detail && e.detail.value) || [] }); },
 
   // R20：获取定位 —— 地图选点，返回中文位置名称（不裸显经纬度）
   async onGetLocation() {
@@ -116,11 +117,12 @@ Page({
         level: LEVEL_OPTIONS[this.data.levelIdx].key,
         location,
         coords: this.data.coords,
+        photos: this.data.photos.map((p) => p.id),
         assessmentTarget: this.data.assessmentTarget,
         assessmentTargetName: this.data.assessmentTargetName,
       });
       wx.showToast({ title: '已上报', icon: 'success' });
-      this.setData({ desc: '', location: '', levelIdx: 0, coords: '', assessmentTarget: '', assessmentTargetName: '', targetKeyword: '', targetResults: [] });
+      this.setData({ desc: '', location: '', levelIdx: 0, coords: '', photos: [], assessmentTarget: '', assessmentTargetName: '', targetKeyword: '', targetResults: [] });
       await this.loadList();
     } catch (err) {
       wx.showToast({ title: '上报失败', icon: 'none' });

@@ -12,9 +12,7 @@
     <view class="hero-right">
       <view class="hero-badge">工作台</view>
       <view class="hero-id" hover-class="hero-id--hover" bindtap="onIdentity" aria-label="我的身份码">
-        <view class="hero-id-qr">
-          <view class="qr-dot tl"></view><view class="qr-dot tr"></view><view class="qr-dot bl"></view>
-        </view>
+        <canvas type="2d" id="heroQr" class="hero-qr-canvas"></canvas>
       </view>
     </view>
   </view>

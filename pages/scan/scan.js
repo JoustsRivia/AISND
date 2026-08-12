@@ -82,16 +82,31 @@ Page({
     const stamp = (p && p.t)
       ? (() => { const d = new Date(p.t); const f = (n) => (n < 10 ? '0' + n : '' + n); return `${f(d.getHours())}:${f(d.getMinutes())}`; })()
       : '';
-    const show = (org) => wx.showModal({
+    const openid = (p && p.o) || '';
+    // 持证情况：按 openid 查有效证书
+    const certPromise = openid
+      ? api.checkCert({ openid }).then((c) => (c && c.certs && c.certs.length)
+          ? c.certs.map((x) => x.name || x.type || '证书').join('、') : '无有效证书').catch(() => '—')
+      : Promise.resolve('—');
+    // 过往考核：按工号/姓名匹配考核记录（取最近 3 条）
+    const assessPromise = api.getAssessmentList({})
+      .then((list) => {
+        const mine = (list || []).filter((a) => (eid && a.targetId === eid) || (!eid && a.targetName === name)).slice(0, 3);
+        return mine.length ? mine.map((a) => `${a.dimension} ${a.score}分`).join('；') : '暂无考核';
+      }).catch(() => '—');
+
+    const show = (org, certText, assessText) => wx.showModal({
       title: '身份核验',
-      content: `姓名：${name}\n工号：${eid || '—'}\n角色：${role}\n归属：${org}${stamp ? `\n码生成于：${stamp}` : ''}`,
+      content: `姓名：${name}\n工号：${eid || '—'}\n角色：${role}\n归属：${org}\n持证：${certText}\n考核：${assessText}${stamp ? `\n码生成于：${stamp}` : ''}`,
       showCancel: false,
       confirmText: '已核验',
     });
-    if (!orgId) return show('—');
-    api.getOrgTree()
-      .then((tree) => show(orgPathText(tree, orgId) || '—'))
-      .catch(() => show('—'));
+
+    const orgPromise = orgId
+      ? api.getOrgTree().then((tree) => orgPathText(tree, orgId) || '—').catch(() => '—')
+      : Promise.resolve('—');
+    Promise.all([orgPromise, certPromise, assessPromise])
+      .then(([org, certText, assessText]) => show(org, certText, assessText));
   },
 
   onManual() {

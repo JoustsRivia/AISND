@@ -1,5 +1,25 @@
 <!-- pkg-check/pages/inspection/inspection.wxml —— M10.1 监督检查任务 -->
 <view class="inspection">
+  <view class="publish-bar">
+    <button type="primary" size="mini" bindtap="onShowCreate">＋ 发布监督任务</button>
+  </view>
+  <view wx:if="{{creating}}" class="card form">
+    <view class="row" style="justify-content: space-between;">
+      <text class="f-title">发布监督任务</text>
+      <text class="cancel" bindtap="onCancelCreate">取消✕</text>
+    </view>
+    <view class="row col"><text class="label">任务标题</text>
+      <input class="inp" placeholder="如：35kV线路现场作业检查" value="{{nTitle}}" bindinput="bindNTitle" /></view>
+    <view class="row col"><text class="label">检查位置</text>
+      <input class="inp" placeholder="如：#2 变电所" value="{{nLocation}}" bindinput="bindNLocation" /></view>
+    <view class="row col"><text class="label">指派检查人</text>
+      <user-picker class="inp" placeholder="搜索用户库联想选择" value="{{nAssigneeName}}" bind:change="onNAssignee" /></view>
+    <view class="row"><text class="label">截止日期</text>
+      <picker mode="date" value="{{nDueDate}}" bindchange="onNDueDate">
+        <view class="picker">{{nDueDate || '请选择'}} ▾</view>
+      </picker></view>
+    <button type="primary" loading="{{publishing}}" bindtap="onPublish">确认发布</button>
+  </view>
   <view wx:if="{{loading}}" class="muted center">加载中…</view>
   <block wx:else>
     <view wx:if="{{list.length === 0}}" class="muted center">暂无监督任务</view>

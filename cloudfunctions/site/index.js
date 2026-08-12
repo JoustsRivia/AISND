@@ -82,8 +82,8 @@ async function briefing(payload) {
   if (g.err) return g.err;
   const openid = g.openid;
   const me = await db.getCurrentUser(openid);
-  const { team = '', content = '', participants = '', date = '' } = payload || {};
-  const doc = { team, content, participants, date, leader: openid, orgId: (me && me.orgId) || '', ts: now() };
+  const { team = '', content = '', participants = '', date = '', photos = [] } = payload || {};
+  const doc = { team, content, participants, date, photos: Array.isArray(photos) ? photos : [], leader: openid, orgId: (me && me.orgId) || '', ts: now() };
   const added = await db.add('briefings', doc);
   return ok({ _id: added._id, ...doc });
 }

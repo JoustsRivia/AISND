@@ -1,1 +1,1 @@
-{ "navigationBarTitleText": "班前交底" }
+{ "navigationBarTitleText": "班前交底", "usingComponents": { "user-picker": "/components/user-picker/user-picker", "attachment-uploader": "/components/attachment-uploader/index" } }

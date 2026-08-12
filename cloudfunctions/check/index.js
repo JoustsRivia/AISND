@@ -28,6 +28,20 @@ async function tasks() {
   return ok(res.data || []);
 }
 
+// 发布监督任务（M10.1 新增 2026-08-12）：管理角色创建，指派给检查人
+async function createInspection(payload) {
+  const g = await requireRole(...MGMT, 'admin');
+  if (g.err) return g.err;
+  const { title = '', location = '', assignee = '', assigneeName = '', dueDate = '', desc = '' } = payload || {};
+  if (!title || !location) return fail('请填写任务标题与位置', 400);
+  const doc = {
+    title, location, assignee, assigneeName, dueDate, desc,
+    status: 'pending', creator: getOpenid(), createdAt: now(),
+  };
+  const added = await db.add('inspections', doc);
+  return ok({ _id: added._id, ...doc });
+}
+
 // 现场检查提交（M10.2）
 async function submit(payload) {
   const { id, result = {}, remark = '' } = payload;
@@ -145,13 +159,15 @@ async function assess(payload) {
   if (g.err) return g.err;
   const openid = getOpenid();
   const me = await db.getCurrentUser(openid);
-  const { targetId, targetName, score, dimension, note = '' } = payload;
+  const { targetId, targetName, score, dimension, note = '', attachments = [] } = payload;
   if (!targetId || score == null) return fail('缺少考核对象或分数');
   const s = Number(score);
   if (isNaN(s) || s < 0 || s > 100) return fail('分数需为 0~100');
   const doc = {
     targetId, targetName: targetName || '', score: s,
-    dimension: dimension || '综合', note, assessor: openid,
+    dimension: dimension || '综合', note,
+    attachments: Array.isArray(attachments) ? attachments : [],
+    assessor: openid,
     orgId: (me && me.orgId) || '', createdAt: now(),
   };
   const added = await db.add('assessments', doc);
@@ -163,6 +179,7 @@ exports.main = __limiter.wrap(async (event) => {
   try {
     switch (action) {
       case 'tasks': return tasks(payload);
+      case 'createInspection': return createInspection(payload);
       case 'submit': return submit(payload);
       case 'reportHazard': return reportHazard(payload);
       case 'listHazard': return listHazard(payload);

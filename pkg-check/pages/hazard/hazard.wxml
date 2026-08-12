@@ -26,6 +26,9 @@
       </picker>
     </view>
     <view class="row col">
+      <text class="label">现场照片</text>
+      <attachment-uploader label="照片" value="{{photos}}" bind:change="onPhotos" /></view>
+    <view class="row col">
       <text class="label">位置</text>
       <view class="loc-row">
         <input class="inp" placeholder="如：#3配电室" value="{{location}}" bindinput="bindLocation" />

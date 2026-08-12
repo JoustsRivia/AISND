@@ -1,7 +1,8 @@
 {
   "usingComponents": {
     "status-tag": "/components/status-tag/status-tag",
-    "record-timeline": "/components/record-timeline/record-timeline"
+    "record-timeline": "/components/record-timeline/record-timeline",
+    "attachment-uploader": "/components/attachment-uploader/index"
   },
   "navigationBarTitleText": "隐患管理"
 }

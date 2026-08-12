@@ -4,11 +4,8 @@
     <text class="sec-title">考核评分</text>
     <view class="row col">
       <text class="label">被考核对象</text>
-      <input class="inp" placeholder="如：#3班组 / 张三" value="{{targetName}}" bindinput="bindTarget" />
-    </view>
-    <view class="row col">
-      <text class="label">对象编号</text>
-      <input class="inp" placeholder="班组 / 工号 ID" value="{{targetId}}" bindinput="bindTargetId" />
+      <user-picker class="inp" placeholder="搜索用户库联想选择（班组可手动输入）" value="{{targetName}}" bind:change="onTargetPick" />
+      <view class="muted" wx:if="{{targetName}}">对象编号：{{targetId || '—'}}</view>
     </view>
     <view class="row">
       <text class="label">维度</text>
@@ -23,9 +20,9 @@
       </picker>
     </view>
     <view class="row col">
-      <text class="label">备注</text>
+      <text class="label">考核说明</text>
       <textarea class="area" placeholder="考核说明…" value="{{note}}" bindinput="bindNote" />
-    </view>
+      <attachment-uploader label="附件" value="{{attachments}}" bind:change="onAttachments" /></view>
     <button type="primary" loading="{{submitting}}" bindtap="onSubmit">提交评分</button>
   </view>
 

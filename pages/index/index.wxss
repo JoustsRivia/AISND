@@ -103,20 +103,18 @@
 /* #13 工作台身份码入口（二维码形状，全角色可见） */
 .hero-right { display: flex; flex-direction: column; align-items: flex-end; gap: 14rpx; }
 .hero-id {
-  width: 76rpx; height: 76rpx; border-radius: 16rpx;
-  background: #fff; border: 2rpx solid rgba(255,255,255,0.6);
+  width: 96rpx; height: 96rpx; border-radius: 20rpx;
+  background: #fff; border: 2rpx solid rgba(255,255,255,0.7);
+  box-shadow: 0 4rpx 16rpx rgba(15,43,91,0.18);
   display: flex; align-items: center; justify-content: center;
+  position: relative;
 }
-.hero-id--hover { opacity: 0.8; }
-.hero-id-qr {
-  width: 52rpx; height: 52rpx; position: relative;
-  background:
-    linear-gradient(#0F2B5B,#0F2B5B) 0 0/16rpx 16rpx no-repeat,
-    linear-gradient(#0F2B5B,#0F2B5B) 36rpx 0/16rpx 16rpx no-repeat,
-    linear-gradient(#0F2B5B,#0F2B5B) 0 36rpx/16rpx 16rpx no-repeat;
+.hero-id--hover { opacity: 0.85; transform: scale(0.97); }
+.hero-qr-canvas { width: 68rpx; height: 68rpx; display: block; }
+/* 入口提示：hover 时浮现「我的身份码」 */
+.hero-id::after {
+  content: '身份码';
+  position: absolute; bottom: -34rpx; left: 50%; transform: translateX(-50%);
+  font-size: 18rpx; color: rgba(255,255,255,0.9); white-space: nowrap;
+  pointer-events: none;
 }
-/* 三个定位角，模拟二维码视觉 */
-.qr-dot { position: absolute; width: 16rpx; height: 16rpx; background: #0F2B5B; }
-.qr-dot.tl { top: 0; left: 0; }
-.qr-dot.tr { top: 0; right: 0; }
-.qr-dot.bl { bottom: 0; left: 0; }

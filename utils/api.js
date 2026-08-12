@@ -148,6 +148,7 @@ const evaluateTraining = (id, data) => invoke(FN.training, 'evaluate', { id, ...
 
 // ── 监督检查隐患 M10 ──────────────────────────────────────────────────
 const getInspectionTasks = () => invoke(FN.check, 'tasks');
+const createInspection = (data) => invoke(FN.check, 'createInspection', data);
 const submitInspection = (data) => invoke(FN.check, 'submit', data);
 const reportHazard = (data) => invoke(FN.check, 'reportHazard', data);
 const assignHazard = (id, data) => invoke(FN.check, 'assignHazard', { id, ...data });
@@ -319,7 +320,7 @@ module.exports = {
   getTrainingCourses, assignTraining, signInTraining, getMyTraining,
   confirmTraining, completeTraining, evaluateTraining,
   // 监督
-  getInspectionTasks, submitInspection, reportHazard, assignHazard, trackHazard, closeHazard, getHazardList,
+  getInspectionTasks, createInspection, submitInspection, reportHazard, assignHazard, trackHazard, closeHazard, getHazardList,
   getAssessmentList, submitAssessment,
   // 预警
   getWarnings, readWarning, readAllWarnings, subscribeWarning, generateWarnings, deleteWarning,

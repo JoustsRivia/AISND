@@ -4,6 +4,7 @@ const auth = require('../../utils/auth');
 const net = require('../../utils/network');
 const { moduleGroups } = require('../../utils/modules');
 const theme = require('../../utils/theme');
+const qrcode = require('../../pkg-barcode/utils/qrcode.js');
 const app = getApp();
 
 const { ROLE_TEXT } = require('../../utils/constants');
@@ -65,6 +66,44 @@ Page({
     this.refreshBadges();
     // 订阅「档案变更」事件（Item 5）：角色/组织变更后实时刷新首页徽标与档案，无需重复进入
     if (!this._offProfile) this._offProfile = auth.onProfileChanged(() => this.refresh());
+    // 身份码入口：渲染真实小二维码（hero 右上角，可现场互扫）
+    this.renderHeroQr();
+  },
+
+  // 工作台身份码入口：绘制真实二维码（编码 openid + 生成时间，可被「扫一扫」识别）
+  renderHeroQr() {
+    const p = auth.getProfile();
+    if (!p || !p.openid) return;
+    const text = 'AISND|ID|' + JSON.stringify({ o: p.openid, n: p.nickname || p.username || '', e: p.employeeId || '', r: p.role || '', g: p.orgId || '', t: Date.now() });
+    let qr;
+    try {
+      qr = qrcode(0, 'M');
+      qr.addData(text);
+      qr.make();
+    } catch (e) { return; }
+    const count = qr.getModuleCount();
+    wx.nextTick(() => {
+      wx.createSelectorQuery().in(this).select('#heroQr').fields({ node: true, size: true })
+        .exec((res) => {
+          if (!res || !res[0] || !res[0].node) return;
+          const canvas = res[0].node;
+          const ctx = canvas.getContext('2d');
+          const dpr = (wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync()).pixelRatio || 2;
+          const size = res[0].width;
+          canvas.width = size * dpr;
+          canvas.height = size * dpr;
+          ctx.scale(dpr, dpr);
+          const cell = size / count;
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, size, size);
+          ctx.fillStyle = '#0F2B5B';
+          for (let r = 0; r < count; r++) {
+            for (let c = 0; c < count; c++) {
+              if (qr.isDark(r, c)) ctx.fillRect(c * cell, r * cell, cell, cell);
+            }
+          }
+        });
+    });
   },
 
   onHide() { if (this._offProfile) { this._offProfile(); this._offProfile = null; } },
