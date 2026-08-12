@@ -14,3 +14,7 @@ node_modules/
 .claude/
 wechatide_files/
 工器具项目书.docx
+
+# 交付产物快照（勿提交进仓库）
+AISND-src-*.zip
+AISND-full.bundle
