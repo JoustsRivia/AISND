@@ -217,3 +217,34 @@
 **门禁**：`npm test` ✅ 162/162；`check:syntax` ✅ 256 文件；`check:frontend` ✅。
 
 **遗留**：与 §7.14-§7.21 同属未推送改动，分支 `feature/feature-slim-20260805` 待推。
+
+---
+
+## §9 会话转折 — 发现旧基线，基于 GitHub 最新 fe408b0 重新应用（2026-08-12 上午）
+
+### 9.1 关键事实
+
+1. 此前全部工作（v3 优化/图标体系）基于 **07-28 共享盘快照**（`1af9360`），是**旧基线**；
+2. 用户反馈：功能模块仍显示 emoji、图标不渲染 → 排查发现 **GitHub 远端 `fe408b0`（64 提交）才是最新**（含功能瘦身/角色词表统一/台账崩溃修复/级联选择器改造等）；
+3. 使用 gh token（`~/.git-credentials`）成功 `git fetch origin` → 创建 `main-from-gh` 分支（旧分支 `backup-v3-changes` 保留）。
+
+### 9.2 在 fe408b0 上重新应用（提交 f5a1761 / 43a772e）
+
+- **图标基建**：assets/fonts 5 文件 + fonts.js 云存储 fileID 加载 + app.wxss @import；
+- **全站 emoji 替换**（40+ 处）：功能模块九宫格（modules.js 19 icon）、profile/message 数据 icon、wxml 静态图标位、密码显隐伪元素；
+- **v3 公共类**：act-grid/chip-group/panel/btn-sm/form-*/input-box + button[size=mini] 88rpx 兜底；
+- **ledger 2×2 网格**（72→88rpx）。
+
+### 9.3 雷区
+
+- 替换脚本正则曾把 `iconfont ri-x` 生成为**无引号属性**（class 未合并）→ 已全站修复 22 处；
+- fe408b0 的 mini 按钮（39 处）由全局 button[size=mini] 兜底覆盖，未逐页改 class；
+- 组件 embed、表单统一、message chip 化未在 fe408b0 上重做（结构已演进，回归风险 > 收益），列为可选后续；
+- **云存储 ICON/snd-icon.ttf 必须为 52 图标新版**（旧 49 图标缺 moon/eye-off/lock）；
+- 项目盘根目录 snd-icon.ttf 大小显示 8528（49 图标旧版），覆盖上传 52 版未生效，需用户重新覆盖。
+
+### 9.4 下一步
+
+1. 真机预览验证图标渲染（功能模块/空态/密码显隐）；
+2. 确认云存储 52 图标版；
+3. 可选：v3 组件 embed / 表单统一在 fe408b0 上适配。
